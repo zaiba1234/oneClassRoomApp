@@ -1,6 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { use, useState } from 'react';
+import React, { useState } from 'react';
 import { authAPI } from '../API/authAPI';
+import { useAppDispatch } from '../Redux';
+import { storeFullName, storeMobileNumber } from '../Redux';
 import {
   View,
   Text,
@@ -23,6 +25,7 @@ const { width, height } = Dimensions.get('window');
 
 const RegisterScreen = ({ route }) => {
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState(route.params?.mobileNumber || '');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +41,10 @@ const RegisterScreen = ({ route }) => {
       const result = await authAPI.register(fullName.trim(), phoneNumber);
       
       if (result.success) {
+        // Store user data in Redux
+        dispatch(storeFullName(fullName.trim()));
+        dispatch(storeMobileNumber(phoneNumber));
+        
         // Registration successful, navigate to verification
         console.log('Registration successful, navigating to verification');
         console.log('Full API response:', result.data);

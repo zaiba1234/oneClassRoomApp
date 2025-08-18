@@ -1,6 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useRef, useState } from 'react';
 import { authAPI } from '../API/authAPI';
+import { useAppDispatch } from '../Redux';
+import { storeToken } from '../Redux';
 import {
   TextInput,
   View,                                                                           
@@ -25,6 +27,7 @@ const { width, height } = Dimensions.get('window');
 
 const VerificationScreen = ({ route }) => {
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const otpRefs = useRef([]);
@@ -78,6 +81,12 @@ const VerificationScreen = ({ route }) => {
       const result = await authAPI.verifyOTP(mobileNumber, otpString);
       
       if (result.success) {
+        // Store token in Redux if available
+        if (result.data.token) {
+          dispatch(storeToken(result.data.token));
+          console.log('Token stored in Redux:', result.data.token);
+        }
+        
         // OTP verified successfully, navigate to Home
         console.log('OTP verification successful, navigating to Home');
         navigation.navigate('Home');

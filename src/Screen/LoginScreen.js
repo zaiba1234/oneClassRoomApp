@@ -1,6 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { authAPI } from '../API/authAPI';
+import { useAppDispatch } from '../Redux';
+import { storeMobileNumber } from '../Redux';
 import {
   View,
   Text,
@@ -26,6 +28,7 @@ const { width, height } = Dimensions.get('window');
 
 const LoginScreen = () => {
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,21 +41,69 @@ const LoginScreen = () => {
 
     setIsLoading(true);
     try {
-      const mobileNumberFormatted = `+91${phoneNumber.replace(/\D/g, '')}`;
+      // Extract only digits and ensure it's exactly 10 digits
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (digitsOnly.length !== 10) {
+        console.log('Please enter exactly 10 digits for mobile number');
+        setIsLoading(false);
+        return;
+      }
+      
+      const mobileNumberFormatted = `+91${digitsOnly}`;
+      console.log('Sending mobile number:', mobileNumberFormatted);
+      console.log('Full API URL will be:', `http://192.168.1.28:3000/api/auth/login`);
+      console.log('Request payload:', { mobileNumber: mobileNumberFormatted });
       const result = await authAPI.login(mobileNumberFormatted);
       
       console.log('Login API response:', result);
+      console.log('API Status:', result.status);
+      console.log('API Data:', result.data);
+      console.log('Response structure analysis:');
+      console.log('- Has OTP:', !!result.data.otp);
+      console.log('- Has userExists:', result.data.hasOwnProperty('userExists'));
+      console.log('- userExists value:', result.data.userExists);
+      console.log('- Message:', result.data.message);
+      console.log('- Full data keys:', Object.keys(result.data));
       
       if (result.success) {
-        if (result.data.userExists) {
-          // User exists, navigate to verification
-          console.log('User exists, navigating to verification');
+        // Store mobile number in Redux
+        dispatch(storeMobileNumber(mobileNumberFormatted));
+        
+        // Check the response structure to determine user existence
+        console.log('Checking user existence from response...');
+        
+        // If OTP is sent, user exists and needs verification
+        if (result.data.otp) {
+          console.log('OTP received, user exists, navigating to verification');
           navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
-        } else {
-          // User doesn't exist, navigate to register
-          console.log('User does not exist, navigating to register');
+        }
+        // If userExists field is present, use that
+        else if (result.data.userExists === true) {
+          console.log('User exists (userExists: true), navigating to verification');
+          navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
+        }
+        // If userExists field is false, user doesn't exist
+        else if (result.data.userExists === false) {
+          console.log('User does not exist (userExists: false), navigating to register');
           navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
         }
+        // If neither OTP nor userExists, check message for clues
+        else {
+          console.log('No clear user existence info, checking message...');
+          const message = result.data.message || '';
+          
+          if (message.toLowerCase().includes('otp sent') || message.toLowerCase().includes('login')) {
+            console.log('Message indicates user exists, navigating to verification');
+            navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
+          } else if (message.toLowerCase().includes('not registered') || message.toLowerCase().includes('not found')) {
+            console.log('Message indicates user not registered, navigating to register');
+            navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
+          } else {
+            // Default: navigate to verification since API was successful
+            console.log('Default: navigating to verification (API success)');
+            navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
+          }
+                }
       } else {
         console.log(result.data.message || 'Login failed');
         // Check if the error message indicates user not registered

@@ -5,13 +5,24 @@ export const apiService = {
   // POST request
   async post(endpoint, data) {
     try {
-      const response = await fetch(getApiUrl(endpoint), {
+      const url = getApiUrl(endpoint);
+      const headers = getApiHeaders();
+      const body = JSON.stringify(data);
+      
+      console.log('apiService.post - URL:', url);
+      console.log('apiService.post - Headers:', headers);
+      console.log('apiService.post - Body:', body);
+      
+      const response = await fetch(url, {
         method: 'POST',
-        headers: getApiHeaders(),
-        body: JSON.stringify(data),
+        headers: headers,
+        body: body,
       });
       
       const responseData = await response.json();
+      console.log('apiService.post - Response Status:', response.status);
+      console.log('apiService.post - Response Data:', responseData);
+      
       return {
         success: response.ok,
         data: responseData,

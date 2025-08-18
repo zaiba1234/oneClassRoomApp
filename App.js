@@ -1,5 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { Provider } from 'react-redux';
+import store from './src/Redux/store';
 import SplashScreen from './src/Screen/SplashScreen';
 import OnBoardScreen from './src/Screen/OnBoardScreen';
 import LoginScreen from './src/Screen/LoginScreen';
@@ -35,8 +37,9 @@ const Stack = createStackNavigator();
 const App = () => {
     
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+    <Provider store={store}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="OnBoard" component={OnBoardScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -65,8 +68,9 @@ const App = () => {
         <Stack.Screen name="TermsCondition" component={TermsConditionScreen} />
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />
         <Stack.Screen name="SubCourse" component={SubCourseScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+              </Stack.Navigator>
+      </NavigationContainer>
+    </Provider>
   );
 };
 
