@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
+import { authAPI } from '../API/authAPI';
 import {
   View,
   Text,
@@ -20,12 +21,54 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 const logo = require('../assests/images/Learningsaintlogo.png');
 const graduationCap = require('../assests/images/Degree.png');
-
+                                                                       
 const { width, height } = Dimensions.get('window');
 
 const LoginScreen = () => {
   const navigation = useNavigation();
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+    if (!phoneNumber || phoneNumber.length < 10) {
+      // Use console.log instead of alert for emulator compatibility
+      console.log('Please enter a valid mobile number');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const mobileNumberFormatted = `+91${phoneNumber.replace(/\D/g, '')}`;
+      const result = await authAPI.login(mobileNumberFormatted);
+      
+      console.log('Login API response:', result);
+      
+      if (result.success) {
+        if (result.data.userExists) {
+          // User exists, navigate to verification
+          console.log('User exists, navigating to verification');
+          navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
+        } else {
+          // User doesn't exist, navigate to register
+          console.log('User does not exist, navigating to register');
+          navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
+        }
+      } else {
+        console.log(result.data.message || 'Login failed');
+        // Check if the error message indicates user not registered
+        if (result.data.message && result.data.message.toLowerCase().includes('not registered')) {
+          // Navigate to register screen when user is not registered
+          console.log('User not registered, navigating to register');
+          navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      console.log('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -38,14 +81,6 @@ const LoginScreen = () => {
           keyboardShouldPersistTaps="handled"
         >
           <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-
-          {/* Back Button */}
-          {/* <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="chevron-back" size={24} color="#FF8800" />
-          </TouchableOpacity> */}
 
           {/* Main Container with Gradient Background */}
           <View style={styles.mainContainer}>
@@ -98,10 +133,11 @@ const LoginScreen = () => {
                 style={styles.button}
               >
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('Verify')}
+                  onPress={handleLogin}
                   style={{ width: '100%', alignItems: 'center' }}
+                  disabled={isLoading}
                 >
-                  <Text style={styles.buttonText}>Log In</Text>
+                  <Text style={styles.buttonText}>{isLoading ? 'Checking...' : 'Log In'}</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>

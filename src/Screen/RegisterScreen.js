@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { use, useState } from 'react';
+import { authAPI } from '../API/authAPI';
 import {
   View,
   Text,
@@ -20,10 +21,45 @@ import LinearGradient from 'react-native-linear-gradient';
 const logo = require('../assests/images/Learningsaintlogo.png');
 const { width, height } = Dimensions.get('window');
 
-const RegisterScreen = () => {
-  const navigation=useNavigation();
+const RegisterScreen = ({ route }) => {
+  const navigation = useNavigation();
   const [fullName, setFullName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(route.params?.mobileNumber || '');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRegister = async () => {
+    if (!fullName.trim() || !phoneNumber) {
+      console.log('Please fill all fields');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await authAPI.register(fullName.trim(), phoneNumber);
+      
+      if (result.success) {
+        // Registration successful, navigate to verification
+        console.log('Registration successful, navigating to verification');
+        console.log('Full API response:', result.data);
+        
+        // Check if OTP is in the response
+        if (result.data.otp) {
+          console.log('OTP received:', result.data.otp);
+        } else {
+          console.log('No OTP in response, but registration successful');
+        }
+        
+        navigation.navigate('Verify', { mobileNumber: phoneNumber });
+      } else {
+        console.log(result.data.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      console.log('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -90,8 +126,12 @@ const RegisterScreen = () => {
               end={{ x: 0, y: 1 }}
               style={styles.button}
             >
-              <TouchableOpacity onPress={()=>navigation.navigate('RegisterPopup')}  style={{ width: '100%', alignItems: 'center' }}>
-                <Text style={styles.buttonText}>Register</Text>
+              <TouchableOpacity 
+                onPress={handleRegister} 
+                style={{ width: '100%', alignItems: 'center' }}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>{isLoading ? 'Registering...' : 'Register'}</Text>
               </TouchableOpacity>
             </LinearGradient>
           </View>

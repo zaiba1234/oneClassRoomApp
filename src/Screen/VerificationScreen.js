@@ -1,12 +1,13 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useRef, useState } from 'react';
+import { authAPI } from '../API/authAPI';
 import {
   TextInput,
-  View,
+  View,                                                                           
   Text,
-  TouchableOpacity,
+  TouchableOpacity,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
   StyleSheet,
-  Dimensions,
+  Dimensions,                                      
   Platform,
   KeyboardAvoidingView,
   ScrollView,
@@ -22,10 +23,13 @@ const tickmarkIcon = require('../assests/images/accountsecurity.png');
 const clockIcon = require('../assests/images/Clock.png');
 const { width, height } = Dimensions.get('window');
 
-const VerificationScreen = () => {
+const VerificationScreen = ({ route }) => {
   const navigation = useNavigation();
   const [otp, setOtp] = useState(['', '', '', '']);
+  const [isLoading, setIsLoading] = useState(false);
   const otpRefs = useRef([]);
+  
+  const mobileNumber = route.params?.mobileNumber || '+91 ******333';
 
   const handleOtpChange = (index, value) => {
     const newOtp = [...otp];
@@ -62,6 +66,32 @@ const VerificationScreen = () => {
     }
   };
 
+  const handleVerifyOTP = async () => {
+    const otpString = otp.join('');
+    if (otpString.length !== 4) {
+      console.log('Please enter complete OTP');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await authAPI.verifyOTP(mobileNumber, otpString);
+      
+      if (result.success) {
+        // OTP verified successfully, navigate to Home
+        console.log('OTP verification successful, navigating to Home');
+        navigation.navigate('Home');
+      } else {
+        console.log(result.data.message || 'OTP verification failed');
+      }
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      console.log('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -92,7 +122,7 @@ const VerificationScreen = () => {
 
             <Text style={styles.title}>Verify OTP</Text>
             <Text style={styles.subtitle}>
-              Enter the OTP sent to +91 ******333
+              Enter the OTP sent to {mobileNumber}
             </Text>
 
             {/* OTP Input Fields */}
@@ -128,23 +158,7 @@ const VerificationScreen = () => {
             </View>
           </View>
 
-          {/* Verify Button - Fixed at Bottom */}
-          {/* <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.buttonWrapper}
-              onPress={() => navigation.navigate('Register')}
-            >
-              <LinearGradient
-                colors={['#FFB800', '#FF8800']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.button}
-              >
-                <Text style={styles.buttonText}>Verify OTP</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View> */}
-
+        
 
 
 <View style={styles.buttonContainer}>
@@ -155,15 +169,14 @@ const VerificationScreen = () => {
                 style={styles.button}
               >
                 <TouchableOpacity
-                  onPress={() => navigation.navigate('Register')}
+                  onPress={handleVerifyOTP}
                   style={{ width: '100%', alignItems: 'center' }}
+                  disabled={isLoading}
                 >
-                  <Text style={styles.buttonText}>Verify OTP</Text>
+                  <Text style={styles.buttonText}>{isLoading ? 'Verifying...' : 'Verify OTP'}</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
-
-
 
         </View>
       </TouchableWithoutFeedback>
@@ -276,36 +289,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 4,
   },
-  // buttonContainer: {
-  //   position: 'absolute',
-  //   bottom: 0,
-  //   left: 0,
-  //   right: 0,
-  //   paddingHorizontal: 30,
-  //   paddingBottom: 30,
-  //   backgroundColor: '#fff',
-  // },
-  // buttonWrapper: {
-  //   borderRadius: 12,
-  //   overflow: 'hidden',
-  //   shadowColor: '#FF8800',
-  //   shadowOffset: { width: 0, height: 4 },
-  //   shadowOpacity: 0.3,
-  //   shadowRadius: 8,
-  //   elevation: 8,
-  // },
-  // button: {
-  //   paddingVertical: 14,
-  //   borderRadius: 12,
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  // },
-  // buttonText: {
-  //   color: '#fff',
-  //   fontSize: 16,
-  //   fontWeight: '600',
-  // },
-
 
  buttonContainer: {
     alignItems: 'center',
