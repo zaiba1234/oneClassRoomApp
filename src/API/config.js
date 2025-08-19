@@ -1,23 +1,8 @@
-// API Configuration
-// ===========================================
-// TO CHANGE ENVIRONMENT: Edit the BASE_URL below
-// ===========================================
 
 const API_CONFIG = {
-  // Base URL - Change this for different environments
-  // Development (Android Emulator)
-  BASE_URL: 'http://192.168.1.28:3000',
+  
+  BASE_URL: 'http://10.0.2.2:3000',
 
-  
-  // Uncomment for iOS Simulator
-  // BASE_URL: 'http://localhost:3000',
-  
-  // Uncomment for Production
-  // BASE_URL: 'https://your-production-domain.com',
-  
-  // Uncomment for Staging
-  // BASE_URL: 'https://your-staging-domain.com',
-  
   // API Endpoints
   ENDPOINTS: {
     // Auth endpoints
@@ -25,9 +10,9 @@ const API_CONFIG = {
     REGISTER: '/api/auth/register',
     VERIFY_OTP: '/api/auth/verify-otp',
     
-    // Add more endpoints here as needed
-    // COURSES: '/api/courses',
-    // USER_PROFILE: '/api/user/profile',
+    // Profile endpoints
+    GET_USER_PROFILE: '/api/user/profile/get-profile',
+     
   },
   
   // API Headers

@@ -1,8 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { authAPI } from '../API/authAPI';
-import { useAppDispatch } from '../Redux';
-import { storeMobileNumber } from '../Redux';
+import { useAppDispatch } from '../Redux/hooks';
+import { setMobileNumber } from '../Redux/userSlice';
 import {
   View,
   Text,
@@ -51,23 +51,17 @@ const LoginScreen = () => {
       
       const mobileNumberFormatted = `+91${digitsOnly}`;
       console.log('Sending mobile number:', mobileNumberFormatted);
-      console.log('Full API URL will be:', `http://192.168.1.28:3000/api/auth/login`);
+     
       console.log('Request payload:', { mobileNumber: mobileNumberFormatted });
       const result = await authAPI.login(mobileNumberFormatted);
       
       console.log('Login API response:', result);
-      console.log('API Status:', result.status);
-      console.log('API Data:', result.data);
-      console.log('Response structure analysis:');
-      console.log('- Has OTP:', !!result.data.otp);
-      console.log('- Has userExists:', result.data.hasOwnProperty('userExists'));
-      console.log('- userExists value:', result.data.userExists);
-      console.log('- Message:', result.data.message);
-      console.log('- Full data keys:', Object.keys(result.data));
+    
+      
       
       if (result.success) {
         // Store mobile number in Redux
-        dispatch(storeMobileNumber(mobileNumberFormatted));
+        dispatch(setMobileNumber(mobileNumberFormatted));
         
         // Check the response structure to determine user existence
         console.log('Checking user existence from response...');

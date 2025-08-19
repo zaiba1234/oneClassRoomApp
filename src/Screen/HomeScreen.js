@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useAppSelector } from '../Redux/hooks';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,6 +29,18 @@ const HomeScreen = () => {
   const navigation=useNavigation();
   const [selectedFilter, setSelectedFilter] = useState('All Course');
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+
+  // Get user data from Redux
+  const { fullName, mobileNumber, token, isAuthenticated, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
+
+  // Track Redux state changes
+  useEffect(() => {
+    console.log('🔄 HomeScreen: Redux state changed!');
+    console.log('🔄 HomeScreen: New fullName:', fullName);
+    console.log('🔄 HomeScreen: New mobileNumber:', mobileNumber);
+    console.log('🔄 HomeScreen: New token status:', token ? 'Present' : 'Missing');
+    console.log('🔄 HomeScreen: New isAuthenticated:', isAuthenticated);
+  }, [fullName, mobileNumber, token, isAuthenticated]);
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const carouselRef = useRef(null);
@@ -229,7 +242,7 @@ const HomeScreen = () => {
             <Image source={require('../assests/images/Profile.png')} style={styles.profileImage} />
             <View style={styles.greetingContainer}>
               <Text style={styles.greeting}>Hello!</Text>
-              <Text style={styles.userName}>John Smith</Text>
+              <Text style={styles.userName}>{fullName || 'User'}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notification')}>

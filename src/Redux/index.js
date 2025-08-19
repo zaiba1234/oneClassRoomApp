@@ -5,6 +5,7 @@ export {
   setToken,
   setFullName,
   setMobileNumber,
+  setProfileData,
   clearUserData,
   logout,
 } from './userSlice';

@@ -10,13 +10,31 @@ import {
   StatusBar,
   SafeAreaView,
   Platform,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import { useAppSelector, useAppDispatch } from '../Redux/hooks';
+import { logout } from '../Redux/userSlice';
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
+  const dispatch = useAppDispatch();
+  const nav = useNavigation();
+  // Get user data from Redux
+  const { fullName, mobileNumber, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
+
+  // Debug logging
+  console.log('👤 ProfileScreen: Redux state - fullName:', fullName);
+  console.log('👤 ProfileScreen: Redux state - mobileNumber:', mobileNumber);
+  console.log('👤 ProfileScreen: Redux state - _id:', _id);
+  console.log('👤 ProfileScreen: Redux state - userId:', userId);
+  console.log('👤 ProfileScreen: Redux state - profileImageUrl:', profileImageUrl);
+  console.log('👤 ProfileScreen: Redux state - address:', address);
+  console.log('👤 ProfileScreen: Redux state - email:', email);
+
   const menuItems = [
     {
       id: 1,
@@ -90,6 +108,27 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(logout());
+            nav.navigate('Login');
+          },
+        },
+      ]
+    );
+  };
+
   const renderMenuItem = (item) => (
     <TouchableOpacity 
       key={item.id} 
@@ -109,7 +148,7 @@ const ProfileScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Image source={require('../assests/images/Logout.png')} style={styles.logoutIcon} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
@@ -125,8 +164,9 @@ const ProfileScreen = ({ navigation }) => {
         >
           <Image source={require('../assests/images/Profile.png')} style={styles.profileImage} />
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>John Smith</Text>
-            <Text style={styles.profileEmail}>John@gmail.com</Text>
+            <Text style={styles.profileName}>{fullName || 'User'}</Text>
+            <Text style={styles.profileEmail}>{email || mobileNumber || 'No email'}</Text>
+            {address && <Text style={styles.profileAddress}>{address}</Text>}
           </View>
           <View style={styles.profileNumber}>
             <Text style={styles.numberText}>1</Text>
@@ -210,6 +250,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     opacity: 0.9,
+  },
+  profileAddress: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.7,
+    marginTop: 4,
   },
   profileNumber: {
     position: 'absolute',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,24 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { useAppSelector, useAppDispatch } from '../Redux/hooks';
+import { setFullName, setMobileNumber } from '../Redux/userSlice';
 
 const PersonalInfoScreen = ({ navigation }) => {
-  const [name, setName] = useState('John Smith');
+  const dispatch = useAppDispatch();
+  const { fullName, mobileNumber } = useAppSelector((state) => state.user);
+  
+  const [name, setName] = useState(fullName || '');
   const [address, setAddress] = useState('123 Main St, Springfield');
   const [email, setEmail] = useState('xyz@gmail.com');
-  const [phone, setPhone] = useState('+91');
+  const [phone, setPhone] = useState(mobileNumber || '+91');
   const [profileImage, setProfileImage] = useState(require('../assests/images/Profile.png'));
+
+  // Update local state when Redux state changes
+  useEffect(() => {
+    if (fullName) setName(fullName);
+    if (mobileNumber) setPhone(mobileNumber);
+  }, [fullName, mobileNumber]);
 
   const showImagePickerOptions = () => {
     Alert.alert(

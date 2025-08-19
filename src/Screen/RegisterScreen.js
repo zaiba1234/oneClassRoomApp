@@ -1,8 +1,8 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { authAPI } from '../API/authAPI';
-import { useAppDispatch } from '../Redux';
-import { storeFullName, storeMobileNumber } from '../Redux';
+import { useAppDispatch } from '../Redux/hooks';
+import { setProfileData } from '../Redux/userSlice';
 import {
   View,
   Text,
@@ -42,8 +42,7 @@ const RegisterScreen = ({ route }) => {
       
       if (result.success) {
         // Store user data in Redux
-        dispatch(storeFullName(fullName.trim()));
-        dispatch(storeMobileNumber(phoneNumber));
+        dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
         
         // Registration successful, navigate to verification
         console.log('Registration successful, navigating to verification');
@@ -56,7 +55,7 @@ const RegisterScreen = ({ route }) => {
           console.log('No OTP in response, but registration successful');
         }
         
-        navigation.navigate('Verify', { mobileNumber: phoneNumber });
+        navigation.navigate('Verify', { mobileNumber: phoneNumber, fullName: fullName.trim() });
       } else {
         console.log(result.data.message || 'Registration failed');
       }
