@@ -226,19 +226,12 @@ export const courseAPI = {
       console.log('📄 courseAPI: Subcourse by ID response:', responseData);
       
       if (responseData.data) {
-        console.log('📚 courseAPI: Subcourse details found:', responseData.data.subcourseName);
-        console.log('🎥 courseAPI: Intro video URL:', responseData.data.introVideoUrl);
-        console.log('📚 courseAPI: Total lessons:', responseData.data.totalLessons);
-        console.log('⭐ courseAPI: Average rating:', responseData.data.avgRating);
-        console.log('👥 courseAPI: Total students enrolled:', responseData.data.totalStudentsEnrolled);
-        console.log('🏷️ courseAPI: Is best seller:', responseData.data.isBestSeller);
+       
         
         if (responseData.data.lessons && Array.isArray(responseData.data.lessons)) {
           console.log('📚 courseAPI: Lessons found:', responseData.data.lessons.length);
           responseData.data.lessons.forEach((lesson, index) => {
-            console.log(`📚 courseAPI: Lesson ${index + 1}:`, lesson.lessonName);
-            console.log(`🖼️ courseAPI: Lesson thumbnail:`, lesson.thumbnailImageUrl);
-            console.log(`⏱️ courseAPI: Lesson duration:`, lesson.duration);
+          
           });
         }
       }
@@ -480,6 +473,132 @@ export const courseAPI = {
       }
     } catch (error) {
       console.error('💥 courseAPI: Error enrolling in course:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  getLessonById: async (token, lessonId) => {
+    try {
+      console.log('🚀 courseAPI: Fetching lesson details...');
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      console.log('🆔 courseAPI: Lesson ID:', lessonId);
+
+      const url = getApiUrl(`/api/user/course/getLessonById/${lessonId}`);
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      console.log('🌐 courseAPI: Lesson details URL:', url);
+      console.log('📋 courseAPI: Lesson details headers:', headers);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Lesson details response status:', response.status);
+      console.log('📡 courseAPI: Lesson details response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully fetched lesson details');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to fetch lesson details:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error fetching lesson details:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  markLessonCompleted: async (token, lessonId) => {
+    try {
+      console.log('🚀 courseAPI: Marking lesson as completed...');
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      console.log('🆔 courseAPI: Lesson ID:', lessonId);
+
+      const url = getApiUrl('/api/user/mark/lessons/mark-completed');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+
+      const body = JSON.stringify({
+        lessonId: lessonId,
+      });
+
+      console.log('🌐 courseAPI: Mark lesson completed URL:', url);
+      console.log('📋 courseAPI: Mark lesson completed headers:', headers);
+      console.log('📦 courseAPI: Mark lesson completed body:', body);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: body,
+      });
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Mark lesson completed response status:', response.status);
+      console.log('📡 courseAPI: Mark lesson completed response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully marked lesson as completed');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to mark lesson as completed:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error marking lesson as completed:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  toggleFavorite: async (token, subcourseId) => {
+    try {
+      console.log('🚀 courseAPI: Toggling favorite status...');
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      console.log('🆔 courseAPI: Subcourse ID:', subcourseId);
+
+      const url = getApiUrl('/api/user/favourite/add-favouriteCourse');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+
+      const body = JSON.stringify({
+        subcourseId: subcourseId,
+      });
+
+     
+      console.log('🔍 courseAPI: About to make fetch request...');
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: body,
+      });
+
+      console.log('📡 courseAPI: Fetch response received');
+     
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Toggle favorite response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully toggled favorite status');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to toggle favorite status:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+    
       return { success: false, data: { message: 'Network error occurred' }, status: 0 };
     }
   },

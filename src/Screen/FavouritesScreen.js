@@ -15,7 +15,7 @@ const FavouritesScreen = ({ navigation }) => {
   const favouriteCourses = [
     {
       id: 1,
-      title: '3D Design Basic',
+      title: '3D Design Basicsss',
       lessons: '24 lessons',
       rating: '4.9',
       price: '₹1.00',

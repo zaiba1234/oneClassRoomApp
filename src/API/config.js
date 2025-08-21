@@ -1,7 +1,11 @@
+import { Platform } from 'react-native';
 
 const API_CONFIG = {
   
-  BASE_URL: 'http://10.0.2.2:3000',
+  // Simple base URL - you can change this to match your server
+  BASE_URL: 'http://10.0.2.2:3000', // Change this to your actual server URL
+  
+
 
   // API Endpoints
   ENDPOINTS: {
@@ -28,7 +32,9 @@ const API_CONFIG = {
 
 // Helper function to get full API URL
 export const getApiUrl = (endpoint) => {
-  return `${API_CONFIG.BASE_URL}${endpoint}`;
+  const fullUrl = `${API_CONFIG.BASE_URL}${endpoint}`;
+  console.log('🌐 API Config: Full URL:', fullUrl);
+  return fullUrl;
 };
 
 // Helper function to get API headers

@@ -10,10 +10,13 @@ import {
   StatusBar,
   SafeAreaView,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
 import LinearGradient from 'react-native-linear-gradient';
+import { useAppSelector } from '../Redux/hooks';
+import { courseAPI } from '../API/courseAPI';
 
 // Import local assets
 const ArrowIcon = require('../assests/images/Arrow.png');
@@ -41,6 +44,147 @@ const LessonVideoScreen = ({ navigation, route }) => {
 
   // Get lesson ID from route params
   const lessonId = route.params?.lessonId;
+  
+  // Get user data from Redux
+  const { token } = useAppSelector((state) => state.user);
+
+  // State for lesson data from API
+  const [lessonData, setLessonData] = useState({
+    introVideoUrl: '',
+    lessonName: '',
+    classLink: '',
+    recordedVideoLink: '',
+    date: '',
+    desc: '',
+    duration: '',
+    startTime: '',
+    endTime: '',
+    LiveStatus: false,
+  });
+
+  const [isLoadingLesson, setIsLoadingLesson] = useState(true);
+  const [lessonError, setLessonError] = useState(null);
+
+  // State for time-based button logic
+  const [isButtonEnabled, setIsButtonEnabled] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState('');
+  const [showTimer, setShowTimer] = useState(true);
+
+  // Fetch lesson data when component mounts
+  useEffect(() => {
+    if (lessonId && token) {
+      fetchLessonDetails();
+    } else {
+      console.log('⚠️ LessonVideoScreen: No lessonId or token available');
+      setIsLoadingLesson(false);
+    }
+  }, [lessonId, token]);
+
+  // Function to calculate time remaining and button state
+  const calculateTimeAndButtonState = () => {
+    if (!lessonData.startTime) return;
+
+    try {
+      const now = new Date();
+      const lessonDate = new Date(lessonData.date);
+      const [startHour, startMinute] = lessonData.startTime.split(':');
+      
+      // Set the lesson start time for today
+      const lessonStartTime = new Date(lessonDate);
+      lessonStartTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
+      
+      // Calculate time difference in milliseconds
+      const timeDiff = lessonStartTime.getTime() - now.getTime();
+      
+      console.log('⏰ LessonVideoScreen: Time calculation:', {
+        now: now.toLocaleTimeString(),
+        lessonStartTime: lessonStartTime.toLocaleTimeString(),
+        timeDiff: timeDiff,
+        timeDiffSeconds: Math.floor(timeDiff / 1000)
+      });
+      
+      if (timeDiff > 0) {
+        // Lesson hasn't started yet - button disabled
+        setIsButtonEnabled(false);
+        setShowTimer(true);
+        
+        // Calculate remaining time
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+        
+        const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        setTimeRemaining(timeString);
+        
+        console.log('⏰ LessonVideoScreen: Button disabled, time remaining:', timeString);
+      } else {
+        // Lesson has started - button enabled
+        setIsButtonEnabled(true);
+        setShowTimer(false);
+        setTimeRemaining('');
+        
+        console.log('⏰ LessonVideoScreen: Button enabled, lesson started');
+      }
+    } catch (error) {
+      console.error('💥 LessonVideoScreen: Error calculating time:', error);
+      // Default to enabled if there's an error
+      setIsButtonEnabled(true);
+      setShowTimer(false);
+    }
+  };
+
+  // Update time and button state every second
+  useEffect(() => {
+    if (lessonData.startTime) {
+      calculateTimeAndButtonState();
+      
+      const interval = setInterval(() => {
+        calculateTimeAndButtonState();
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [lessonData.startTime, lessonData.date]);
+
+  // Log button state changes for debugging
+  useEffect(() => {
+    console.log('🔘 LessonVideoScreen: Button state changed:', {
+      isButtonEnabled,
+      showTimer,
+      timeRemaining,
+      LiveStatus: lessonData.LiveStatus
+    });
+  }, [isButtonEnabled, showTimer, timeRemaining, lessonData.LiveStatus]);
+
+  // Function to fetch lesson details from API
+  const fetchLessonDetails = async () => {
+    try {
+      setIsLoadingLesson(true);
+      setLessonError(null);
+      
+      console.log('🎬 LessonVideoScreen: Fetching lesson details for ID:', lessonId);
+      console.log('🔑 LessonVideoScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const result = await courseAPI.getLessonById(token, lessonId);
+      
+      if (result.success && result.data.success) {
+        const apiLesson = result.data.data;
+        console.log('🎉 LessonVideoScreen: Lesson details received successfully!');
+        console.log('📚 LessonVideoScreen: Lesson data:', apiLesson);
+        
+        setLessonData(apiLesson);
+        
+      } else {
+        console.log('❌ LessonVideoScreen: Failed to fetch lesson details:', result.data?.message);
+        setLessonError(result.data?.message || 'Failed to fetch lesson details');
+      }
+    } catch (error) {
+      console.error('💥 LessonVideoScreen: Error fetching lesson details:', error);
+      setLessonError(error.message || 'Network error occurred');
+    } finally {
+      setIsLoadingLesson(false);
+    }
+  };
 
   // Log lesson ID for debugging
   useEffect(() => {
@@ -53,16 +197,17 @@ const LessonVideoScreen = ({ navigation, route }) => {
     }
   }, [lessonId, route.params]);
 
-  // Trail video source - this should be updated to use actual lesson video URL
-  const videoSource = {
-    uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  };
+  // Video source from lesson data - fallback to default if not available
+  const videoSource = lessonData.introVideoUrl 
+    ? { uri: lessonData.introVideoUrl }
+    : { uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' };
 
+  // Use lesson data from API, fallback to default if not available
   const courseData = {
-    title: 'Introduction to 3D',
-    description: 'In this course you will learn how to build a space to a 3-dimensional product. There are 24 premium learning videos for you.',
-    duration: '20 mins',
-    isLive: true,
+    title: lessonData.lessonName || 'Introduction to 3D',
+    description: lessonData.desc || 'In this course you will learn how to build a space to a 3-dimensional product. There are 24 premium learning videos for you.',
+    duration: lessonData.duration || '20 mins',
+    isLive: lessonData.LiveStatus || false,
     liveTime: '02:32:45',
   };
 
@@ -84,6 +229,50 @@ const LessonVideoScreen = ({ navigation, route }) => {
 
   const handlePlayVideo = () => {
     setIsVideoPlaying(true);
+  };
+
+  // Handle button press based on LiveStatus
+  const handleButtonPress = async () => {
+    // Check if button is enabled
+    if (!isButtonEnabled) {
+      console.log('⚠️ LessonVideoScreen: Button is disabled, cannot proceed');
+      return;
+    }
+
+    try {
+      // First, mark the lesson as completed
+      console.log('🎯 LessonVideoScreen: Marking lesson as completed for lessonId:', lessonId);
+      const markResult = await courseAPI.markLessonCompleted(token, lessonId);
+      
+      if (markResult.success && markResult.data.success) {
+        console.log('✅ LessonVideoScreen: Lesson marked as completed successfully!');
+      } else {
+        console.log('⚠️ LessonVideoScreen: Failed to mark lesson as completed:', markResult.data?.message);
+        // Continue with the button action even if marking fails
+      }
+    } catch (error) {
+      console.error('💥 LessonVideoScreen: Error marking lesson as completed:', error);
+      // Continue with the button action even if marking fails
+    }
+
+    // Now handle the button action based on LiveStatus
+    if (lessonData.LiveStatus) {
+      // Live lesson - open Google Meet link
+      if (lessonData.classLink) {
+        console.log('🔗 LessonVideoScreen: Opening live class link:', lessonData.classLink);
+        Linking.openURL(lessonData.classLink);
+      } else {
+        console.log('⚠️ LessonVideoScreen: No class link available for live lesson');
+      }
+    } else {
+      // Recorded lesson - open recorded video link
+      if (lessonData.recordedVideoLink) {
+        console.log('🔗 LessonVideoScreen: Opening recorded video link:', lessonData.recordedVideoLink);
+        Linking.openURL(lessonData.recordedVideoLink);
+      } else {
+        console.log('⚠️ LessonVideoScreen: No recorded video link available');
+      }
+    }
   };
 
   // Handle WebView messages for full-screen toggle
@@ -175,12 +364,18 @@ const LessonVideoScreen = ({ navigation, route }) => {
 
   const renderCourseInfo = () => (
     <View style={styles.courseInfoContainer}>
-      {/* Live Status */}
+      {/* Live Status and Timer */}
       <View style={styles.liveStatusContainer}>
-        <View style={styles.liveBadge}>
-          <Text style={styles.liveText}>Live</Text>
-        </View>
-        <Text style={styles.liveTimeText}>Live In {courseData.liveTime}</Text>
+        {lessonData.LiveStatus && (
+          <View style={styles.liveBadge}>
+            <Text style={styles.liveText}>Live</Text>
+          </View>
+        )}
+        
+        {/* Show timer only when lesson hasn't started */}
+        {showTimer && timeRemaining && (
+          <Text style={styles.liveTimeText}>Live In {timeRemaining}</Text>
+        )}
       </View>
 
       {/* Course Title */}
@@ -219,30 +414,56 @@ const LessonVideoScreen = ({ navigation, route }) => {
         style={[styles.scrollView, isFullScreen && { display: 'none' }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Video Player */}
-        {renderVideoPlayer()}
+        {isLoadingLesson ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading lesson details...</Text>
+          </View>
+        ) : lessonError ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Error: {lessonError}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchLessonDetails}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* Video Player */}
+            {renderVideoPlayer()}
 
-        {/* Course Info */}
-        {renderCourseInfo()}
+            {/* Course Info */}
+            {renderCourseInfo()}
+          </>
+        )}
       </ScrollView>
 
-      {/* Join Now Button */}
+      {/* Button - Join Now or Watch Now based on LiveStatus */}
       {!isFullScreen && (
         <View style={styles.joinButtonContainer}>
           <TouchableOpacity 
-            style={styles.joinButton}
-            onPress={() => {
-              console.log('Join Now button pressed');
-              navigation.navigate('CourseDetail');
-            }}
+            style={[
+              styles.joinButton,
+              !isButtonEnabled && styles.disabledButton
+            ]}
+            onPress={handleButtonPress}
+            disabled={!isButtonEnabled}
           >
             <LinearGradient
-              colors={['#FF6B35', '#FFD93D']}
+              colors={isButtonEnabled ? ['#FF6B35', '#FFD93D'] : ['#CCCCCC', '#999999']}
               style={styles.joinButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.joinButtonText}>Join Now</Text>
+              <Text style={[
+                styles.joinButtonText,
+                !isButtonEnabled && styles.disabledButtonText
+              ]}>
+                {!isButtonEnabled 
+                  ? 'Lesson Not Started' 
+                  : lessonData.LiveStatus 
+                    ? 'Join Now' 
+                    : 'Watch Now'
+                }
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -456,6 +677,46 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: getFontSize(18),
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getVerticalSize(20),
+  },
+  loadingText: {
+    fontSize: getFontSize(18),
+    color: '#666666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getVerticalSize(20),
+    backgroundColor: '#FFFFFF',
+  },
+  errorText: {
+    fontSize: getFontSize(16),
+    color: '#FF6B35',
+    textAlign: 'center',
+    marginBottom: getVerticalSize(15),
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: getVerticalSize(12),
+    paddingHorizontal: getVerticalSize(25),
+    borderRadius: getFontSize(10),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  disabledButtonText: {
+    color: '#999999',
   },
 });
 

@@ -44,6 +44,9 @@ const HomeScreen = () => {
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
   const [featuredError, setFeaturedError] = useState(null);
 
+  // State for favorite toggling
+  const [togglingFavorites, setTogglingFavorites] = useState(new Set());
+
   // Fetch course data when component mounts or token changes
   useEffect(() => {
     if (token) {
@@ -123,8 +126,6 @@ const HomeScreen = () => {
         const transformedCourses = apiCourses.map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
           
-         
-          
           return {
             id: course._id || index + 1,
             title: course.subcourseName || 'Course Title',
@@ -132,7 +133,7 @@ const HomeScreen = () => {
             rating: course.avgRating ? course.avgRating.toString() : '4.5',
             price: `₹${course.price || 0}.00`,
             image: courseImage,
-            isFavorite: Math.random() > 0.5, // Random favorite status
+            isFavorite: false, // Start as not favorited
           };
         });
         
@@ -186,7 +187,7 @@ const HomeScreen = () => {
             rating: course.avgRating ? course.avgRating.toString() : '4.5',
             price: `₹${course.price || 0}.00`,
             image: courseImage,
-            isFavorite: Math.random() > 0.5, // Random favorite status
+            isFavorite: false, // Start as not favorited
           };
         });
         
@@ -241,7 +242,7 @@ const HomeScreen = () => {
             rating: course.avgRating ? course.avgRating.toString() : '4.5',
             price: `₹${course.price || 0}.00`,
             image: courseImage,
-            isFavorite: Math.random() > 0.5, // Random favorite status
+            isFavorite: false, // Start as not favorited
           };
         });
         
@@ -273,6 +274,96 @@ const HomeScreen = () => {
     }
   };
 
+  // Function to toggle favorite status
+  const toggleFavorite = async (courseId, currentFavoriteStatus) => {
+    try {
+      console.log('❤️ HomeScreen: Toggling favorite for course:', courseId);
+      console.log('❤️ HomeScreen: Current favorite status:', currentFavoriteStatus);
+      console.log('❤️ HomeScreen: Course ID type:', typeof courseId);
+      console.log('❤️ HomeScreen: Token available:', !!token);
+      console.log('❤️ HomeScreen: Token value:', token ? token.substring(0, 50) + '...' : 'No token');
+      
+      // Check if token exists
+      if (!token) {
+        console.error('❌ HomeScreen: No token available for API call');
+        return;
+      }
+      
+      // Check if courseId exists
+      if (!courseId) {
+        console.error('❌ HomeScreen: No courseId available for API call');
+        return;
+      }
+      
+      // Set loading state for this specific course
+      setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
+      
+      console.log('🚀 HomeScreen: About to call courseAPI.toggleFavorite...');
+      console.log('🚀 HomeScreen: With token:', token.substring(0, 50) + '...');
+      console.log('🚀 HomeScreen: With courseId:', courseId);
+      
+      const result = await courseAPI.toggleFavorite(token, courseId);
+      
+      console.log('❤️ HomeScreen: API result received:', result);
+      console.log('❤️ HomeScreen: API result.success:', result.success);
+      console.log('❤️ HomeScreen: API result.data:', result.data);
+      console.log('❤️ HomeScreen: API result.status:', result.status);
+      
+      if (result.success) {
+        const newFavoriteStatus = result.data.isLike;
+        console.log('✅ HomeScreen: Favorite toggled successfully! New status:', newFavoriteStatus);
+        console.log('✅ HomeScreen: API response:', result.data);
+        
+        // Update the course in the local state
+        setCourseCards(prevCourses => {
+          console.log('🔄 HomeScreen: Previous courses:', prevCourses.length);
+          const updatedCourses = prevCourses.map(course => {
+            console.log(`🔄 HomeScreen: Checking course ID: ${course.id} (${typeof course.id}) vs ${courseId} (${typeof courseId})`);
+            // Convert both IDs to strings for comparison to handle type mismatches
+            if (String(course.id) === String(courseId)) {
+              console.log(`✅ HomeScreen: Found course to update: ${course.title}`);
+              return { ...course, isFavorite: newFavoriteStatus };
+            }
+            return course;
+          });
+          console.log('🔄 HomeScreen: Updated courses:', updatedCourses.length);
+          return updatedCourses;
+        });
+        
+        // Also update featured courses if this course is in there
+        setFeaturedCourses(prevFeatured => {
+          console.log('🔄 HomeScreen: Previous featured courses:', prevFeatured.length);
+          const updatedFeatured = prevFeatured.map(course => {
+            if (String(course.id) === String(courseId)) {
+              console.log(`✅ HomeScreen: Found featured course to update: ${course.title}`);
+              return { ...course, isFavorite: newFavoriteStatus };
+            }
+            return course;
+          });
+          console.log('🔄 HomeScreen: Updated featured courses:', updatedFeatured.length);
+          return updatedFeatured;
+        });
+        
+      } else {
+        console.log('❌ HomeScreen: Failed to toggle favorite:', result.data?.message);
+        console.log('❌ HomeScreen: Full result:', result);
+        // You could show a toast/alert here if needed
+      }
+    } catch (error) {
+      console.error('💥 HomeScreen: Error toggling favorite:', error);
+      console.error('💥 HomeScreen: Error stack:', error.stack);
+      console.error('💥 HomeScreen: Error message:', error.message);
+      // You could show a toast/alert here if needed
+    } finally {
+      // Remove loading state for this course
+      setTogglingFavorites(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(String(courseId));
+        return newSet;
+      });
+    }
+  };
+
   // Track Redux state changes
   useEffect(() => {
     console.log('🔄 HomeScreen: Redux state changed!');
@@ -283,7 +374,7 @@ const HomeScreen = () => {
   // Track courseCards state changes
   useEffect(() => {
     
-    console.log('🔄 HomeScreen: Number of courses in state:', courseCards.length);
+   
     courseCards.forEach((course, index) => {
       console.log(`🔄 HomeScreen: Course ${index + 1} in state:`, {
         title: course.title,
@@ -411,11 +502,19 @@ const HomeScreen = () => {
           </View>
       </View>
       <View style={styles.courseCardRight}>
-        <TouchableOpacity style={styles.heartButton}>
+        {console.log(`🖤 Rendering heart for course: ${course.title}, isFavorite: ${course.isFavorite}, ID: ${course.id}`)}
+        <TouchableOpacity 
+          style={[
+            styles.heartButton,
+            togglingFavorites.has(String(course.id)) && styles.heartButtonLoading
+          ]} 
+          onPress={() => toggleFavorite(course.id, course.isFavorite)}
+          disabled={togglingFavorites.has(String(course.id))}
+        >
           <Icon 
             name={course.isFavorite ? "heart" : "heart-outline"} 
             size={getResponsiveSize(20)} 
-            color="#FF8800"
+            color={course.isFavorite ? "#FF0000" : "#FF8800"}
           />
         </TouchableOpacity>
         <Text style={styles.coursePrice}>{course.price}</Text>
@@ -889,6 +988,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: getResponsiveSize(8),
+  },
+  heartButtonLoading: {
+    opacity: 0.7, // Make it look disabled
   },
   heartIcon: {
     width: getResponsiveSize(20),

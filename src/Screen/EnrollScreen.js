@@ -127,8 +127,7 @@ const EnrollScreen = ({ navigation, route }) => {
           paymentStatus: apiCourse.paymentStatus || false, // Add paymentStatus from API
         };
         
-        console.log('🔄 EnrollScreen: Transformed course data:', transformedCourse);
-        console.log('📚 EnrollScreen: totalLessons from API:', apiCourse.totalLessons);
+       
         console.log('📚 EnrollScreen: totalLessons in state:', transformedCourse.totalLessons);
         console.log('📚 EnrollScreen: lessons array length:', transformedCourse.lessons.length);
         setCourseData(transformedCourse);
