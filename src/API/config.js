@@ -9,13 +9,15 @@ const API_CONFIG = {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
     VERIFY_OTP: '/api/auth/verify-otp',
-    
-    // Profile endpoints
     GET_USER_PROFILE: '/api/user/profile/get-profile',
+    GET_ALL_SUBCOURSES: '/api/user/course/getAll-subcourses',
+    GET_POPULAR_SUBCOURSES: '/api/user/course/getPopular-subcourses',
+    GET_NEWEST_SUBCOURSES: '/api/user/course/getNewest-subcourses',
+    GET_SUBCOURSE_BY_ID: '/api/user/course/getsubcourseById',
+    GET_ALL_COURSES: '/api/user/course/getAllCourses',
      
   },
-  
-  // API Headers
+
   HEADERS: {
     'Content-Type': 'application/json',
   },

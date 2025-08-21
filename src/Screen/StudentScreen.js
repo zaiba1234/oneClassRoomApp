@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   StatusBar,
   SafeAreaView,
 } from 'react-native';
+import { useAppSelector } from '../Redux/hooks';
+import { courseAPI } from '../API/courseAPI';
 
 // Import local assets
 const ArrowIcon = require('../assests/images/Arrow.png');
@@ -33,9 +35,85 @@ const verticalScale = height / 812; // Base height for iPhone 8
 const getFontSize = (size) => size * scale;
 const getVerticalSize = (size) => size * verticalScale;
 
-const StudentScreen = ({ navigation }) => {
-  // Mock student data
-  const students = [
+const StudentScreen = ({ navigation, route }) => {
+  // Get subcourseId from route params
+  const subcourseId = route.params?.subcourseId;
+  
+  // Get user data from Redux
+  const { token } = useAppSelector((state) => state.user);
+
+  // State for enrolled students data
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch enrolled students when component mounts
+  useEffect(() => {
+    if (subcourseId && token) {
+      fetchEnrolledStudents();
+    } else {
+      console.log('⚠️ StudentScreen: No subcourseId or token available');
+      setIsLoading(false);
+    }
+  }, [subcourseId, token]);
+
+  // Function to fetch enrolled students from API
+  const fetchEnrolledStudents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('🎓 StudentScreen: Fetching enrolled students for subcourseId:', subcourseId);
+      console.log('🔑 StudentScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const result = await courseAPI.getEnrolledStudents(token, subcourseId);
+      
+      if (result.success && result.data.success) {
+        const apiStudents = result.data.data;
+        console.log('🎉 StudentScreen: Enrolled students received successfully!');
+        console.log('👥 StudentScreen: Number of enrolled students:', apiStudents.length);
+        console.log('👥 StudentScreen: First student:', apiStudents[0]);
+        
+        // Transform API data to match existing UI structure
+        const transformedStudents = apiStudents.map((student, index) => {
+          const studentImage = student.profileImageUrl && student.profileImageUrl.trim() !== '' 
+            ? { uri: student.profileImageUrl } 
+            : require('../assests/images/John.png');
+          
+          return {
+            id: student.userId || index + 1,
+            name: student.fullName || 'Unknown Student',
+            avatar: studentImage,
+          };
+        });
+        
+        console.log('🔄 StudentScreen: Transformed students data:', transformedStudents);
+        setEnrolledStudents(transformedStudents);
+        
+      } else {
+        console.log('❌ StudentScreen: Failed to fetch enrolled students:', result.data?.message);
+        console.log('❌ StudentScreen: API response:', result);
+        setError(result.data?.message || 'Failed to fetch enrolled students');
+        // Keep empty array if API fails
+        setEnrolledStudents([]);
+      }
+    } catch (error) {
+      console.error('💥 StudentScreen: Error fetching enrolled students:', error);
+      setError(error.message || 'Network error occurred');
+      // Keep empty array if error occurs
+      setEnrolledStudents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Log subcourseId for debugging
+  useEffect(() => {
+    console.log('🔍 StudentScreen: Received subcourseId:', subcourseId);
+  }, [subcourseId]);
+
+  // Mock student data (fallback)
+  const mockStudents = [
     {
       id: 1,
       name: 'John Smith',
@@ -78,6 +156,9 @@ const StudentScreen = ({ navigation }) => {
     },
   ];
 
+  // Use API data if available, otherwise use mock data
+  const students = enrolledStudents.length > 0 ? enrolledStudents : mockStudents;
+
   const handleStudentPress = (student) => {
     console.log('Student clicked:', student.name);
     // Navigate to student detail screen if needed
@@ -117,7 +198,24 @@ const StudentScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={true}
         contentContainerStyle={styles.scrollViewContent}
       >
-        {students.map(renderStudentItem)}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading enrolled students...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Error: {error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchEnrolledStudents}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : students.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No enrolled students found</Text>
+          </View>
+        ) : (
+          students.map(renderStudentItem)
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -189,6 +287,50 @@ const styles = StyleSheet.create({
     fontSize: getFontSize(16),
     fontWeight: '500',
     color: '#000000',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getVerticalSize(20),
+  },
+  loadingText: {
+    fontSize: getFontSize(18),
+    color: '#000000',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getVerticalSize(20),
+  },
+  errorText: {
+    fontSize: getFontSize(18),
+    color: '#FF0000',
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: getVerticalSize(20),
+    backgroundColor: '#007BFF',
+    paddingVertical: getVerticalSize(10),
+    paddingHorizontal: getVerticalSize(20),
+    borderRadius: getFontSize(25),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getVerticalSize(20),
+  },
+  emptyText: {
+    fontSize: getFontSize(18),
+    color: '#888888',
+    textAlign: 'center',
   },
 });
 

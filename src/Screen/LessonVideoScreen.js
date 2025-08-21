@@ -34,12 +34,26 @@ const verticalScale = height / 812; // Base height for iPhone 8
 const getFontSize = (size) => size * scale;
 const getVerticalSize = (size) => size * verticalScale;
 
-const LessonVideoScreen = ({ navigation }) => {
+const LessonVideoScreen = ({ navigation, route }) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const webViewRef = useRef(null);
 
-  // Trail video source
+  // Get lesson ID from route params
+  const lessonId = route.params?.lessonId;
+
+  // Log lesson ID for debugging
+  useEffect(() => {
+    console.log('🎬 LessonVideoScreen: Received lessonId:', lessonId);
+    console.log('🎬 LessonVideoScreen: Route params:', route.params);
+    if (lessonId) {
+      console.log('✅ LessonVideoScreen: Valid lessonId received, ready to load lesson');
+    } else {
+      console.log('⚠️ LessonVideoScreen: No lessonId received');
+    }
+  }, [lessonId, route.params]);
+
+  // Trail video source - this should be updated to use actual lesson video URL
   const videoSource = {
     uri: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
   };

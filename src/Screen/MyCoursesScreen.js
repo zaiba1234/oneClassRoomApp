@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,58 +9,91 @@ import {
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useAppSelector } from '../Redux/hooks';
+import { courseAPI } from '../API/courseAPI';
 
 const { width, height } = Dimensions.get('window');
 
 const MyCoursesScreen = ({ navigation }) => {
   const [selectedFilter, setSelectedFilter] = useState('All Course');
+  const [courseCards, setCourseCards] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Get user token from Redux
+  const { token } = useAppSelector((state) => state.user);
 
   const filterOptions = ['All Course', 'In Progress', 'Completed'];
 
-  const courseCards = [
-    {
-      id: 1,
-      title: '3D Design Basic',
-      lessons: '24 lessons',
-      rating: '4.9',
-      progress: 65,
-      image: require('../assests/images/HomeImage.png'),
-    },
-    {
-      id: 2,
-      title: 'Characters Animation',
-      lessons: '22 lessons',
-      rating: '4.8',
-      progress: 40,
-      image: require('../assests/images/SavedImage.png'),
-    },
-    {
-      id: 3,
-      title: '3D Abstract Design',
-      lessons: '18 lessons',
-      rating: '4.5',
-      progress: 80,
-      image: require('../assests/images/HomeImage.png'),
-    },
-    {
-      id: 4,
-      title: 'Product Design',
-      lessons: '16 lessons',
-      rating: '4.7',
-      progress: 100,
-      image: require('../assests/images/SavedImage.png'),
-    },
-    {
-      id: 5,
-      title: 'Game Design',
-      lessons: '20 lessons',
-      rating: '4.6',
-      progress: 100,
-      image: require('../assests/images/HomeImage.png'),
-    },
-  ];
+  // Fetch courses based on selected filter
+  const fetchCourses = async (filter) => {
+    if (!token) {
+      console.log('❌ MyCoursesScreen: No token available');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      let result;
+      
+      switch (filter) {
+        case 'All Course':
+          console.log('📚 MyCoursesScreen: Fetching purchased subcourses...');
+          result = await courseAPI.getPurchasedSubcourses(token);
+          break;
+        case 'In Progress':
+          console.log('📚 MyCoursesScreen: Fetching in-progress subcourses...');
+          result = await courseAPI.getInProgressSubcourses(token);
+          break;
+        case 'Completed':
+          console.log('📚 MyCoursesScreen: Fetching completed subcourses...');
+          result = await courseAPI.getCompletedSubcourses(token);
+          break;
+        default:
+          result = await courseAPI.getPurchasedSubcourses(token);
+      }
+
+      if (result.success && result.data.success) {
+        console.log('✅ MyCoursesScreen: Successfully fetched courses for filter:', filter);
+        
+        // Transform API data to match the existing UI structure
+        const transformedCourses = result.data.data.map((course, index) => ({
+          id: course.subcourseId || index + 1,
+          title: course.subcourseName || 'Course Title',
+          lessons: `${course.totalLessons || 0} lessons`,
+          rating: '4.5', // Default rating since API doesn't provide it
+          progress: parseInt(course.progress?.replace('%', '') || '0'),
+          image: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png'),
+          subcourseId: course.subcourseId,
+        }));
+
+        console.log('🔄 MyCoursesScreen: Transformed courses:', transformedCourses);
+        setCourseCards(transformedCourses);
+      } else {
+        console.log('❌ MyCoursesScreen: Failed to fetch courses:', result.data?.message);
+        setError(result.data?.message || 'Failed to fetch courses');
+        setCourseCards([]);
+      }
+    } catch (error) {
+      console.error('💥 MyCoursesScreen: Error fetching courses:', error);
+      setError('Network error occurred');
+      setCourseCards([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch courses when component mounts or filter changes
+  useEffect(() => {
+    if (token) {
+      fetchCourses(selectedFilter);
+    }
+  }, [selectedFilter, token]);
 
   const renderProgressCircle = (progress) => {
     const radius = 20;
@@ -139,7 +172,8 @@ const MyCoursesScreen = ({ navigation }) => {
         if (course.progress === 100) {
           navigation.navigate('BadgeCourse');
         } else {
-          navigation.navigate('CourseDetail');
+          // Navigate to EnrollScreen with subcourseId for enrolled courses
+          navigation.navigate('Enroll', { courseId: course.subcourseId });
         }
       }}
     >
@@ -193,9 +227,33 @@ const MyCoursesScreen = ({ navigation }) => {
       </View>
 
       {/* Course Cards */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={() => fetchCourses(selectedFilter)}
+            colors={['#2285FA']}
+            tintColor="#2285FA"
+          />
+        }
+      >
         <View style={styles.courseCardsContainer}>
-          {courseCards.map((course) => renderCourseCard(course))}
+          {isLoading ? (
+            <Text style={styles.loadingText}>Loading courses...</Text>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Error: {error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchCourses(selectedFilter)}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : courseCards.length === 0 ? (
+            <Text style={styles.emptyText}>No courses found</Text>
+          ) : (
+            courseCards.map((course) => renderCourseCard(course))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -333,5 +391,39 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 10,
     fontWeight: '600',
+  },
+  loadingText: {
+    textAlign: 'center',
+    paddingVertical: 20,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorText: {
+    textAlign: 'center',
+    paddingVertical: 20,
+    fontSize: 16,
+    color: '#FF0000',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  retryButton: {
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    backgroundColor: '#2285FA',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyText: {
+    textAlign: 'center',
+    paddingVertical: 20,
+    fontSize: 16,
+    color: '#666',
   },
 });

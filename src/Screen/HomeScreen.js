@@ -16,6 +16,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
+import { courseAPI } from '../API/courseAPI';
 
 const { width, height } = Dimensions.get('window');
 
@@ -33,83 +34,267 @@ const HomeScreen = () => {
   // Get user data from Redux
   const { fullName, mobileNumber, token, isAuthenticated, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
 
+  // State for course data
+  const [courseCards, setCourseCards] = useState([]); // Start with empty array instead of hardcoded data
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [courseError, setCourseError] = useState(null);
+
+  // State for featured courses (banner)
+  const [featuredCourses, setFeaturedCourses] = useState([]);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
+  const [featuredError, setFeaturedError] = useState(null);
+
+  // Fetch course data when component mounts or token changes
+  useEffect(() => {
+    if (token) {
+      fetchCourseData();
+      fetchFeaturedCourses();
+    }
+  }, [token]);
+
+  // Function to fetch featured courses from API
+  const fetchFeaturedCourses = async () => {
+    try {
+      setIsLoadingFeatured(true);
+      setFeaturedError(null);
+      
+      console.log('🏠 HomeScreen: Fetching featured courses (banner) with token...');
+      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const result = await courseAPI.getPurchasedCourse(token);
+      
+      if (result.success && result.data.success) {
+        const apiCourses = result.data.data;
+        console.log('🎉 HomeScreen: Featured courses received successfully!');
+        console.log('📚 HomeScreen: Number of featured courses:', apiCourses.length);
+        console.log('📚 HomeScreen: First featured course:', apiCourses[0]);
+        
+        // Transform API data to match existing UI structure
+        const transformedFeaturedCourses = apiCourses.slice(0, 3).map((course, index) => {
+          const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Circular.png');
+          const progress = parseInt(course.progress?.replace('%', '') || '0');
+          
+          return {
+            id: course.subcourseId || index + 1,
+            title: course.subcourseName || 'Course Title',
+            lessons: `${course.totalLessons || 0} lessons`,
+            progress: progress,
+            image: courseImage,
+            buttonText: progress > 0 ? 'Continue Learning' : 'Explore',
+          };
+        });
+        
+        console.log('🔄 HomeScreen: Transformed featured courses:', transformedFeaturedCourses);
+        setFeaturedCourses(transformedFeaturedCourses);
+        
+      } else {
+        console.log('❌ HomeScreen: Failed to fetch featured courses:', result.data?.message);
+        console.log('❌ HomeScreen: API response:', result);
+        setFeaturedError(result.data?.message || 'Failed to fetch featured courses');
+        // Keep existing featured courses if API fails
+      }
+    } catch (error) {
+      console.error('💥 HomeScreen: Error fetching featured courses:', error);
+      setFeaturedError(error.message || 'Network error occurred');
+      // Keep existing featured courses if error occurs
+    } finally {
+      setIsLoadingFeatured(false);
+    }
+  };
+
+  // Function to fetch course data from API
+  const fetchCourseData = async () => {
+    try {
+      setIsLoadingCourses(true);
+      setCourseError(null);
+      
+      console.log('🏠 HomeScreen: Fetching course data with token...');
+      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const result = await courseAPI.getAllSubcourses(token);
+      
+      if (result.success && result.data.success) {
+        const apiCourses = result.data.data;
+        console.log('🎉 HomeScreen: Course data received successfully!');
+        console.log('📚 HomeScreen: Number of courses:', apiCourses.length);
+        console.log('📚 HomeScreen: First course:', apiCourses[0]);
+        
+        // Transform API data to match existing UI structure
+        const transformedCourses = apiCourses.map((course, index) => {
+          const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
+          
+         
+          
+          return {
+            id: course._id || index + 1,
+            title: course.subcourseName || 'Course Title',
+            lessons: `${course.totalLessons || 0} lessons`,
+            rating: course.avgRating ? course.avgRating.toString() : '4.5',
+            price: `₹${course.price || 0}.00`,
+            image: courseImage,
+            isFavorite: Math.random() > 0.5, // Random favorite status
+          };
+        });
+        
+        console.log('🔄 HomeScreen: Transformed courses:', transformedCourses);
+        setCourseCards(transformedCourses);
+        
+      } else {
+        
+        setCourseError(result.data?.message || 'Failed to fetch courses');
+        // Keep existing course data if API fails
+      }
+    } catch (error) {
+      console.error('💥 HomeScreen: Error fetching course data:', error);
+      setCourseError(error.message || 'Network error occurred');
+      // Keep existing course data if error occurs
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  // Function to fetch popular courses from API
+  const fetchPopularCourses = async () => {
+    try {
+      setIsLoadingCourses(true);
+      setCourseError(null);
+      
+      console.log('🏠 HomeScreen: Fetching popular courses with token...');
+      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const result = await courseAPI.getPopularSubcourses(token);
+      
+      if (result.success && result.data.success) {
+        const apiCourses = result.data.data;
+        console.log('🎉 HomeScreen: Popular courses received successfully!');
+        console.log('📚 HomeScreen: Number of popular courses:', apiCourses.length);
+        console.log('📚 HomeScreen: First popular course:', apiCourses[0]);
+        
+        // Transform API data to match existing UI structure
+        const transformedCourses = apiCourses.map((course, index) => {
+          const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
+          
+          console.log(`📚 HomeScreen: Popular Course ${index + 1} - ${course.subcourseName}`);
+          console.log(`🖼️ HomeScreen: Thumbnail URL: ${course.thumbnailImageUrl || 'Using fallback image'}`);
+          console.log(`🖼️ HomeScreen: Final image object:`, courseImage);
+          console.log(`🖼️ HomeScreen: Image type: ${course.thumbnailImageUrl ? 'URI' : 'require'}`);
+          
+          return {
+            id: course._id || index + 1,
+            title: course.subcourseName || 'Course Title',
+            lessons: `${course.totalLessons || 0} lessons`,
+            rating: course.avgRating ? course.avgRating.toString() : '4.5',
+            price: `₹${course.price || 0}.00`,
+            image: courseImage,
+            isFavorite: Math.random() > 0.5, // Random favorite status
+          };
+        });
+        
+        console.log('🔄 HomeScreen: Transformed popular courses:', transformedCourses);
+        setCourseCards(transformedCourses);
+        
+      } else {
+        console.log('❌ HomeScreen: Failed to fetch popular courses:', result.data?.message);
+        console.log('❌ HomeScreen: API response:', result);
+        setCourseError(result.data?.message || 'Failed to fetch popular courses');
+        // Keep existing course data if API fails
+      }
+    } catch (error) {
+      console.error('💥 HomeScreen: Error fetching popular courses:', error);
+      setCourseError(error.message || 'Network error occurred');
+      // Keep existing course data if error occurs
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  // Function to fetch newest courses from API
+  const fetchNewestCourses = async () => {
+    try {
+      setIsLoadingCourses(true);
+      setCourseError(null);
+      
+      console.log('🏠 HomeScreen: Fetching newest courses with token...');
+      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const result = await courseAPI.getNewestSubcourses(token);
+      
+      if (result.success && result.data.success) {
+        const apiCourses = result.data.data;
+        console.log('🎉 HomeScreen: Newest courses received successfully!');
+        console.log('📚 HomeScreen: Number of newest courses:', apiCourses.length);
+        console.log('📚 HomeScreen: First newest course:', apiCourses[0]);
+        
+        // Transform API data to match existing UI structure
+        const transformedCourses = apiCourses.map((course, index) => {
+          const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
+          
+          console.log(`📚 HomeScreen: Newest Course ${index + 1} - ${course.subcourseName}`);
+          console.log(`🖼️ HomeScreen: Thumbnail URL: ${course.thumbnailImageUrl || 'Using fallback image'}`);
+          console.log(`🖼️ HomeScreen: Final image object:`, courseImage);
+          console.log(`🖼️ HomeScreen: Image type: ${course.thumbnailImageUrl ? 'URI' : 'require'}`);
+          
+          return {
+            id: course._id || index + 1,
+            title: course.subcourseName || 'Course Title',
+            lessons: `${course.totalLessons || 0} lessons`,
+            rating: course.avgRating ? course.avgRating.toString() : '4.5',
+            price: `₹${course.price || 0}.00`,
+            image: courseImage,
+            isFavorite: Math.random() > 0.5, // Random favorite status
+          };
+        });
+        
+        console.log('🔄 HomeScreen: Transformed newest courses:', transformedCourses);
+        setCourseCards(transformedCourses);
+        
+      } else {
+        console.log('❌ HomeScreen: Failed to fetch newest courses:', result.data?.message);
+        console.log('❌ HomeScreen: API response:', result);
+        setCourseError(result.data?.message || 'Failed to fetch newest courses');
+        // Keep existing course data if API fails
+      }
+    } catch (error) {
+      console.error('💥 HomeScreen: Error fetching newest courses:', error);
+      setCourseError(error.message || 'Network error occurred');
+      // Keep existing course data if error occurs
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  // Manual refresh function (can be called if needed)
+  const refreshCourseData = () => {
+    if (token) {
+      console.log('🔄 HomeScreen: Manual refresh triggered');
+      fetchCourseData();
+    } else {
+      console.log('⚠️ HomeScreen: No token available for refresh');
+    }
+  };
+
   // Track Redux state changes
   useEffect(() => {
     console.log('🔄 HomeScreen: Redux state changed!');
     console.log('🔄 HomeScreen: New fullName:', fullName);
-    console.log('🔄 HomeScreen: New mobileNumber:', mobileNumber);
-    console.log('🔄 HomeScreen: New token status:', token ? 'Present' : 'Missing');
-    console.log('🔄 HomeScreen: New isAuthenticated:', isAuthenticated);
+ 
   }, [fullName, mobileNumber, token, isAuthenticated]);
+
+  // Track courseCards state changes
+  useEffect(() => {
+    
+    console.log('🔄 HomeScreen: Number of courses in state:', courseCards.length);
+    courseCards.forEach((course, index) => {
+      console.log(`🔄 HomeScreen: Course ${index + 1} in state:`, {
+        title: course.title,
+        imageType: typeof course.image,
+        imageSource: course.image
+      });
+    });
+  }, [courseCards]);
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const carouselRef = useRef(null);
-
-  const featuredCourses = [
-    {
-      id: 1,
-      title: '3D Design Basic',
-      lessons: '24 lessons',
-      progress: 65,
-      image: require('../assests/images/Circular.png'),
-      buttonText: 'Continue Learning',
-    },
-    {
-      id: 2,
-      title: '3D Design Basic',
-      lessons: '24 lessons',
-      progress: 40,
-      image: require('../assests/images/Circular.png'),
-      buttonText: 'Explore',
-    },
-    {
-      id: 3,
-      title: '3D Design Basic',
-      lessons: '24 lessons',
-      progress: 80,
-      image: require('../assests/images/Banner1.png'),
-      buttonText: 'Explore',
-    },
-  ];
-
-  const courseCards = [
-    {
-      id: 1,
-      title: '3D Design Basic',
-      lessons: '24 lessons',
-      rating: '4.9',
-      price: '₹1.00',
-      image: require('../assests/images/HomeImage.png'),
-      isFavorite: true,
-    },
-    {
-      id: 2,
-      title: 'Characters Animation',
-      lessons: '22 lessons',
-      rating: '4.8',
-      price: '₹1.00',
-      image: require('../assests/images/SavedImage.png'),
-      isFavorite: false,
-    },
-    {
-      id: 3,
-      title: '3D Abstract Design',
-      lessons: '18 lessons',
-      rating: '4.7',
-      price: '₹1.00',
-      image: require('../assests/images/HomeImage.png'),
-      isFavorite: false,
-    },
-    {
-      id: 4,
-      title: '3D Abstract Design',
-      lessons: '18 lessons',
-      rating: '4.7',
-      price: '₹100.00',
-      image: require('../assests/images/SavedImage.png'),
-      isFavorite: true,
-    },
-  ];
 
   const filterOptions = ['All Course', 'Popular', 'Newest'];
 
@@ -170,7 +355,7 @@ const HomeScreen = () => {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.carouselContentRow}>
-            <Image source={item.image} style={styles.carouselImage} resizeMode="contain" />
+            <Image source={item.image} style={styles.carouselImage} resizeMode="cover" />
             <View style={styles.carouselTextGroup}>
               <Text style={styles.carouselTitle} numberOfLines={1}>{item.title}</Text>
               <Text style={styles.carouselLessons}>{item.lessons}</Text>
@@ -202,11 +387,18 @@ const HomeScreen = () => {
       key={course.id} 
       style={styles.courseCard}
       onPress={() => {
-        console.log('Course card pressed');
-        navigation.navigate('Enroll');
+        console.log('Course card pressed:', course.title, 'ID:', course.id);
+        navigation.navigate('Enroll', { courseId: course.id });
       }}
     >
-      <Image source={course.image} style={styles.courseCardImage} resizeMode="cover" />
+      <Image 
+        source={course.image} 
+        style={styles.courseCardImage} 
+        resizeMode="cover"
+        onLoad={() => console.log(`✅ Image loaded successfully for course: ${course.title}`)}
+        onError={(error) => console.log(`❌ Image failed to load for course: ${course.title}`, error.nativeEvent)}
+        onLoadStart={() => console.log(`🔄 Starting to load image for course: ${course.title}`)}
+      />
       <View style={styles.courseCardContent}>
         <Text style={styles.courseCardTitle}>{course.title}</Text>
         <View style={styles.courseCardDetails}>
@@ -252,6 +444,7 @@ const HomeScreen = () => {
               resizeMode="contain"
             />
           </TouchableOpacity>
+         
         </View>
       </View>
 
@@ -270,46 +463,57 @@ const HomeScreen = () => {
         </TouchableOpacity>
 
 
-
-
-
-
-
         {/* Featured Course Carousel */}
         <View style={styles.carouselSection}>
-          <ScrollView
-            ref={carouselRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: false }
-            )}
-            onMomentumScrollEnd={(event) => {
-              const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
-              setCurrentCarouselIndex(index);
-            }}
-            snapToInterval={width - getResponsiveSize(40)}
-            decelerationRate="fast"
-            style={styles.carousel}
-            contentContainerStyle={styles.carouselContentContainer}
-          >
-            {featuredCourses.map((course, index) => renderCarouselItem(course, index))}
-          </ScrollView>
-          
-          {/* Carousel Dots */}
-          <View style={styles.dotsContainer}>
-            {featuredCourses.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  currentCarouselIndex === index && styles.activeDot,
-                ]}
-              />
-            ))}
-          </View>
+          {isLoadingFeatured ? (
+            <View style={styles.carouselLoadingContainer}>
+              <Text style={styles.carouselLoadingText}>Loading featured courses...</Text>
+            </View>
+          ) : featuredError ? (
+            <View style={styles.carouselErrorContainer}>
+              <Text style={styles.carouselErrorText}>Error loading featured courses</Text>
+            </View>
+          ) : featuredCourses.length === 0 ? (
+            <View style={styles.carouselEmptyContainer}>
+              <Text style={styles.carouselEmptyText}>No featured courses available</Text>
+            </View>
+          ) : (
+            <>
+              <ScrollView
+                ref={carouselRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={Animated.event(
+                  [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                  { useNativeDriver: false }
+                )}
+                onMomentumScrollEnd={(event) => {
+                  const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
+                  setCurrentCarouselIndex(index);
+                }}
+                snapToInterval={width - getResponsiveSize(40)}
+                decelerationRate="fast"
+                style={styles.carousel}
+                contentContainerStyle={styles.carouselContentContainer}
+              >
+                {featuredCourses.map((course, index) => renderCarouselItem(course, index))}
+              </ScrollView>
+              
+              {/* Carousel Dots */}
+              <View style={styles.dotsContainer}>
+                {featuredCourses.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.dot,
+                      currentCarouselIndex === index && styles.activeDot,
+                    ]}
+                  />
+                ))}
+              </View>
+            </>
+          )}
         </View>
 
         {/* Filter Buttons */}
@@ -321,7 +525,16 @@ const HomeScreen = () => {
                 styles.filterButton,
                 selectedFilter === filter && styles.filterButtonActive,
               ]}
-              onPress={() => setSelectedFilter(filter)}
+              onPress={() => {
+                setSelectedFilter(filter);
+                if (filter === 'Popular' && token) {
+                  fetchPopularCourses();
+                } else if (filter === 'All Course' && token) {
+                  fetchCourseData();
+                } else if (filter === 'Newest' && token) {
+                  fetchNewestCourses(); // For now, use same as All Course, can be changed later
+                }
+              }}
             >
               <Text
                 style={[
@@ -337,10 +550,26 @@ const HomeScreen = () => {
 
         {/* Course Cards */}
         <View style={styles.courseCardsContainer}>
-          {courseCards.map((course) => renderCourseCard(course))}
+          {isLoadingCourses ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading courses...</Text>
+            </View>
+          ) : courseError ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Error: {courseError}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={refreshCourseData}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : courseCards.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No courses available</Text>
+            </View>
+          ) : (
+            courseCards.map((course) => renderCourseCard(course))
+          )}
         </View>
       </ScrollView>
-
 
     </SafeAreaView>
   );
@@ -397,6 +626,15 @@ const styles = StyleSheet.create({
   notificationIcon: {
     width: getResponsiveSize(20),
     height: getResponsiveSize(20),
+  },
+  refreshButton: {
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
+    borderRadius: getResponsiveSize(20),
+    backgroundColor: '#F0F8FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: getResponsiveSize(10),
   },
   scrollView: {
     flex: 1,
@@ -467,7 +705,8 @@ const styles = StyleSheet.create({
   carouselImage: {
     width: getResponsiveSize(70),
     height: getResponsiveSize(70),
-    borderRadius: getResponsiveSize(12),
+    borderRadius: getResponsiveSize(35), // Make it perfectly circular
+    overflow: 'hidden', // Ensure circular shape is complete
   },
   carouselBannerImage: {
     width: '120%',
@@ -487,6 +726,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginBottom: getResponsiveSize(4),
+    flexWrap: 'wrap', // Allow text to wrap
+    maxWidth: '100%', // Ensure text doesn't overflow
   },
   carouselLessons: {
     fontSize: getResponsiveSize(14),
@@ -602,8 +843,9 @@ const styles = StyleSheet.create({
   courseCardImage: {
     width: getResponsiveSize(70),
     height: getResponsiveSize(70),
-    borderRadius: getResponsiveSize(12),
+    borderRadius: getResponsiveSize(35), // Make it perfectly circular
     marginRight: getResponsiveSize(16),
+    overflow: 'hidden', // Ensure circular shape is complete
   },
   courseCardContent: {
     flex: 1,
@@ -669,10 +911,87 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'center',
+    marginRight: getResponsiveSize(60), // Add right margin to prevent overlap with progress
   },
   progressContainerAbsolute: {
     position: 'absolute',
     right: getResponsiveSize(10),
     top: getResponsiveSize(10),
+    zIndex: 1, // Ensure progress is above other elements
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: getResponsiveSize(50),
+  },
+  loadingText: {
+    fontSize: getResponsiveSize(18),
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: getResponsiveSize(50),
+  },
+  errorText: {
+    fontSize: getResponsiveSize(18),
+    color: '#FF0000',
+    textAlign: 'center',
+    marginBottom: getResponsiveSize(20),
+  },
+  retryButton: {
+    backgroundColor: '#2285FA',
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(30),
+    borderRadius: getResponsiveSize(12),
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: getResponsiveSize(50),
+  },
+  emptyText: {
+    fontSize: getResponsiveSize(18),
+    color: '#666',
+    textAlign: 'center',
+  },
+  carouselLoadingContainer: {
+    height: getResponsiveSize(200),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  carouselLoadingText: {
+    fontSize: getResponsiveSize(18),
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  carouselErrorContainer: {
+    height: getResponsiveSize(200),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  carouselErrorText: {
+    fontSize: getResponsiveSize(18),
+    color: '#FF0000',
+    textAlign: 'center',
+  },
+  carouselEmptyContainer: {
+    height: getResponsiveSize(200),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  carouselEmptyText: {
+    fontSize: getResponsiveSize(18),
+    color: '#666',
+    textAlign: 'center',
   },
 });

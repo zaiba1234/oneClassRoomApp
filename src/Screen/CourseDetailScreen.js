@@ -386,16 +386,7 @@ const CourseDetailScreen = ({ navigation }) => {
         {activeTab === 'lessons' ? renderLessons() : renderDownloads()}
       </ScrollView>
 
-            {/* Enroll Button */}
-          {/* <View style={styles.enrollButtonContainer}>
-          <TouchableOpacity 
-            style={styles.enrollButton}
-            onPress={() => navigation.navigate('PaymentGateway')}
-          >
-            <Text style={styles.enrollButtonText}>Enroll - ₹1.00</Text>
-          </TouchableOpacity>
-        </View> */}
-
+       
 
 {/*  Modal code is here first complte the video then download in it  */}
       {/* Download Modal */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,36 +11,79 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useAppSelector } from '../Redux/hooks';
+import { courseAPI } from '../API/courseAPI';
 
 const { width, height } = Dimensions.get('window');
 
 const LibraryScreen = ({ navigation }) => {
-  const libraryCourses = [
-    {
-      id: 1,
-      title: 'Data Privacy',
-      modules: '4 Modules',
-      image: require('../assests/images/Frame1.png'),
-    },
-    {
-      id: 2,
-      title: 'Cloud Computing',
-      modules: '6 Modules',
-      image: require('../assests/images/Frame2.png'),
-    },
-    {
-      id: 3,
-      title: 'Artificial Intelligence',
-      modules: '3 Modules',
-      image: require('../assests/images/Frame3.png'),
-    },
-    {
-      id: 4,
-      title: 'Blockchain Technology',
-      modules: '5 Modules',
-      image: require('../assests/images/Frame4.png'),
-    },
-  ];
+  // Get user data from Redux
+  const { token } = useAppSelector((state) => state.user);
+
+  // State for course data from API
+  const [libraryCourses, setLibraryCourses] = useState([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
+  const [courseError, setCourseError] = useState(null);
+
+  // Fetch course data when component mounts
+  useEffect(() => {
+    if (token) {
+      fetchCourseData();
+    }
+  }, [token]);
+
+  // Function to fetch course data from API
+  const fetchCourseData = async () => {
+    try {
+      setIsLoadingCourses(true);
+      setCourseError(null);
+
+      console.log('📚 LibraryScreen: Fetching course data with token...');
+      console.log('🔑 LibraryScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+
+      const result = await courseAPI.getAllCourses(token);
+
+      if (result.success && result.data.success) {
+        const apiCourses = result.data.data;
+        console.log('🎉 LibraryScreen: Course data received successfully!');
+        console.log('📚 LibraryScreen: Number of courses:', apiCourses.length);
+        console.log('📚 LibraryScreen: First course:', apiCourses[0]);
+
+        // Transform API data to match existing UI structure
+        const transformedCourses = apiCourses.map((course, index) => {
+          console.log(`🖼️ LibraryScreen: Course ${index + 1} - ${course.courseName}`);
+          console.log(`🖼️ LibraryScreen: CoverImageUrl: ${course.CoverImageUrl || 'No image URL'}`);
+          
+          const courseImage = course.CoverImageUrl ? { uri: course.CoverImageUrl } : require('../assests/images/Frame1.png');
+          
+          console.log(`🖼️ LibraryScreen: Final image object:`, courseImage);
+          console.log(`🖼️ LibraryScreen: Image type: ${course.CoverImageUrl ? 'URI' : 'require'}`);
+
+          return {
+            id: course._id || index + 1,
+            title: course.courseName || 'Course Title',
+            modules: `${course.totalModules || 0} Modules`,
+            image: courseImage,
+          };
+        });
+
+        console.log('🔄 LibraryScreen: Transformed courses:', transformedCourses);
+        setLibraryCourses(transformedCourses);
+
+      } else {
+        console.log('❌ LibraryScreen: Failed to fetch course data:', result.data?.message);
+        console.log('❌ LibraryScreen: API response:', result);
+        setCourseError(result.data?.message || 'Failed to fetch courses');
+        // Keep existing course data if API fails
+      }
+    } catch (error) {
+      console.error('💥 LibraryScreen: Error fetching course data:', error);
+      setCourseError(error.message || 'Network error occurred');
+      // Keep existing course data if error occurs
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
 
   const renderLibraryCard = (course) => (
     <TouchableOpacity 
@@ -48,7 +91,14 @@ const LibraryScreen = ({ navigation }) => {
       style={styles.libraryCard}
       onPress={() => navigation.navigate('SubCourse')}
     >
-      <Image source={course.image} style={styles.libraryCardImage} resizeMode="cover" />
+      <Image 
+        source={course.image} 
+        style={styles.libraryCardImage} 
+        resizeMode="cover"
+        onLoad={() => console.log('✅ Image loaded successfully for:', course.title)}
+        onError={(error) => console.log('❌ Image failed to load for:', course.title, 'Error:', error.nativeEvent.error)}
+        onLoadStart={() => console.log('🔄 Image loading started for:', course.title)}
+      />
       <View style={styles.libraryCardContent}>
         <Text style={styles.libraryCardTitle}>{course.title}</Text>
         <Text style={styles.libraryCardModules}>{course.modules}</Text>
@@ -64,12 +114,32 @@ const LibraryScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Library</Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={fetchCourseData}>
+          <Text style={styles.refreshButtonText}>🔄</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Library Cards */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.libraryCardsContainer}>
-          {libraryCourses.map((course) => renderLibraryCard(course))}
+          {isLoadingCourses ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading courses...</Text>
+            </View>
+          ) : courseError ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Error: {courseError}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={fetchCourseData}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : libraryCourses.length > 0 ? (
+            libraryCourses.map((course) => renderLibraryCard(course))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No courses available</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -88,12 +158,23 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 30,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   headerTitle: {
     marginTop:30,
     fontSize: 28,
     fontWeight: '700',
     color: '#333',
+  },
+  refreshButton: {
+    marginTop: 30,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 20,
+  },
+  refreshButtonText: {
+    fontSize: 20,
   },
   scrollView: {
     flex: 1,
@@ -137,5 +218,48 @@ const styles = StyleSheet.create({
   },
   arrowIcon: {
     marginLeft: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF0000',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#007BFF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
