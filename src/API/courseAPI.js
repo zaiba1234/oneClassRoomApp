@@ -602,4 +602,44 @@ export const courseAPI = {
       return { success: false, data: { message: 'Network error occurred' }, status: 0 };
     }
   },
+
+  // Get favorite courses
+  getFavoriteCourses: async (token) => {
+    try {
+      console.log('🚀 courseAPI: Fetching favorite courses...');
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+
+      const url = getApiUrl('/api/user/favourite/get-favouriteCourses');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      console.log('🌐 courseAPI: Favorite courses URL:', url);
+      console.log('📋 courseAPI: Favorite courses headers:', headers);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('📄 courseAPI: Favorite courses response:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully fetched favorite courses');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to fetch favorite courses:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error fetching favorite courses:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
 };

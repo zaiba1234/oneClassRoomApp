@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,50 +10,59 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { useAppSelector } from '../Redux/hooks';
+import { courseAPI } from '../API/courseAPI';
 
 const FavouritesScreen = ({ navigation }) => {
-  const favouriteCourses = [
-    {
-      id: 1,
-      title: '3D Design Basicsss',
-      lessons: '24 lessons',
-      rating: '4.9',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame1.png'),
-    },
-    {
-      id: 2,
-      title: 'Characters Animation',
-      lessons: '22 lessons',
-      rating: '4.8',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame2.png'),
-    },
-    {
-      id: 3,
-      title: '3D Abstract Design',
-      lessons: '18 lessons',
-      rating: '4.7',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame3.png'),
-    },
-    {
-      id: 4,
-      title: 'Product Design',
-      lessons: '23 lessons',
-      rating: '4.8',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame4.png'),
-    },
-    {
-      id: 5,
-      title: 'Game Design',
-      lessons: '25 lessons',
-      rating: '4.9',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame.png'),
-    },
-  ];
+  const { token } = useAppSelector((state) => state.user);
+  const [favouriteCourses, setFavouriteCourses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch favorite courses when component mounts
+  useEffect(() => {
+    if (token) {
+      fetchFavoriteCourses();
+    } else {
+      setIsLoading(false);
+      setError('No token available');
+    }
+  }, [token]);
+
+  const fetchFavoriteCourses = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('❤️ FavouritesScreen: Fetching favorite courses...');
+      const result = await courseAPI.getFavoriteCourses(token);
+      
+      if (result.success && result.data.success) {
+        const apiCourses = result.data.data;
+        console.log('✅ FavouritesScreen: Favorite courses fetched successfully:', apiCourses);
+        
+        // Transform API data to match existing UI structure
+        const transformedCourses = apiCourses.map((course, index) => ({
+          id: course.subcourseId || index + 1,
+          title: course.subcourseName || 'Course Title',
+          lessons: `${course.totalLessons || 0} lessons`,
+          rating: course.avgRating ? course.avgRating.toString() : '4.8',
+          price: `₹${course.price || 0}.00`,
+          thumbnail: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Frame1.png'),
+        }));
+        
+        setFavouriteCourses(transformedCourses);
+      } else {
+        console.log('❌ FavouritesScreen: Failed to fetch favorite courses:', result.data?.message);
+        setError(result.data?.message || 'Failed to fetch favorite courses');
+      }
+    } catch (error) {
+      console.error('💥 FavouritesScreen: Error fetching favorite courses:', error);
+      setError('Failed to load favorite courses');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const renderCourseCard = (course) => (
     <TouchableOpacity 
@@ -87,7 +96,24 @@ const FavouritesScreen = ({ navigation }) => {
       {/* Course List */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.courseList}>
-          {favouriteCourses.map((course) => renderCourseCard(course))}
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading favorite courses...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={fetchFavoriteCourses}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : favouriteCourses.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No favorite courses found</Text>
+            </View>
+          ) : (
+            favouriteCourses.map((course) => renderCourseCard(course))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -177,5 +203,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FF8800',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF0000',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#FF8800',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });

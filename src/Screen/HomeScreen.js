@@ -46,6 +46,9 @@ const HomeScreen = () => {
 
   // State for favorite toggling
   const [togglingFavorites, setTogglingFavorites] = useState(new Set());
+  
+  // Ref to prevent double API calls
+  const toggleFavoriteRef = useRef(new Set());
 
   // Fetch course data when component mounts or token changes
   useEffect(() => {
@@ -281,7 +284,6 @@ const HomeScreen = () => {
       console.log('❤️ HomeScreen: Current favorite status:', currentFavoriteStatus);
       console.log('❤️ HomeScreen: Course ID type:', typeof courseId);
       console.log('❤️ HomeScreen: Token available:', !!token);
-      console.log('❤️ HomeScreen: Token value:', token ? token.substring(0, 50) + '...' : 'No token');
       
       // Check if token exists
       if (!token) {
@@ -295,8 +297,15 @@ const HomeScreen = () => {
         return;
       }
       
+      // Check if already toggling this course to prevent double calls
+      if (togglingFavorites.has(String(courseId)) || toggleFavoriteRef.current.has(String(courseId))) {
+        console.log('⚠️ HomeScreen: Already toggling this course, skipping...');
+        return;
+      }
+      
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
+      toggleFavoriteRef.current.add(String(courseId));
       
       console.log('🚀 HomeScreen: About to call courseAPI.toggleFavorite...');
       console.log('🚀 HomeScreen: With token:', token.substring(0, 50) + '...');
@@ -309,8 +318,9 @@ const HomeScreen = () => {
       console.log('❤️ HomeScreen: API result.data:', result.data);
       console.log('❤️ HomeScreen: API result.status:', result.status);
       
-      if (result.success) {
-        const newFavoriteStatus = result.data.isLike;
+      if (result.success && result.data.success) {
+        // Get the new favorite status from the API response
+        const newFavoriteStatus = result.data.data.isLike;
         console.log('✅ HomeScreen: Favorite toggled successfully! New status:', newFavoriteStatus);
         console.log('✅ HomeScreen: API response:', result.data);
         
@@ -322,6 +332,7 @@ const HomeScreen = () => {
             // Convert both IDs to strings for comparison to handle type mismatches
             if (String(course.id) === String(courseId)) {
               console.log(`✅ HomeScreen: Found course to update: ${course.title}`);
+              console.log(`✅ HomeScreen: Updating isFavorite from ${course.isFavorite} to ${newFavoriteStatus}`);
               return { ...course, isFavorite: newFavoriteStatus };
             }
             return course;
@@ -336,6 +347,7 @@ const HomeScreen = () => {
           const updatedFeatured = prevFeatured.map(course => {
             if (String(course.id) === String(courseId)) {
               console.log(`✅ HomeScreen: Found featured course to update: ${course.title}`);
+              console.log(`✅ HomeScreen: Updating isFavorite from ${course.isFavorite} to ${newFavoriteStatus}`);
               return { ...course, isFavorite: newFavoriteStatus };
             }
             return course;
@@ -361,6 +373,7 @@ const HomeScreen = () => {
         newSet.delete(String(courseId));
         return newSet;
       });
+      toggleFavoriteRef.current.delete(String(courseId));
     }
   };
 
@@ -373,11 +386,14 @@ const HomeScreen = () => {
 
   // Track courseCards state changes
   useEffect(() => {
+    console.log('🔄 HomeScreen: courseCards state changed!');
+    console.log('🔄 HomeScreen: Number of courses:', courseCards.length);
     
-   
     courseCards.forEach((course, index) => {
       console.log(`🔄 HomeScreen: Course ${index + 1} in state:`, {
         title: course.title,
+        id: course.id,
+        isFavorite: course.isFavorite,
         imageType: typeof course.image,
         imageSource: course.image
       });
@@ -508,7 +524,10 @@ const HomeScreen = () => {
             styles.heartButton,
             togglingFavorites.has(String(course.id)) && styles.heartButtonLoading
           ]} 
-          onPress={() => toggleFavorite(course.id, course.isFavorite)}
+          onPress={() => {
+            console.log(`❤️ Heart button pressed for course: ${course.title}, current isFavorite: ${course.isFavorite}`);
+            toggleFavorite(course.id, course.isFavorite);
+          }}
           disabled={togglingFavorites.has(String(course.id))}
         >
           <Icon 
