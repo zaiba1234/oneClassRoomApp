@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,10 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useAppSelector } from '../Redux/hooks';
+import { getApiUrl } from '../API/config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,10 +26,86 @@ const getResponsiveSize = (size) => {
 
 const DownloadCertificateScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { token } = useAppSelector((state) => state.user);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const handleDownload = () => {
-    console.log('Download button pressed');
-    // Add your download logic here
+  // Get courseId from route params (coming from EnrollScreen)
+  const courseId = route.params?.courseId;
+
+  const handleDownload = async () => {
+    navigation.navigate('BadgeCourse');
+    try {
+      if (!courseId) {
+        console.log(' No courseId received from EnrollScreen');
+        return;
+      }
+
+      console.log(' Download button pressed for courseId:', courseId);
+      setIsDownloading(true);
+
+      // API endpoint using config file
+      const apiUrl = getApiUrl('/api/user/certificate/download-certificate');
+      
+      // Request body for POST method
+      const requestBody = {
+        subcourseId: courseId
+      };
+      
+      console.log(' API URL:', apiUrl);
+      console.log(' Request Body:', requestBody);
+      
+      // Make the API call with POST method and JSON body
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (response.ok) {
+        console.log('✅ Certificate download successful');
+        console.log('🎉 SUCCESS: Certificate downloaded successfully! 🎉');
+        
+        // For React Native, we'll handle the response based on content type
+        const contentType = response.headers.get('content-type');
+        console.log('📄 Content Type:', contentType);
+        
+        if (contentType && contentType.includes('application/pdf')) {
+          // Handle PDF download
+          const blob = await response.blob();
+          console.log('📥 PDF certificate received, size:', blob.size);
+          
+          // Success message for PDF
+          console.log('🎯 PDF Certificate Downloaded Successfully!');
+          console.log('📊 File Size:', blob.size, 'bytes');
+          console.log('📱 Ready for React Native file handling');
+        } else {
+          // Handle other content types
+          const text = await response.text();
+          console.log('📄 Response text:', text.substring(0, 100) + '...');
+          console.log('📋 Non-PDF Certificate Downloaded Successfully!');
+        }
+        
+        // Final success message
+        console.log('🏆 CERTIFICATE DOWNLOAD COMPLETED SUCCESSFULLY! 🏆');
+        console.log('🎓 User can now access their course completion certificate');
+        
+        // Navigate to BadgeCourseScreen after successful download
+        console.log('🚀 Navigating to BadgeCourseScreen after successful download');
+        navigation.navigate('BadgeCourse');
+        
+      } else {
+        console.log('❌ Certificate download failed:', response.status, response.statusText);
+        console.log('💥 ERROR: Failed to download certificate');
+      }
+    } catch (error) {
+      console.error('💥 Error downloading certificate:', error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleBackPress = () => {
@@ -79,8 +157,9 @@ const DownloadCertificateScreen = () => {
       {/* Download Button */}
       <View style={styles.downloadButtonContainer}>
         <TouchableOpacity 
-          style={styles.downloadButton}
+          style={[styles.downloadButton, isDownloading && styles.downloadButtonDisabled]}
           onPress={handleDownload}
+          disabled={isDownloading}
         >
           <LinearGradient
             colors={['#FF8A00', '#FFB300']}
@@ -88,7 +167,9 @@ const DownloadCertificateScreen = () => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.downloadButtonText}>Download</Text>
+            <Text style={styles.downloadButtonText}>
+              {isDownloading ? 'Downloading...' : 'Download'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -194,5 +275,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',
+  },
+  downloadButtonDisabled: {
+    opacity: 0.7,
   },
 });

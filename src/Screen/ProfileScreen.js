@@ -162,7 +162,10 @@ const ProfileScreen = ({ navigation }) => {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          <Image source={require('../assests/images/Profile.png')} style={styles.profileImage} />
+          <Image 
+            source={profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png')} 
+            style={styles.profileImage} 
+          />
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{fullName || 'User'}</Text>
             <Text style={styles.profileEmail}>{email || mobileNumber || 'No email'}</Text>

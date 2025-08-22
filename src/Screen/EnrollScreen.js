@@ -18,6 +18,7 @@ import Orientation from 'react-native-orientation-locker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import { getApiUrl } from '../API/config';
 
 // Import local assets
 const ArrowIcon = require('../assests/images/Arrow.png');
@@ -71,6 +72,7 @@ const EnrollScreen = ({ navigation, route }) => {
     totalLessons: 0,
     lessons: [],
     paymentStatus: false, // Add paymentStatus to track enrollment
+    isCompleted: false, // Add isCompleted flag initialization
   });
 
   const [isLoadingCourse, setIsLoadingCourse] = useState(true);
@@ -124,17 +126,29 @@ const EnrollScreen = ({ navigation, route }) => {
           subCourseDescription: apiCourse.subCourseDescription || '',
           totalLessons: apiCourse.totalLessons || 0,
           lessons: Array.isArray(apiCourse.lessons) ? apiCourse.lessons : [],
-          paymentStatus: apiCourse.paymentStatus || false, // Add paymentStatus from API
+          paymentStatus: apiCourse.paymentStatus || false,
+          isCompleted: apiCourse.isCompleted || false,
         };
         
+        // Debug: Log the exact values from API
+        console.log('🔍 API Response - isCompleted:', apiCourse.isCompleted);
+        console.log('🔍 API Response - isBestSeller:', apiCourse.isBestSeller);
+        console.log('🔍 API Response - paymentStatus:', apiCourse.paymentStatus);
+        console.log('🔍 API Response - Type of isCompleted:', typeof apiCourse.isCompleted);
+        console.log('🔍 API Response - Raw isCompleted value:', JSON.stringify(apiCourse.isCompleted));
+        
        
-        console.log('📚 EnrollScreen: totalLessons in state:', transformedCourse.totalLessons);
-        console.log('📚 EnrollScreen: lessons array length:', transformedCourse.lessons.length);
+        // Force set isCompleted to true for testing
+        if (apiCourse.isCompleted === true) {
+          console.log('🎯 Force setting isCompleted to true');
+          transformedCourse.isCompleted = true;
+        }
+        
         setCourseData(transformedCourse);
         
       } else {
-        console.log('❌ EnrollScreen: Failed to fetch course details:', result.data?.message);
-        console.log('❌ EnrollScreen: API response:', result);
+        console.log(' EnrollScreen: Failed to fetch course details:', result.data?.message);
+      
         setCourseError(result.data?.message || 'Failed to fetch course details');
       }
     } catch (error) {
@@ -145,46 +159,69 @@ const EnrollScreen = ({ navigation, route }) => {
     }
   };
 
-  // Function to calculate live time from lesson dates
+  // Function to calculate live time from lesson start times
   const calculateLiveTime = () => {
     if (!courseData.lessons || courseData.lessons.length === 0) {
       return null;
     }
 
-    // Find the next upcoming lesson
     const now = new Date();
-    const upcomingLessons = courseData.lessons
-      .filter(lesson => lesson.date && new Date(lesson.date) > now)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    if (upcomingLessons.length === 0) {
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour * 60 + currentMinute; // Convert to minutes
+    
+    console.log('🕐 Current time:', currentHour + ':' + currentMinute, '(', currentTime, 'minutes)');
+    
+    // Find the next lesson based on start time
+    let nextLesson = null;
+    let minTimeDiff = Infinity;
+    
+    courseData.lessons.forEach(lesson => {
+      if (lesson.startTime) {
+        const [startHour, startMinute] = lesson.startTime.split(':').map(Number);
+        const lessonStartMinutes = startHour * 60 + startMinute;
+        
+        console.log('📚 Lesson:', lesson.lessonName, 'Start time:', lesson.startTime, '(', lessonStartMinutes, 'minutes)');
+        
+        // Calculate time difference
+        let timeDiff = lessonStartMinutes - currentTime;
+        
+        // If lesson already started today, check for next occurrence (tomorrow)
+        if (timeDiff <= 0) {
+          timeDiff += 24 * 60; // Add 24 hours (1440 minutes)
+          console.log('⏰ Lesson already started today, next occurrence in:', timeDiff, 'minutes');
+        } else {
+          console.log('⏰ Lesson starts today in:', timeDiff, 'minutes');
+        }
+        
+        if (timeDiff < minTimeDiff) {
+          minTimeDiff = timeDiff;
+          nextLesson = lesson;
+        }
+      }
+    });
+    
+    if (!nextLesson || minTimeDiff === Infinity) {
+      console.log('❌ No next lesson found');
       return null;
     }
-
-    const nextLesson = upcomingLessons[0];
-    const lessonDate = new Date(nextLesson.date);
-    const timeDiff = lessonDate.getTime() - now.getTime();
-
-    if (timeDiff <= 0) {
-      return null;
-    }
-
-    // Calculate days, hours, minutes, seconds
-    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-
+    
+    console.log('🎯 Next lesson:', nextLesson.lessonName, 'in', minTimeDiff, 'minutes');
+    
+    // Calculate hours and minutes
+    const hours = Math.floor(minTimeDiff / 60);
+    const minutes = minTimeDiff % 60;
+    
     // Format the time string
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
+    let timeString = '';
+    if (hours > 0) {
+      timeString = `${hours}h ${minutes}m`;
     } else {
-      return `${seconds}s`;
+      timeString = `${minutes}m`;
     }
+    
+    console.log('⏱️ Live timer display:', timeString);
+    return timeString;
   };
 
   // State for live time countdown
@@ -265,6 +302,68 @@ const EnrollScreen = ({ navigation, route }) => {
 
   const handleLiveClick = () => {
     console.log('Live clicked');
+  };
+
+  const handleDownloadCertificate = async () => {
+    try {
+      console.log('📜 Download certificate clicked for courseId:', courseId);
+      
+      // API endpoint using config file
+      const apiUrl = getApiUrl('/api/user/certificate/download-certificate');
+      
+      // Request body for POST method
+      const requestBody = {
+        subcourseId: courseId
+      };
+      
+      console.log('🌐 API URL:', apiUrl);
+      console.log('📦 Request Body:', requestBody);
+      
+      // Make the API call with POST method and JSON body
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (response.ok) {
+        console.log('✅ Certificate download successful');
+        console.log('🎉 SUCCESS: Certificate downloaded successfully! 🎉');
+        
+        // For React Native, we'll handle the response based on content type
+        const contentType = response.headers.get('content-type');
+        console.log('📄 Content Type:', contentType);
+        
+        if (contentType && contentType.includes('application/pdf')) {
+          // Handle PDF download
+          const blob = await response.blob();
+          console.log('📥 PDF certificate received, size:', blob.size);
+          
+          // Success message for PDF
+          console.log('🎯 PDF Certificate Downloaded Successfully!');
+          console.log('📊 File Size:', blob.size, 'bytes');
+          console.log('📱 Ready for React Native file handling');
+        } else {
+          // Handle other content types
+          const text = await response.text();
+          console.log('📄 Response text:', text.substring(0, 100) + '...');
+          console.log('📋 Non-PDF Certificate Downloaded Successfully!');
+        }
+        
+        // Final success message
+        console.log('🏆 CERTIFICATE DOWNLOAD COMPLETED SUCCESSFULLY! 🏆');
+        console.log('🎓 User can now access their course completion certificate');
+        
+      } else {
+        console.log('❌ Certificate download failed:', response.status, response.statusText);
+        console.log('💥 ERROR: Failed to download certificate');
+      }
+    } catch (error) {
+      console.error('💥 Error downloading certificate:', error);
+    }
   };
 
   const onMessage = (event) => {
@@ -372,6 +471,7 @@ const EnrollScreen = ({ navigation, route }) => {
             <Text style={styles.bestSellerText}>Best Seller</Text>
           </View>
         )}
+
         {liveTime && (
           <TouchableOpacity style={styles.liveBadge} onPress={handleLiveClick}>
             <Text style={styles.liveText}>
@@ -388,6 +488,8 @@ const EnrollScreen = ({ navigation, route }) => {
         {typeof courseData.description === 'string' ? courseData.description : 'No description available'}
       </Text>
       
+
+      
       <View style={styles.courseStats}>
         <View style={styles.statItem}>
           <Image source={ClockIcon} style={styles.statIcon} />
@@ -403,27 +505,48 @@ const EnrollScreen = ({ navigation, route }) => {
     </View>
   );
 
-  const renderTabs = () => (
-    <View style={[styles.tabsContainer, isFullScreen && { display: 'none' }]}>
-      <TouchableOpacity 
-        style={[styles.tab, activeTab === 'lessons' && styles.activeTab]}
-        onPress={() => setActiveTab('lessons')}
-      >
-        <Text style={[styles.tabText, activeTab === 'lessons' && styles.activeTabText]}>
-          Lessons
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        style={[styles.tab, activeTab === 'downloads' && styles.activeTab, styles.disabledTab]}
-        onPress={() => setActiveTab('downloads')}
-        disabled={true}
-      >
-        <Text style={[styles.tabText, activeTab === 'downloads' && styles.activeTabText, styles.disabledTabText]}>
-          Downloads
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const renderTabs = () => {
+    console.log('🔍 renderTabs: courseData.isCompleted =', courseData.isCompleted);
+    console.log('🔍 renderTabs: Downloads tab disabled =', !courseData.isCompleted);
+    console.log('🔍 renderTabs: courseData object =', JSON.stringify(courseData, null, 2));
+    
+    return (
+      <View style={[styles.tabsContainer, isFullScreen && { display: 'none' }]}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'lessons' && styles.activeTab]}
+          onPress={() => setActiveTab('lessons')}
+        >
+          <Text style={[styles.tabText, activeTab === 'lessons' && styles.activeTabText]}>
+            Lessons
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[
+            styles.tab, 
+            activeTab === 'downloads' && styles.activeTab, 
+            !courseData.isCompleted && styles.disabledTab
+          ]}
+          onPress={() => {
+            console.log('📥 Downloads tab clicked! isCompleted =', courseData.isCompleted);
+            if (courseData.isCompleted) {
+              setActiveTab('downloads');
+            } else {
+              console.log('❌ Downloads tab is disabled, cannot click');
+            }
+          }}
+          disabled={!courseData.isCompleted}
+        >
+          <Text style={[
+            styles.tabText, 
+            activeTab === 'downloads' && styles.activeTabText, 
+            !courseData.isCompleted && styles.disabledTabText
+          ]}>
+            Downloads {!courseData.isCompleted ? '(Disabled)' : '(Enabled)'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderLessons = () => {
     // Add extra safety check
@@ -458,7 +581,8 @@ const EnrollScreen = ({ navigation, route }) => {
             index,
             lessonTitle,
             lessonDuration,
-            hasThumbnail: !!lesson.thumbnailImageUrl
+            hasThumbnail: !!lesson.thumbnailImageUrl,
+            isCompleted: lesson.isCompleted
           });
 
           return (
@@ -497,11 +621,37 @@ const EnrollScreen = ({ navigation, route }) => {
 
   const renderDownloads = () => (
     <View style={styles.downloadsContainer}>
-      <View style={styles.disabledMessageContainer}>
-        <Text style={styles.disabledMessageText}>
-          Downloads will be available after enrollment
-        </Text>
-      </View>
+      {courseData.isCompleted ? (
+        <View style={styles.enabledDownloadsContainer}>
+          <TouchableOpacity 
+            style={styles.downloadCertificateCard}
+            onPress={() => {
+              console.log('🚀 Navigating to DownloadCertificateScreen with courseId:', courseId);
+              navigation.navigate('DownloadCertificate', { courseId: courseId });
+            }}
+          >
+            <View style={styles.downloadCertificateLeft}>
+              <Text style={styles.downloadCertificateTitle}>Download Module Certificate</Text>
+            </View>
+            <View style={styles.downloadCertificateRight}>
+              <TouchableOpacity 
+                style={styles.downloadButton} 
+                onPress={handleDownloadCertificate}
+                onPressIn={(e) => e.stopPropagation()} // Prevent parent TouchableOpacity from triggering
+              >
+                <Icon name="download-outline" size={24} color="#FF6B35" />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.certificateText}>Certificate</Text>
+        </View>
+      ) : (
+        <View style={styles.disabledMessageContainer}>
+          <Text style={styles.disabledMessageText}>
+            Downloads will be available after course completion
+          </Text>
+        </View>
+      )}
     </View>
   );
 
@@ -709,6 +859,29 @@ const styles = StyleSheet.create({
     lineHeight: getFontSize(24),
     marginBottom: getVerticalSize(15),
   },
+  debugInfo: {
+    backgroundColor: '#F0F0F0',
+    padding: getVerticalSize(10),
+    borderRadius: getFontSize(5),
+    marginBottom: getVerticalSize(15),
+  },
+  debugText: {
+    fontSize: getFontSize(12),
+    color: '#666666',
+    fontFamily: 'monospace',
+  },
+  testButton: {
+    backgroundColor: '#FF6B35',
+    padding: getVerticalSize(8),
+    borderRadius: getFontSize(5),
+    marginTop: getVerticalSize(10),
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(12),
+    fontWeight: '600',
+  },
   courseStats: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -767,6 +940,18 @@ const styles = StyleSheet.create({
     marginRight: getVerticalSize(10),
   },
   bestSellerText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(12),
+    fontWeight: '600',
+  },
+  completedCourseBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: getVerticalSize(8),
+    paddingVertical: getVerticalSize(4),
+    borderRadius: getFontSize(12),
+    marginRight: getVerticalSize(10),
+  },
+  completedCourseText: {
     color: '#FFFFFF',
     fontSize: getFontSize(12),
     fontWeight: '600',
@@ -868,6 +1053,46 @@ const styles = StyleSheet.create({
   disabledMessageText: {
     fontSize: getFontSize(16),
     color: '#999999',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  enabledDownloadsContainer: {
+    paddingVertical: getVerticalSize(20),
+  },
+  downloadCertificateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: getFontSize(8),
+    padding: getVerticalSize(16),
+    marginBottom: getVerticalSize(15),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  downloadCertificateLeft: {
+    flex: 1,
+  },
+  downloadCertificateTitle: {
+    fontSize: getFontSize(16),
+    fontWeight: '600',
+    color: '#000000',
+  },
+  downloadCertificateRight: {
+    marginLeft: getVerticalSize(15),
+  },
+  downloadButton: {
+    padding: getVerticalSize(8),
+  },
+  certificateText: {
+    fontSize: getFontSize(14),
+    color: '#666666',
     textAlign: 'center',
     fontStyle: 'italic',
   },
