@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   Linking,
   Modal,
+  Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
@@ -19,6 +20,31 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
 import { getApiUrl } from '../API/config';
+
+// Custom Razorpay implementation using WebView
+let RazorpayCheckout = null;
+let RazorpayImportError = null;
+
+// Create a custom RazorpayCheckout class that uses WebView
+class CustomRazorpayCheckout {
+  constructor(navigation) {
+    this.navigation = navigation;
+  }
+  
+  open(options) {
+    return new Promise((resolve, reject) => {
+      // Store the options and callbacks globally so WebView can access them
+      global.razorpayOptions = options;
+      global.razorpayResolve = resolve;
+      global.razorpayReject = reject;
+      
+      // Navigate to Razorpay payment screen
+      this.navigation.navigate('RazorpayPayment', { options });
+    });
+  }
+}
+
+console.log('✅ EnrollScreen: Custom RazorpayCheckout class created successfully');
 
 // Import local assets
 const ArrowIcon = require('../assests/images/Arrow.png');
@@ -46,6 +72,9 @@ const EnrollScreen = ({ navigation, route }) => {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const webViewRef = useRef(null);
+
+  // Create RazorpayCheckout instance with navigation
+  const [razorpayCheckout] = useState(() => new CustomRazorpayCheckout(navigation));
 
   // Get user data from Redux
   const { token } = useAppSelector((state) => state.user);
@@ -78,6 +107,7 @@ const EnrollScreen = ({ navigation, route }) => {
   const [isLoadingCourse, setIsLoadingCourse] = useState(true);
   const [courseError, setCourseError] = useState(null);
   const [isEnrolling, setIsEnrolling] = useState(false); // Add loading state for enrollment
+  const [paymentStatus, setPaymentStatus] = useState('idle'); // 'idle', 'processing', 'success', 'failed'
 
   // Fetch course data when component mounts
   useEffect(() => {
@@ -86,10 +116,50 @@ const EnrollScreen = ({ navigation, route }) => {
     }
   }, [courseId, token]);
 
-  // Log lessons data for debugging
+  // Handle completed flag when coming back from FeedbackScreen
   useEffect(() => {
-    console.log('🔍 EnrollScreen: Raw lessons data:', courseData.lessons);
-  }, [courseData.lessons]);
+    if (route.params?.fromFeedback && route.params?.isCompleted) {
+      console.log('🎯 EnrollScreen: Coming back from FeedbackScreen with completed flag');
+      console.log('🔍 EnrollScreen: Route params:', route.params);
+      
+      // Update courseData to show completed status
+      setCourseData(prevData => ({
+        ...prevData,
+        isCompleted: true,
+      }));
+      
+      console.log('✅ EnrollScreen: Updated courseData.isCompleted to true');
+    }
+  }, [route.params]);
+
+  // Check if course is completed and navigate to BadgeCourseScreen
+  useEffect(() => {
+    if (courseData.isCompleted && !route.params?.fromFeedback) {
+      console.log('🎯 EnrollScreen: Course completed! Navigating to BadgeCourseScreen...');
+      console.log('🔍 EnrollScreen: Navigation params being sent:');
+      console.log('  - courseId:', courseId);
+      console.log('  - courseName:', courseData.title);
+      console.log('  - returnToEnroll:', true);
+      
+      const navigationParams = { 
+        courseId: courseId,
+        courseName: courseData.title,
+        returnToEnroll: true // Flag to indicate return to EnrollScreen
+      };
+      
+      console.log('📤 EnrollScreen: Full navigation params:', JSON.stringify(navigationParams, null, 2));
+      
+      navigation.navigate('BadgeCourse', navigationParams);
+    }
+  }, [courseData.isCompleted, courseId, courseData.title, navigation, route.params?.fromFeedback]);
+
+  // Log Razorpay import status
+  useEffect(() => {
+    console.log('🔍 EnrollScreen: Razorpay import status:');
+    console.log('  - RazorpayCheckout available:', !!razorpayCheckout);
+    console.log('  - RazorpayCheckout.open function:', razorpayCheckout ? typeof razorpayCheckout.open : 'N/A');
+    console.log('  - Import error:', RazorpayImportError);
+  }, [razorpayCheckout]);
 
   // Function to fetch course details from API
   const fetchCourseDetails = async () => {
@@ -110,6 +180,7 @@ const EnrollScreen = ({ navigation, route }) => {
         console.log('📚 EnrollScreen: Course data:', apiCourse);
         
         const transformedCourse = {
+          _id: apiCourse._id || courseId, // Add the subcourse ID
           title: apiCourse.subcourseName || 'Course Title',
           description: apiCourse.subCourseDescription || 'No description available',
           duration: apiCourse.totalDuration || '0h 0min',
@@ -130,13 +201,7 @@ const EnrollScreen = ({ navigation, route }) => {
           isCompleted: apiCourse.isCompleted || false,
         };
         
-        // Debug: Log the exact values from API
-        console.log('🔍 API Response - isCompleted:', apiCourse.isCompleted);
-        console.log('🔍 API Response - isBestSeller:', apiCourse.isBestSeller);
-        console.log('🔍 API Response - paymentStatus:', apiCourse.paymentStatus);
-        console.log('🔍 API Response - Type of isCompleted:', typeof apiCourse.isCompleted);
-        console.log('🔍 API Response - Raw isCompleted value:', JSON.stringify(apiCourse.isCompleted));
-        
+       
        
         // Force set isCompleted to true for testing
         if (apiCourse.isCompleted === true) {
@@ -266,28 +331,208 @@ const EnrollScreen = ({ navigation, route }) => {
   const handleEnrollNow = async () => {
     try {
       console.log('🎯 EnrollScreen: Enroll Now clicked for courseId:', courseId);
+      
+      // Check if user is already enrolled
+      if (courseData.paymentStatus) {
+        console.log('ℹ️ EnrollScreen: User is already enrolled in this course');
+        Alert.alert('Already Enrolled', 'You are already enrolled in this course!');
+        return;
+      }
+      
       setIsEnrolling(true);
+      setPaymentStatus('processing');
       
-      const result = await courseAPI.enrollInCourse(token, courseId);
+      // Check if we have required data
+      if (!courseId || !token) {
+        console.log('❌ EnrollScreen: Missing required data - courseId:', courseId, 'token:', !!token);
+        setPaymentStatus('failed');
+        Alert.alert('Error', 'Missing required data. Please try again.');
+        return;
+      }
       
-      if (result.success && result.data.success) {
-        console.log('🎉 EnrollScreen: Successfully enrolled in course!');
+      // Step 1: Create course order
+      console.log('🚀 EnrollScreen: Creating course order...');
+      const orderResult = await courseAPI.createCourseOrder(token, courseId);
+      
+      if (!orderResult.success || !orderResult.data.success) {
+        console.log('❌ EnrollScreen: Failed to create course order:', orderResult.data?.message);
+        setPaymentStatus('failed');
+        Alert.alert('Error', orderResult.data?.message || 'Failed to create course order');
+        return;
+      }
+      
+      const orderData = orderResult.data.data;
+      console.log('✅ EnrollScreen: Course order created successfully:', orderData);
+      
+      // Validate order data
+      if (!orderData.key || !orderData.amount || !orderData.orderId) {
+        console.log('❌ EnrollScreen: Invalid order data received:', orderData);
+        setPaymentStatus('failed');
+        Alert.alert('Error', 'Invalid order data received. Please try again.');
+        return;
+      }
+      
+      // Step 2: Open Razorpay payment interface
+      console.log('💳 EnrollScreen: Opening Razorpay payment interface...');
+      const paymentData = await handlePaymentWithRazorpay(orderData);
+      
+      if (!paymentData) {
+        return; // Payment was cancelled or failed
+      }
+      
+      // Log the complete payment response to see the structure
+      console.log('🔍 EnrollScreen: Complete Razorpay payment response:', JSON.stringify(paymentData, null, 2));
+      
+      // Validate payment data - check for both possible field name formats
+      const paymentId = paymentData.razorpay_payment_id || paymentData.razorpayPaymentId;
+      const signature = paymentData.razorpay_signature || paymentData.razorpaySignature;
+      const orderId = paymentData.razorpay_order_id || paymentData.razorpayOrderId;
+      
+      if (!paymentId || !signature) {
+        console.log('❌ EnrollScreen: Invalid payment data received:', paymentData);
+        console.log('❌ EnrollScreen: Missing paymentId or signature');
+        setPaymentStatus('failed');
+        Alert.alert('Error', 'Invalid payment data received. Please contact support.');
+        return;
+      }
+      
+      console.log('✅ EnrollScreen: Payment data validated successfully:');
+      console.log('  - Payment ID:', paymentId);
+      console.log('  - Signature:', signature);
+      console.log('  - Order ID:', orderId);
+      
+      // Step 3: Verify payment with backend using the new API endpoint
+      console.log('🔍 EnrollScreen: Verifying payment with new API...');
+      console.log('🔍 EnrollScreen: Using courseId as subcourseId:', courseId);
+      console.log('🔍 EnrollScreen: Using orderId:', orderData.orderId);
+      
+      const verificationResult = await courseAPI.verifyPayment(
+        token,
+        orderData.orderId,
+        paymentId,
+        signature,
+        courseId // Pass courseId as subcourseId
+      );
+      
+      if (verificationResult.success && verificationResult.data.success) {
+        console.log('🎉 EnrollScreen: Payment verified successfully!');
+        setPaymentStatus('success');
+        
         // Update local state to reflect enrollment
         setCourseData(prevData => ({
           ...prevData,
           paymentStatus: true,
         }));
-        // Refresh course data to get updated information
-        await fetchCourseDetails();
+        
+        // Show success message and navigate to MyCourses
+        Alert.alert(
+          'Success! 🎉',
+          'Payment successful! You are now enrolled in the course.',
+          [
+            {
+              text: 'Continue',
+              onPress: () => {
+                // Navigate to MyCourses page after successful enrollment
+                console.log('🚀 EnrollScreen: Navigating to MyCourses page...');
+                navigation.navigate('MyCourses');
+              }
+            }
+          ]
+        );
       } else {
-        console.log('❌ EnrollScreen: Failed to enroll in course:', result.data?.message);
-        // You can show an error message here if needed
+        console.log('❌ EnrollScreen: Payment verification failed:', verificationResult.data?.message);
+        setPaymentStatus('failed');
+        Alert.alert('Error', 'Payment verification failed. Please contact support.');
       }
+      
     } catch (error) {
       console.error('💥 EnrollScreen: Error during enrollment:', error);
-      // You can show an error message here if needed
+      setPaymentStatus('failed');
+      
+      // Handle specific Razorpay errors
+      if (error.message === 'PAYMENT_CANCELLED') {
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+      } else if (error.message === 'PAYMENT_FAILED') {
+        Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
+      } else {
+        Alert.alert('Error', 'Something went wrong during enrollment. Please try again.');
+      }
     } finally {
       setIsEnrolling(false);
+    }
+  };
+
+  // Function to reset payment status
+  const resetPaymentStatus = () => {
+    setPaymentStatus('idle');
+  };
+
+  // Function to get user profile data for Razorpay prefill
+  const getUserProfileData = () => {
+    // You can get this from Redux store or API
+    // For now, using placeholder data
+    return {
+      email: 'student@learningsaint.com',
+      contact: '9876543210',
+      name: 'Student Name'
+    };
+  };
+
+  // Function to handle payment with Razorpay
+  const handlePaymentWithRazorpay = async (orderData) => {
+    if (!razorpayCheckout || typeof razorpayCheckout.open !== 'function') {
+      console.log('❌ EnrollScreen: Razorpay not available');
+      Alert.alert('Error', 'Razorpay payment gateway is not available. Please try again later.');
+      setPaymentStatus('failed');
+      return null;
+    }
+
+    try {
+      console.log('💳 EnrollScreen: Opening Razorpay payment interface...');
+      const userProfile = getUserProfileData();
+      const razorpayOptions = {
+        key: orderData.key, // Your Razorpay key from API response
+        amount: orderData.amount, // Amount in paise (100 = ₹1)
+        currency: orderData.currency,
+        name: 'Learning Saint',
+        description: `Course: ${courseData.title}`,
+        order_id: orderData.orderId,
+        prefill: {
+          email: userProfile.email,
+          contact: userProfile.contact,
+          name: userProfile.name
+        },
+        theme: {
+          color: '#FF6B35'
+        },
+        modal: {
+          ondismiss: () => {
+            console.log('🔒 EnrollScreen: Razorpay modal dismissed');
+            setPaymentStatus('idle');
+          }
+        }
+      };
+      
+      console.log('🎨 EnrollScreen: Razorpay options configured:', razorpayOptions);
+      
+      // Validate Razorpay options
+      if (!razorpayOptions.key || !razorpayOptions.amount || !razorpayOptions.order_id) {
+        throw new Error('Invalid Razorpay options: missing key, amount, or order_id');
+      }
+      
+      const paymentData = await razorpayCheckout.open(razorpayOptions);
+      console.log('✅ EnrollScreen: Payment successful:', paymentData);
+      return paymentData;
+    } catch (razorpayError) {
+      console.log('❌ EnrollScreen: Razorpay error:', razorpayError);
+      
+      if (razorpayError.message === 'PAYMENT_CANCELLED') {
+        throw new Error('PAYMENT_CANCELLED');
+      } else if (razorpayError.message === 'PAYMENT_FAILED') {
+        throw new Error('PAYMENT_FAILED');
+      } else {
+        throw new Error('Razorpay payment failed. Please try again.');
+      }
     }
   };
 
@@ -297,7 +542,15 @@ const EnrollScreen = ({ navigation, route }) => {
   };
 
   const handleStarIconClick = () => {
-    navigation.navigate('Review');
+    console.log('⭐ EnrollScreen: Star icon clicked');
+    console.log('🆔 EnrollScreen: courseId from route params:', courseId);
+    console.log('🆔 EnrollScreen: courseData._id:', courseData._id);
+    
+    // Use courseData._id if available, otherwise fall back to route params
+    const subcourseIdToPass = courseData._id || courseId;
+    console.log('🚀 EnrollScreen: Navigating to Review screen with subcourseId:', subcourseIdToPass);
+    
+    navigation.navigate('Review', { subcourseId: subcourseIdToPass });
   };
 
   const handleLiveClick = () => {
@@ -305,8 +558,15 @@ const EnrollScreen = ({ navigation, route }) => {
   };
 
   const handleDownloadCertificate = async () => {
+    // Check if course is completed first
+    if (!courseData.isCompleted) {
+      console.log(' Course not completed, showing popup message');
+      setShowDownloadModal(true);
+      return;
+    }
+
     try {
-      console.log('📜 Download certificate clicked for courseId:', courseId);
+      console.log(' Download certificate clicked for courseId:', courseId);
       
       // API endpoint using config file
       const apiUrl = getApiUrl('/api/user/certificate/download-certificate');
@@ -471,7 +731,7 @@ const EnrollScreen = ({ navigation, route }) => {
             <Text style={styles.bestSellerText}>Best Seller</Text>
           </View>
         )}
-
+        
         {liveTime && (
           <TouchableOpacity style={styles.liveBadge} onPress={handleLiveClick}>
             <Text style={styles.liveText}>
@@ -523,25 +783,18 @@ const EnrollScreen = ({ navigation, route }) => {
         <TouchableOpacity 
           style={[
             styles.tab, 
-            activeTab === 'downloads' && styles.activeTab, 
-            !courseData.isCompleted && styles.disabledTab
+            activeTab === 'downloads' && styles.activeTab
           ]}
           onPress={() => {
             console.log('📥 Downloads tab clicked! isCompleted =', courseData.isCompleted);
-            if (courseData.isCompleted) {
-              setActiveTab('downloads');
-            } else {
-              console.log('❌ Downloads tab is disabled, cannot click');
-            }
+            setActiveTab('downloads');
           }}
-          disabled={!courseData.isCompleted}
         >
           <Text style={[
             styles.tabText, 
-            activeTab === 'downloads' && styles.activeTabText, 
-            !courseData.isCompleted && styles.disabledTabText
+            activeTab === 'downloads' && styles.activeTabText
           ]}>
-            Downloads {!courseData.isCompleted ? '(Disabled)' : '(Enabled)'}
+            Downloads
           </Text>
         </TouchableOpacity>
       </View>
@@ -609,7 +862,7 @@ const EnrollScreen = ({ navigation, route }) => {
               </View>
               {lesson.isCompleted && (
                 <View style={styles.completedBadge}>
-                  <Image source={CheckIcon} style={styles.checkIcon} />
+                  <Icon name="checkmark-circle" size={24} color="#2285FA" />
                 </View>
               )}
             </TouchableOpacity>
@@ -621,37 +874,55 @@ const EnrollScreen = ({ navigation, route }) => {
 
   const renderDownloads = () => (
     <View style={styles.downloadsContainer}>
-      {courseData.isCompleted ? (
-        <View style={styles.enabledDownloadsContainer}>
-          <TouchableOpacity 
-            style={styles.downloadCertificateCard}
-            onPress={() => {
-              console.log('🚀 Navigating to DownloadCertificateScreen with courseId:', courseId);
-              navigation.navigate('DownloadCertificate', { courseId: courseId });
-            }}
-          >
-            <View style={styles.downloadCertificateLeft}>
-              <Text style={styles.downloadCertificateTitle}>Download Module Certificate</Text>
+      <View style={styles.enabledDownloadsContainer}>
+        <TouchableOpacity 
+          style={styles.downloadCertificateCard}
+          onPress={() => {
+            console.log('🚀 Navigating to DownloadCertificateScreen with courseId:', courseId);
+            navigation.navigate('DownloadCertificate', { courseId: courseId });
+          }}
+        >
+          <View style={styles.downloadCertificateLeft}>
+            <Text style={styles.downloadCertificateTitle}>Download Module Certificate</Text>
+          </View>
+          <View style={styles.downloadCertificateRight}>
+            <TouchableOpacity 
+              style={styles.downloadButton} 
+              onPress={handleDownloadCertificate}
+              onPressIn={(e) => e.stopPropagation()} // Prevent parent TouchableOpacity from triggering
+            >
+              <Icon name="download-outline" size={24} color="#FF6B35" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+        <Text style={styles.certificateText}>Certificate</Text>
+      </View>
+
+      {/* Popup Modal for incomplete course */}
+      <Modal
+        visible={showDownloadModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDownloadModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Image source={WarningIcon} style={styles.modalWarningIcon} />
+              <Text style={styles.modalTitle}>Course Completion Required</Text>
             </View>
-            <View style={styles.downloadCertificateRight}>
-              <TouchableOpacity 
-                style={styles.downloadButton} 
-                onPress={handleDownloadCertificate}
-                onPressIn={(e) => e.stopPropagation()} // Prevent parent TouchableOpacity from triggering
-              >
-                <Icon name="download-outline" size={24} color="#FF6B35" />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.certificateText}>Certificate</Text>
+            <Text style={styles.modalMessage}>
+              First you have to complete Your course to download Cirtificate
+            </Text>
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={() => setShowDownloadModal(false)}
+            >
+              <Text style={styles.modalButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      ) : (
-        <View style={styles.disabledMessageContainer}>
-          <Text style={styles.disabledMessageText}>
-            Downloads will be available after course completion
-          </Text>
-        </View>
-      )}
+      </Modal>
     </View>
   );
 
@@ -663,14 +934,18 @@ const EnrollScreen = ({ navigation, route }) => {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.navigate('MyCourses')}
           >
             <Image source={ArrowIcon} style={styles.backIcon} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {typeof courseData.title === 'string' ? courseData.title : 'Course Title'}
           </Text>
-          <View style={styles.placeholder} />
+          {courseData.isCompleted && (
+            <View style={styles.headerCompletedBadge}>
+              <Text style={styles.headerCompletedText}>Completed</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -701,15 +976,30 @@ const EnrollScreen = ({ navigation, route }) => {
 
       {!isFullScreen && !courseData.paymentStatus && (
         <View style={styles.enrollButtonContainer}>
-          <TouchableOpacity 
-            style={[styles.enrollButton, isEnrolling && styles.enrollButtonDisabled]}
-            onPress={handleEnrollNow}
-            disabled={isEnrolling}
-          >
-            <Text style={styles.enrollButtonText}>
-              {isEnrolling ? 'Enrolling...' : `Enroll - ${courseData.price}`}
-            </Text>
-          </TouchableOpacity>
+          {paymentStatus === 'failed' ? (
+            <View style={styles.paymentFailedContainer}>
+              <Text style={styles.paymentFailedText}>Payment failed. Please try again.</Text>
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={() => {
+                  resetPaymentStatus();
+                  handleEnrollNow();
+                }}
+              >
+                <Text style={styles.retryButtonText}>Retry Payment</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.enrollButton, isEnrolling && styles.enrollButtonDisabled]}
+              onPress={handleEnrollNow}
+              disabled={isEnrolling}
+            >
+              <Text style={styles.enrollButtonText}>
+                {isEnrolling ? 'Processing Payment...' : `Enroll - ${courseData.price}`}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </SafeAreaView>
@@ -870,18 +1160,6 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontFamily: 'monospace',
   },
-  testButton: {
-    backgroundColor: '#FF6B35',
-    padding: getVerticalSize(8),
-    borderRadius: getFontSize(5),
-    marginTop: getVerticalSize(10),
-    alignItems: 'center',
-  },
-  testButtonText: {
-    color: '#FFFFFF',
-    fontSize: getFontSize(12),
-    fontWeight: '600',
-  },
   courseStats: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1032,7 +1310,7 @@ const styles = StyleSheet.create({
     width: getFontSize(24),
     height: getFontSize(24),
     borderRadius: getFontSize(12),
-    backgroundColor: '#4CAF50',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1160,6 +1438,97 @@ const styles = StyleSheet.create({
   },
   enrollButtonDisabled: {
     opacity: 0.7,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  modalContainer: {
+    backgroundColor: '#FF8A00',
+    borderRadius: getFontSize(12),
+    padding: getVerticalSize(24),
+    alignItems: 'center',
+    width: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: getVerticalSize(20),
+  },
+  modalWarningIcon: {
+    width: getFontSize(32),
+    height: getFontSize(32),
+    marginRight: getVerticalSize(12),
+    tintColor: '#FFFFFF',
+  },
+  modalTitle: {
+    fontSize: getFontSize(18),
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  modalMessage: {
+    fontSize: getFontSize(16),
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: getVerticalSize(24),
+    lineHeight: getFontSize(22),
+    fontWeight: '500',
+  },
+  modalButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: getVerticalSize(14),
+    paddingHorizontal: getVerticalSize(32),
+    borderRadius: getFontSize(25),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalButtonText: {
+    color: '#FF8A00',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
+  },
+  paymentFailedContainer: {
+    alignItems: 'center',
+    paddingVertical: getVerticalSize(20),
+  },
+  paymentFailedText: {
+    fontSize: getFontSize(16),
+    color: '#FF0000',
+    textAlign: 'center',
+    marginBottom: getVerticalSize(15),
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: getVerticalSize(12),
+    paddingHorizontal: getVerticalSize(25),
+    borderRadius: getFontSize(25),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
+  },
+  headerCompletedBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: getVerticalSize(10),
+    paddingVertical: getVerticalSize(4),
+    borderRadius: getFontSize(12),
+    marginLeft: getVerticalSize(10),
+  },
+  headerCompletedText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(12),
+    fontWeight: '600',
   },
 });
 

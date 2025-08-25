@@ -15,7 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAppSelector, useAppDispatch } from '../Redux/hooks';
-import { logout } from '../Redux/userSlice';
+import { logout, clearUserFromStorage } from '../Redux/userSlice';
 import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
@@ -120,7 +120,9 @@ const ProfileScreen = ({ navigation }) => {
         {
           text: 'Logout',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            // Clear from storage first, then logout
+            await dispatch(clearUserFromStorage());
             dispatch(logout());
             nav.navigate('Login');
           },

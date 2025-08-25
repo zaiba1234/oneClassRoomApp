@@ -170,7 +170,7 @@ const MyCoursesScreen = ({ navigation }) => {
       onPress={() => {
         console.log('Course clicked:', course.title);
         if (course.progress === 100) {
-          navigation.navigate('BadgeCourse');
+          navigation.navigate('Enroll');
         } else {
           // Navigate to EnrollScreen with subcourseId for enrolled courses
           navigation.navigate('Enroll', { courseId: course.subcourseId });

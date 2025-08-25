@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   StatusBar,
   SafeAreaView,
   ScrollView,
+  Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useAppSelector } from '../Redux/hooks';
+import { getApiUrl } from '../API/config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,6 +27,71 @@ const getResponsiveSize = (size) => {
 
 const InternshipLetterScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { token } = useAppSelector((state) => state.user);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [requestData, setRequestData] = useState(null);
+
+  // Get courseId from route params (coming from SubCourseScreen)
+  const courseId = route.params?.courseId;
+
+  // Fetch internship letter request data when component mounts
+  useEffect(() => {
+    if (courseId && token) {
+      requestInternshipLetter();
+    }
+  }, [courseId, token]);
+
+  // Function to request internship letter from API
+  const requestInternshipLetter = async () => {
+    try {
+      setIsRequesting(true);
+      console.log('📜 InternshipLetterScreen: Requesting internship letter for courseId:', courseId);
+      
+      const apiUrl = getApiUrl('/api/user/internshipLetter/request-InternshipLetter');
+      console.log('🌐 InternshipLetterScreen: API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseId: courseId
+        }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ InternshipLetterScreen: Internship letter request successful:', result);
+        
+        if (result.success && result.data) {
+          setRequestData(result.data);
+        }
+      } else {
+        const errorResult = await response.json();
+        console.log('❌ InternshipLetterScreen: Failed to request internship letter:', response.status);
+        console.log('❌ InternshipLetterScreen: Error message:', errorResult.message);
+        
+        // Show error message to user
+        Alert.alert(
+          'Request Failed',
+          errorResult.message || 'Failed to request internship letter',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('💥 InternshipLetterScreen: Error requesting internship letter:', error);
+      Alert.alert(
+        'Error',
+        'Network error occurred while requesting internship letter',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsRequesting(false);
+    }
+  };
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -81,8 +149,9 @@ const InternshipLetterScreen = () => {
       {/* Download Button */}
       <View style={styles.downloadButtonContainer}>
         <TouchableOpacity 
-          style={styles.downloadButton}
-          onPress={handleDownload}
+          style={[styles.downloadButton, isRequesting && styles.downloadButtonDisabled]}
+          onPress={requestInternshipLetter}
+          disabled={isRequesting}
         >
           <LinearGradient
             colors={['#FF8A00', '#FFB300']}
@@ -90,7 +159,9 @@ const InternshipLetterScreen = () => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.downloadButtonText}>Download for ₹99/-</Text>
+            <Text style={styles.downloadButtonText}>
+              {isRequesting ? 'Requesting...' : 'Download for ₹99/-'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -203,5 +274,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',
+  },
+  downloadButtonDisabled: {
+    opacity: 0.7,
   },
 });

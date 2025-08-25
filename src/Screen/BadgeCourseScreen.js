@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
+  Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import BrilliantFont from '../Component/BrilliantFont';
 
@@ -23,10 +24,34 @@ const getResponsiveSize = (size) => {
 
 const BadgeCourseScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  
+  // Get courseId and courseName from route params
+  const courseId = route.params?.courseId;
+  const courseName = route.params?.courseName;
+
+  // Debug logging
+  console.log('🔍 BadgeCourseScreen: Route params received:', route.params);
+  console.log('🔍 BadgeCourseScreen: courseId:', courseId);
+  console.log('🔍 BadgeCourseScreen: courseName:', courseName);
 
   const handleContinue = () => {
-    console.log('Continue button pressed');
-    navigation.navigate('Feedback');
+    console.log('🚀 BadgeCourseScreen: Continue button pressed');
+    console.log('�� BadgeCourseScreen: courseId before navigation:', courseId);
+    console.log('🆔 BadgeCourseScreen: courseName before navigation:', courseName);
+    console.log('🔍 BadgeCourseScreen: Full route params:', JSON.stringify(route.params, null, 2));
+    
+    if (!courseId) {
+      console.log('❌ BadgeCourseScreen: courseId is undefined! Cannot navigate to FeedbackScreen');
+      Alert.alert('Error', 'Course ID not found. Please go back and try again.');
+      return;
+    }
+    
+    // Pass courseId as subcourseId to FeedbackScreen
+    const navigationParams = { subcourseId: courseId };
+    console.log('📤 BadgeCourseScreen: Navigating to FeedbackScreen with params:', JSON.stringify(navigationParams, null, 2));
+    
+    navigation.navigate('Feedback', navigationParams);
   };
 
   return (
@@ -58,7 +83,9 @@ const BadgeCourseScreen = () => {
 
       {/* Course Information */}
       <View style={styles.courseInfoContainer}>
-        <Text style={styles.courseTitle}>Product Design</Text>
+        <Text style={styles.courseTitle}>
+          {courseName || 'Course Title'}
+        </Text>
         <Text style={styles.courseStatus}>Course Completed Successfully</Text>
       </View>
 

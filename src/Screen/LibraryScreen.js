@@ -38,16 +38,13 @@ const LibraryScreen = ({ navigation }) => {
       setIsLoadingCourses(true);
       setCourseError(null);
 
-      console.log('📚 LibraryScreen: Fetching course data with token...');
-      console.log('🔑 LibraryScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+    
 
       const result = await courseAPI.getAllCourses(token);
 
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('🎉 LibraryScreen: Course data received successfully!');
-        console.log('📚 LibraryScreen: Number of courses:', apiCourses.length);
-        console.log('📚 LibraryScreen: First course:', apiCourses[0]);
+      
 
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
@@ -89,7 +86,7 @@ const LibraryScreen = ({ navigation }) => {
     <TouchableOpacity 
       key={course.id} 
       style={styles.libraryCard}
-      onPress={() => navigation.navigate('SubCourse')}
+      onPress={() => navigation.navigate('SubCourse', { courseId: course.id, courseName: course.title })}
     >
       <Image 
         source={course.image} 
@@ -114,9 +111,7 @@ const LibraryScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Library</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={fetchCourseData}>
-          <Text style={styles.refreshButtonText}>🔄</Text>
-        </TouchableOpacity>
+       
       </View>
 
       {/* Library Cards */}

@@ -7,11 +7,14 @@ import {
   Dimensions,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,                                                                                                                                                                                                                                                                                                                 
+  SafeAreaView,
+  Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import { courseAPI } from '../API/courseAPI';
+import { useAppSelector } from '../Redux/hooks';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,20 +26,110 @@ const getResponsiveSize = (size) => {
 
 const FeedbackScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [rating, setRating] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Get subcourseId from route params
+  const subcourseId = route.params?.subcourseId;
+  
+  // Get token from Redux
+  const { token } = useAppSelector((state) => state.user);
+
+  // Debug logging
+  console.log('🔍 FeedbackScreen: Route params received:', route.params);
+  console.log('🔍 FeedbackScreen: subcourseId:', subcourseId);
+  console.log('🔍 FeedbackScreen: token available:', !!token);
 
   const handleStarPress = (selectedRating) => {
     setRating(selectedRating);
   };
 
-  const handleContinue = () => {
-    console.log('Continue button pressed with rating:', rating);
-    navigation.navigate('CourseDetail');
+  const handleContinue = async () => {
+    try {
+      console.log('🚀 FeedbackScreen: Continue button pressed with rating:', rating);
+      console.log('🆔 FeedbackScreen: Subcourse ID:', subcourseId);
+      console.log('🔍 FeedbackScreen: Route params full:', JSON.stringify(route.params, null, 2));
+      
+      // Try to get subcourseId from different sources
+      let finalSubcourseId = subcourseId;
+      
+      if (!finalSubcourseId) {
+        console.log('⚠️ FeedbackScreen: subcourseId is undefined, trying to get from navigation state...');
+        // Try to get from navigation state or go back to get the ID
+        Alert.alert(
+          'Missing Course ID',
+          'Course information not found. Please go back and try again.',
+          [
+            {
+              text: 'Go Back',
+              onPress: () => navigation.goBack()
+            }
+          ]
+        );
+        return;
+      }
+      
+      if (!token) {
+        console.log('❌ FeedbackScreen: No token available');
+        Alert.alert('Error', 'Please login again to submit rating.');
+        return;
+      }
+      
+      setIsSubmitting(true);
+      
+      // Call the rating API
+      console.log('📡 FeedbackScreen: Calling submitRating API...');
+      console.log('📡 FeedbackScreen: API call details:');
+      console.log('  - Token:', token ? token.substring(0, 30) + '...' : 'No token');
+      console.log('  - SubcourseId:', finalSubcourseId);
+      console.log('  - Rating:', rating);
+      
+      const result = await courseAPI.submitRating(token, finalSubcourseId, rating);
+      
+      console.log('📡 FeedbackScreen: API response:', JSON.stringify(result, null, 2));
+      
+      if (result.success && result.data.success) {
+        console.log('✅ FeedbackScreen: Rating submitted successfully!');
+        Alert.alert(
+          'Success! 🎉',
+          'Thank you for your feedback!',
+          [
+            {
+              text: 'Continue',
+              onPress: () => {
+                // Navigate back to EnrollScreen with completed flag
+                console.log('🚀 FeedbackScreen: Navigating back to EnrollScreen with completed flag...');
+                navigation.navigate('Enroll', { 
+                  courseId: finalSubcourseId,
+                  isCompleted: true, // Pass completed flag
+                  fromFeedback: true // Indicate coming from feedback
+                });
+              }
+            }
+          ]
+        );
+      } else {
+        console.log('❌ FeedbackScreen: Failed to submit rating:', result.data?.message);
+        Alert.alert('Error', result.data?.message || 'Failed to submit rating. Please try again.');
+      }
+      
+    } catch (error) {
+      console.error('💥 FeedbackScreen: Error submitting rating:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSkip = () => {
-    console.log('Skip button pressed');
-    navigation.navigate('CourseDetail');
+    console.log('⏭️ FeedbackScreen: Skip button pressed');
+    // Navigate back to EnrollScreen with completed flag (even when skipping)
+    navigation.navigate('Enroll', { 
+      courseId: subcourseId,
+      isCompleted: true, // Pass completed flag
+      fromFeedback: true // Indicate coming from feedback
+    });
   };
 
   const renderStars = () => {
@@ -103,10 +196,13 @@ const FeedbackScreen = () => {
         {/* Continue Button */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
-            style={styles.continueButton}
+            style={[styles.continueButton, isSubmitting && styles.continueButtonDisabled]}
             onPress={handleContinue}
+            disabled={isSubmitting}
           >
-            <Text style={styles.continueButtonText}>Continue</Text>
+            <Text style={styles.continueButtonText}>
+              {isSubmitting ? 'Submitting...' : 'Continue'}
+            </Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -206,5 +302,14 @@ const styles = StyleSheet.create({
     color: '#FF8800',
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',
+  },
+  continueButtonDisabled: {
+    opacity: 0.7,
+  },
+  gradientButton: {
+    borderRadius: getResponsiveSize(16),
+    paddingVertical: getResponsiveSize(18),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

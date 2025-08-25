@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,18 +10,14 @@ import {
   Platform,
   StatusBar,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
+import { useAppSelector } from '../Redux/hooks';
+import { courseAPI } from '../API/courseAPI';
 
 // Import local assets
 const ArrowIcon = require('../assests/images/Arrow.png');
-const JohnSmithAvatar = require('../assests/images/John.png');
-const AceSmithAvatar = require('../assests/images/John.png');
-const AliceAvatar = require('../assests/images/John.png');
-const RohanAvatar = require('../assests/images/John.png');
-const RamAvatar = require('../assests/images/John.png');
-const EmmaJohnsonAvatar = require('../assests/images/John.png');
-const LucasBrownAvatar = require('../assests/images/John.png');
-const SophiaCarterAvatar = require('../assests/images/John.png');
+const DefaultAvatar = require('../assests/images/John.png');
 
 // Get screen dimensions for responsive design
 const { width, height } = Dimensions.get('window');
@@ -34,58 +30,77 @@ const verticalScale = height / 812; // Base height for iPhone 8
 const getFontSize = (size) => size * scale;
 const getVerticalSize = (size) => size * verticalScale;
 
-const ReviewScreen = ({ navigation }) => {
-  // Mock review data
-  const reviews = [
-    {
-      id: 1,
-      name: 'John Smith',
-      avatar: JohnSmithAvatar,
-      rating: 5,
-    },
-    {
-      id: 2,
-      name: 'Ace Smith',
-      avatar: AceSmithAvatar,
-      rating: 4,
-    },
-    {
-      id: 3,
-      name: 'Alice',
-      avatar: AliceAvatar,
-      rating: 4,
-    },
-    {
-      id: 4,
-      name: 'Rohan',
-      avatar: RohanAvatar,
-      rating: 5,
-    },
-    {
-      id: 5,
-      name: 'Ram',
-      avatar: RamAvatar,
-      rating: 4,
-    },
-    {
-      id: 6,
-      name: 'Emma Johnson',
-      avatar: EmmaJohnsonAvatar,
-      rating: 3,
-    },
-    {
-      id: 7,
-      name: 'Lucas Brown',
-      avatar: LucasBrownAvatar,
-      rating: 5,
-    },
-    {
-      id: 8,
-      name: 'Sophia Carter',
-      avatar: SophiaCarterAvatar,
-      rating: 2,
-    },
-  ];
+const ReviewScreen = ({ navigation, route }) => {
+  const [reviews, setReviews] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Get user data from Redux
+  const { token } = useAppSelector((state) => state.user);
+  
+  // Get subcourseId from route params
+  const subcourseId = route.params?.subcourseId;
+
+  // Fetch ratings when component mounts
+  useEffect(() => {
+   
+    
+    if (subcourseId && token) {
+      fetchRatings();
+    } else {
+      console.log('❌ ReviewScreen: Missing required data - subcourseId:', subcourseId, 'token:', !!token);
+      setError('Missing subcourse ID or authentication token');
+      setIsLoading(false);
+    }
+  }, [subcourseId, token]);
+
+  const fetchRatings = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log('🔍 ReviewScreen: Fetching ratings for subcourseId:', subcourseId);
+      console.log('🔑 ReviewScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const result = await courseAPI.getSubcourseRatings(token, subcourseId);
+      
+      console.log('📡 ReviewScreen: API result:', result);
+      
+      // Handle different response structures
+      if (result.success) {
+        if (result.data && result.data.success) {
+          // Standard success response
+          console.log('✅ ReviewScreen: Ratings fetched successfully:', result.data.data);
+          if (Array.isArray(result.data.data)) {
+            setReviews(result.data.data);
+          } else {
+            console.log('⚠️ ReviewScreen: Ratings data is not an array:', result.data.data);
+            setReviews([]);
+          }
+        } else if (result.data && Array.isArray(result.data)) {
+          // Direct array response
+          console.log('✅ ReviewScreen: Ratings fetched successfully (direct array):', result.data);
+          setReviews(result.data);
+        } else if (result.data && result.data.data && Array.isArray(result.data.data)) {
+          // Nested data array response
+          console.log('✅ ReviewScreen: Ratings fetched successfully (nested data):', result.data.data);
+          setReviews(result.data.data);
+        } else {
+          console.log('❌ ReviewScreen: Unexpected response structure:', result.data);
+          setError('Unexpected response format from server');
+        }
+      } else {
+        console.log('❌ ReviewScreen: Failed to fetch ratings:', result.data?.message);
+        console.log('❌ ReviewScreen: Full result:', result);
+        setError(result.data?.message || 'Failed to fetch ratings');
+      }
+    } catch (error) {
+      console.error('💥 ReviewScreen: Error fetching ratings:', error);
+      setError(error.message || 'Network error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const renderStars = (rating) => {
     const stars = [];
@@ -124,21 +139,24 @@ const ReviewScreen = ({ navigation }) => {
   };
 
   const handleReviewPress = (review) => {
-    console.log('Review clicked:', review.name);
+    console.log('Review clicked:', review.fullName);
     // Navigate to review detail screen if needed
     // navigation.navigate('ReviewDetail', { review });
   };
 
   const renderReviewItem = (review) => (
     <TouchableOpacity
-      key={review.id}
+      key={review.userId}
       style={styles.reviewItem}
       onPress={() => handleReviewPress(review)}
     >
-      <Image source={review.avatar} style={styles.reviewAvatar} />
+      <Image 
+        source={review.profileImageUrl ? { uri: review.profileImageUrl } : DefaultAvatar} 
+        style={styles.reviewAvatar} 
+      />
       <View style={styles.reviewContent}>
         <View style={styles.nameAndStarsRow}>
-          <Text style={styles.reviewName}>{review.name}</Text>
+          <Text style={styles.reviewName}>{review.fullName || 'Anonymous'}</Text>
           <View style={styles.starContainer}>
             {renderStars(review.rating)}
           </View>
@@ -146,6 +164,50 @@ const ReviewScreen = ({ navigation }) => {
       </View>
     </TouchableOpacity>
   );
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#FF6B35" />
+          <Text style={styles.loadingText}>Loading reviews...</Text>
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>Error: {error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchRatings}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (reviews.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>No reviews available yet</Text>
+          <Text style={styles.emptySubText}>Be the first to review this course!</Text>
+          <TouchableOpacity style={styles.refreshButton} onPress={fetchRatings}>
+            <Text style={styles.refreshButtonText}>Refresh</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={true}
+        contentContainerStyle={styles.scrollViewContent}
+      >
+        {reviews.map(renderReviewItem)}
+      </ScrollView>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -163,14 +225,8 @@ const ReviewScreen = ({ navigation }) => {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Reviews List */}
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={true}
-        contentContainerStyle={styles.scrollViewContent}
-      >
-        {reviews.map(renderReviewItem)}
-      </ScrollView>
+      {/* Content */}
+      {renderContent()}
     </SafeAreaView>
   );
 };
@@ -208,6 +264,46 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: getFontSize(40),
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getVerticalSize(20),
+  },
+  loadingText: {
+    fontSize: getFontSize(16),
+    color: '#666666',
+    marginTop: getVerticalSize(10),
+  },
+  errorText: {
+    fontSize: getFontSize(16),
+    color: '#FF0000',
+    textAlign: 'center',
+    marginBottom: getVerticalSize(20),
+  },
+  retryButton: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: getVerticalSize(12),
+    paddingHorizontal: getVerticalSize(25),
+    borderRadius: getFontSize(25),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
+  },
+  emptyText: {
+    fontSize: getFontSize(18),
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: getVerticalSize(10),
+  },
+  emptySubText: {
+    fontSize: getFontSize(14),
+    color: '#999999',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   scrollView: {
     flex: 1,
@@ -264,6 +360,18 @@ const styles = StyleSheet.create({
     fontSize: getFontSize(16),
     color: '#D3D3D3',
     marginLeft: getVerticalSize(2),
+  },
+  refreshButton: {
+    backgroundColor: '#FF6B35',
+    paddingVertical: getVerticalSize(12),
+    paddingHorizontal: getVerticalSize(25),
+    borderRadius: getFontSize(25),
+    marginTop: getVerticalSize(20),
+  },
+  refreshButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
   },
 });
 

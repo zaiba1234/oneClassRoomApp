@@ -25,7 +25,7 @@ const getResponsiveSize = (size) => {
   return Math.round(size * scale);
 };
 
-const DownloadCertificateScreen = () => {
+const CourseCertificateDownload = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { token } = useAppSelector((state) => state.user);
@@ -47,10 +47,10 @@ const DownloadCertificateScreen = () => {
   const fetchCertificateDescription = async () => {
     try {
       setIsLoadingCertificate(true);
-      console.log('📚 DownloadCertificateScreen: Fetching certificate description for courseId:', courseId);
+      console.log('📚 CourseCertificateDownload: Fetching course certificate description for courseId:', courseId);
       
-      const apiUrl = getApiUrl(`/api/user/course/get-certificateDesc/${courseId}`);
-      console.log('🌐 DownloadCertificateScreen: API URL:', apiUrl);
+      const apiUrl = getApiUrl(`/api/user/course/get-CoursecertificateDesc/${courseId}`);
+      console.log('🌐 CourseCertificateDownload: API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -61,16 +61,16 @@ const DownloadCertificateScreen = () => {
       
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ DownloadCertificateScreen: Certificate description fetched successfully:', result);
+        console.log('✅ CourseCertificateDownload: Course certificate description fetched successfully:', result);
         
         if (result.success && result.data) {
           setCertificateData(result.data);
         }
       } else {
-        console.log('❌ DownloadCertificateScreen: Failed to fetch certificate description:', response.status);
+        console.log('❌ CourseCertificateDownload: Failed to fetch course certificate description:', response.status);
       }
     } catch (error) {
-      console.error('💥 DownloadCertificateScreen: Error fetching certificate description:', error);
+      console.error('💥 CourseCertificateDownload: Error fetching course certificate description:', error);
     } finally {
       setIsLoadingCertificate(false);
     }
@@ -86,8 +86,8 @@ const DownloadCertificateScreen = () => {
       console.log(' Download button pressed for courseId:', courseId);
       setIsDownloading(true);
 
-      // API endpoint using config file with subcourseId in URL
-      const apiUrl = getApiUrl(`/api/user/certificate/download-certificate/${courseId}`);
+      // API endpoint using config file with courseId in URL
+      const apiUrl = getApiUrl(`/api/user/certificate/download-course-certificate/${courseId}`);
       
       console.log(' API URL:', apiUrl);
       
@@ -227,7 +227,7 @@ const DownloadCertificateScreen = () => {
   );
 };
 
-export default DownloadCertificateScreen;
+export default CourseCertificateDownload;
 
 const styles = StyleSheet.create({
   container: {

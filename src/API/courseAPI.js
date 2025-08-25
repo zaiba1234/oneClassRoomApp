@@ -200,54 +200,227 @@ export const courseAPI = {
 
   getSubcourseById: async (token, subcourseId) => {
     try {
-      console.log('🚀 courseAPI: Fetching subcourse by ID...');
+      console.log('🚀 courseAPI: Fetching subcourse by ID:', subcourseId);
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-      console.log('🆔 courseAPI: Subcourse ID:', subcourseId);
 
       const url = getApiUrl(`/api/user/course/getsubcourseById/${subcourseId}`);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
       };
-      
-      console.log('🌐 courseAPI: Subcourse by ID URL:', url);
-      console.log('📋 courseAPI: Subcourse by ID headers:', headers);
+
+      console.log('🌐 courseAPI: Making request to:', url);
+      console.log('📋 courseAPI: Headers:', headers);
 
       const response = await fetch(url, {
         method: 'GET',
-        headers: headers,
+        headers,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Response status:', response.status);
+      console.log('📡 courseAPI: Response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully fetched subcourse');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to fetch subcourse:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
       }
+    } catch (error) {
+      console.error('💥 courseAPI: Error fetching subcourse:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  // New method to fetch ratings for a subcourse
+  getSubcourseRatings: async (token, subcourseId) => {
+    try {
+      console.log('🚀 courseAPI: Fetching ratings for subcourse:', subcourseId);
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+
+      const url = getApiUrl(`/api/user/rating/getAll-ratings?subcourseId=${subcourseId}`);
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      console.log('🌐 courseAPI: Making request to:', url);
+      console.log('📋 courseAPI: Headers:', headers);
+      console.log('🔍 courseAPI: Query parameters: subcourseId=', subcourseId);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+
+      console.log('📡 courseAPI: Response status:', response.status);
+      console.log('📡 courseAPI: Response headers:', response.headers);
 
       const responseData = await response.json();
-      console.log('📄 courseAPI: Subcourse by ID response:', responseData);
-      
-      if (responseData.data) {
-       
-        
-        if (responseData.data.lessons && Array.isArray(responseData.data.lessons)) {
-          console.log('📚 courseAPI: Lessons found:', responseData.data.lessons.length);
-          responseData.data.lessons.forEach((lesson, index) => {
-          
-          });
-        }
-      }
+      console.log('📡 courseAPI: Response data:', responseData);
 
-      return {
-        success: response.ok,
-        data: responseData,
-        status: response.status,
-      };
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully fetched ratings');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to fetch ratings:', responseData.message);
+        console.log('❌ courseAPI: Response status:', response.status);
+        return { success: false, data: responseData, status: response.status };
+      }
     } catch (error) {
-      console.error('💥 courseAPI: Error fetching subcourse by ID:', error);
-      return {
-        success: false,
-        data: { message: 'Network error occurred' },
-        status: 0,
+      console.error('💥 courseAPI: Error fetching ratings:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  // New method to submit a rating for a subcourse
+  submitRating: async (token, subcourseId, rating) => {
+    try {
+      console.log('🚀 courseAPI: Submitting rating for subcourse:', subcourseId);
+      console.log('⭐ courseAPI: Rating value:', rating);
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+
+      const url = getApiUrl('/api/user/rating/rate-subcourse');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
       };
+
+      const requestBody = {
+        subcourseId: subcourseId,
+        rating: rating
+      };
+
+      console.log('🌐 courseAPI: Making POST request to:', url);
+      console.log('📋 courseAPI: Headers:', headers);
+      console.log('📦 courseAPI: Request body:', requestBody);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('📡 courseAPI: Response status:', response.status);
+      console.log('📡 courseAPI: Response headers:', response.headers);
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully submitted rating');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to submit rating:', responseData.message);
+        console.log('❌ courseAPI: Response status:', response.status);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error submitting rating:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  // New method to create course order for Razorpay payment
+  createCourseOrder: async (token, subcourseId) => {
+    try {
+      console.log('🚀 courseAPI: Creating course order for subcourse:', subcourseId);
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+
+      const url = getApiUrl('/api/user/buy/buy-course');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const requestBody = {
+        subcourseId: subcourseId
+      };
+
+      console.log('🌐 courseAPI: Making POST request to:', url);
+      console.log('📋 courseAPI: Headers:', headers);
+      console.log('📦 courseAPI: Request body:', requestBody);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('📡 courseAPI: Response status:', response.status);
+      console.log('📡 courseAPI: Response headers:', response.headers);
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully created course order');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to create course order:', responseData.message);
+        console.log('❌ courseAPI: Response status:', response.status);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error creating course order:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  // New method to verify payment after Razorpay payment
+  verifyPayment: async (token, razorpayOrderId, razorpayPaymentId, razorpaySignature, subcourseId) => {
+    try {
+      console.log('🚀 courseAPI: Verifying payment for order:', razorpayOrderId);
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      console.log('🆔 courseAPI: Subcourse ID:', subcourseId);
+
+      const url = getApiUrl('/api/user/buy/verify-payment');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const requestBody = {
+        razorpayOrderId: razorpayOrderId,
+        razorpayPaymentId: razorpayPaymentId,
+        razorpaySignature: razorpaySignature,
+        subcourseId: subcourseId
+      };
+
+      console.log('🌐 courseAPI: Making POST request to:', url);
+      console.log('📋 courseAPI: Headers:', headers);
+      console.log('📦 courseAPI: Request body:', requestBody);
+      console.log('🔍 courseAPI: Request body details:');
+      console.log('  - razorpayOrderId:', requestBody.razorpayOrderId);
+      console.log('  - razorpayPaymentId:', requestBody.razorpayPaymentId);
+      console.log('  - razorpaySignature:', requestBody.razorpaySignature);
+      console.log('  - subcourseId:', requestBody.subcourseId);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log('📡 courseAPI: Response status:', response.status);
+      console.log('📡 courseAPI: Response headers:', response.headers);
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully verified payment');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to verify payment:', responseData.message);
+        console.log('❌ courseAPI: Response status:', response.status);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error verifying payment:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
     }
   },
 
@@ -639,6 +812,44 @@ export const courseAPI = {
       }
     } catch (error) {
       console.error('💥 courseAPI: Error fetching favorite courses:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  // Get subcourses by course ID
+  getSubcoursesByCourseId: async (token, courseId) => {
+    try {
+      console.log('🚀 courseAPI: Fetching subcourses by course ID...');
+      console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      console.log('🆔 courseAPI: Course ID:', courseId);
+
+      const url = getApiUrl(`/api/user/course/getALLSubcoursesbyId/${courseId}`);
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      console.log('🌐 courseAPI: Subcourses by course ID URL:', url);
+      console.log('📋 courseAPI: Subcourses by course ID headers:', headers);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Subcourses by course ID response status:', response.status);
+      console.log('📡 courseAPI: Subcourses by course ID response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully fetched subcourses by course ID');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to fetch subcourses by course ID:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error fetching subcourses by course ID:', error);
       return { success: false, data: { message: 'Network error occurred' }, status: 0 };
     }
   },

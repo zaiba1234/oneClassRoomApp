@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
 import { profileAPI } from '../API/profileAPI';
 import { useAppDispatch } from '../Redux/hooks';
-import { setToken, setProfileData } from '../Redux/userSlice';
+import { setUserData, saveUserToStorage } from '../Redux/userSlice';
 import {
   TextInput,
   View,                                                                           
@@ -39,8 +39,8 @@ const VerificationScreen = ({ route }) => {
   // Test Redux dispatch to verify it's working
   useEffect(() => {
     console.log('🧪 VerificationScreen: Testing Redux dispatch...');
-    console.log('🧪 VerificationScreen: setToken action available:', !!setToken);
-    console.log('🧪 VerificationScreen: setProfileData action available:', !!setProfileData);
+    console.log('🧪 VerificationScreen: setUserData action available:', !!setUserData);
+    console.log('🧪 VerificationScreen: saveUserToStorage action available:', !!saveUserToStorage);
     
     // Test dispatch - only run once
     console.log('✅ VerificationScreen: Redux actions are available and ready');
@@ -99,12 +99,7 @@ const VerificationScreen = ({ route }) => {
     try {
       const result = await authAPI.verifyOTP(mobileNumber, otpString);
       console.log('📡 VerificationScreen: verifyOTP API response:', result);
-      console.log('📡 VerificationScreen: API success status:', result.success);
-      console.log('📡 VerificationScreen: API message:', result.data?.message);
-      console.log('📡 VerificationScreen: result.data:', result.data);
-      console.log('📡 VerificationScreen: result.data.data:', result.data?.data);
-      console.log('📡 VerificationScreen: result.data.data.token:', result.data?.data?.token);
-      console.log('📡 VerificationScreen: result.data.token:', result.data?.token);
+     
       
       
       if (result.success) {
@@ -119,11 +114,6 @@ const VerificationScreen = ({ route }) => {
           console.log('🔑 VerificationScreen: Token received from API!');
           console.log('🔑 VerificationScreen: Token value:', token);
           
-          // Store token in Redux
-          console.log('🔄 VerificationScreen: About to dispatch setToken...');
-          dispatch(setToken(token));
-          console.log('✅ VerificationScreen: Token stored in Redux successfully');
-          
           // After storing token, fetch user profile
           try {
             console.log('👤 VerificationScreen: Starting to fetch user profile with token...');
@@ -137,62 +127,84 @@ const VerificationScreen = ({ route }) => {
               console.log('🎉 VerificationScreen: User profile data received successfully!');
               console.log('👤 VerificationScreen: Full user data:', userData);
               
-              // Store all user profile data in Redux
-              console.log('🔄 VerificationScreen: About to dispatch setProfileData...');
-              const profileAction = setProfileData({
+              // Store complete user data in Redux and save to storage
+              console.log('🔄 VerificationScreen: About to dispatch setUserData with complete profile...');
+              const completeUserData = {
                 _id: userData._id,
                 userId: userData.userId,
                 fullName: userData.fullName,
                 mobileNumber: userData.mobileNumber,
                 profileImageUrl: userData.profileImageUrl,
                 address: userData.address,
-                email: userData.email
-              });
-              console.log('🔄 VerificationScreen: Profile action created:', profileAction);
+                email: userData.email,
+                token: token
+              };
               
-              dispatch(profileAction);
-              console.log('✅ VerificationScreen: All user profile data stored in Redux successfully!');
+              dispatch(setUserData(completeUserData));
+              console.log('✅ VerificationScreen: Complete user data stored in Redux successfully!');
+              
+              // Save to storage
+              dispatch(saveUserToStorage(completeUserData));
+              console.log('💾 VerificationScreen: User data saved to storage successfully!');
               
             } else {
               console.log('❌ VerificationScreen: Profile API failed:', profileResult.data?.message);
               console.log('🔄 VerificationScreen: Falling back to route params...');
               
               // Fallback to route params if profile fetch fails
+              const fallbackUserData = {
+                mobileNumber: mobileNumber,
+                token: token
+              };
+              
               if (fullName) {
                 console.log('📝 VerificationScreen: Fallback - storing fullName from route params:', fullName);
-                dispatch(setProfileData({ fullName }));
+                fallbackUserData.fullName = fullName;
               }
-              if (mobileNumber) {
-                console.log('📱 VerificationScreen: Fallback - storing mobileNumber from route params:', mobileNumber);
-                dispatch(setProfileData({ mobileNumber }));
-              }
+              
+              dispatch(setUserData(fallbackUserData));
+              dispatch(saveUserToStorage(fallbackUserData));
+              console.log('💾 VerificationScreen: Fallback user data saved to storage!');
             }
           } catch (profileError) {
             console.error('💥 VerificationScreen: Error fetching user profile:', profileError);
             console.log('🔄 VerificationScreen: Falling back to route params due to profile error...');
             
             // Fallback to route params if profile fetch fails
+            const fallbackUserData = {
+              mobileNumber: mobileNumber,
+              token: token
+            };
+            
             if (fullName) {
               console.log('📝 VerificationScreen: Fallback - storing fullName from route params:', fullName);
-              dispatch(setProfileData({ fullName }));
+              fallbackUserData.fullName = fullName;
             }
-            if (mobileNumber) {
-              console.log('📱 VerificationScreen: Fallback - storing mobileNumber from route params:', mobileNumber);
-              dispatch(setProfileData({ mobileNumber }));
-            }
+            
+            dispatch(setUserData(fallbackUserData));
+            dispatch(saveUserToStorage(fallbackUserData));
+            console.log('💾 VerificationScreen: Fallback user data saved to storage!');
           }
         } else {
           console.log('⚠️ VerificationScreen: No token received from API, using route params only');
           console.log('⚠️ VerificationScreen: API response data:', result.data);
           
-          // No token, use route params
+          // No token, use route params only
+          const fallbackUserData = {};
+          
           if (fullName) {
             console.log('📝 VerificationScreen: Storing fullName from route params:', fullName);
-            dispatch(setProfileData({ fullName }));
+            fallbackUserData.fullName = fullName;
           }
           if (mobileNumber) {
             console.log('📱 VerificationScreen: Storing mobileNumber from route params:', mobileNumber);
-            dispatch(setProfileData({ mobileNumber }));
+            fallbackUserData.mobileNumber = mobileNumber;
+          }
+          
+          if (Object.keys(fallbackUserData).length > 0) {
+            dispatch(setUserData(fallbackUserData));
+            dispatch(saveUserToStorage(fallbackUserData));
+            console.log('💾 VerificationScreen: Route params user data saved to storage!');
           }
         }
         

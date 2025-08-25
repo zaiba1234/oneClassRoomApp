@@ -17,6 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import { getApiUrl } from '../API/config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,17 +45,29 @@ const HomeScreen = () => {
   const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
   const [featuredError, setFeaturedError] = useState(null);
 
+  // State for banner data from homePage-banner API
+  const [bannerData, setBannerData] = useState({
+    recentSubcourse: null,
+    recentPurchasedSubcourse: null,
+    promos: []
+  });
+  const [isLoadingBanner, setIsLoadingBanner] = useState(false);
+  const [bannerError, setBannerError] = useState(null);
+
   // State for favorite toggling
   const [togglingFavorites, setTogglingFavorites] = useState(new Set());
-  
-  // Ref to prevent double API calls
-  const toggleFavoriteRef = useRef(new Set());
+
+  // State for search functionality
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [filteredCourses, setFilteredCourses] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Fetch course data when component mounts or token changes
   useEffect(() => {
     if (token) {
       fetchCourseData();
       fetchFeaturedCourses();
+      fetchBannerData();
     }
   }, [token]);
 
@@ -72,8 +85,7 @@ const HomeScreen = () => {
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
         console.log('🎉 HomeScreen: Featured courses received successfully!');
-        console.log('📚 HomeScreen: Number of featured courses:', apiCourses.length);
-        console.log('📚 HomeScreen: First featured course:', apiCourses[0]);
+        
         
         // Transform API data to match existing UI structure
         const transformedFeaturedCourses = apiCourses.slice(0, 3).map((course, index) => {
@@ -128,6 +140,8 @@ const HomeScreen = () => {
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
+          
+         
           
           return {
             id: course._id || index + 1,
@@ -267,6 +281,88 @@ const HomeScreen = () => {
     }
   };
 
+  // Function to fetch banner data from homePage-banner API
+  const fetchBannerData = async () => {
+    try {
+      setIsLoadingBanner(true);
+      setBannerError(null);
+      
+      console.log('🏠 HomeScreen: Fetching banner data from homePage-banner API...');
+      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+      
+      const apiUrl = getApiUrl('/api/user/course/homePage-banner');
+      console.log('🌐 HomeScreen: Banner API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('🎉 HomeScreen: Banner data received successfully!');
+        console.log('📚 HomeScreen: Banner API response:', result);
+        
+        if (result.success) {
+          setBannerData(result.data);
+          console.log('✅ HomeScreen: Banner data set successfully:', result.data);
+        } else {
+          console.log('❌ HomeScreen: Banner API returned success: false');
+          setBannerError(result.message || 'Failed to fetch banner data');
+        }
+      } else {
+        console.log('❌ HomeScreen: Banner API request failed:', response.status, response.statusText);
+        setBannerError(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('💥 HomeScreen: Error fetching banner data:', error);
+      setBannerError(error.message || 'Network error occurred');
+    } finally {
+      setIsLoadingBanner(false);
+    }
+  };
+
+  // Function to search courses based on keyword
+  const searchCourses = (keyword) => {
+    if (!keyword.trim()) {
+      setFilteredCourses([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    // Add a small delay to show loading state and prevent too many rapid searches
+    setTimeout(() => {
+      const searchTerm = keyword.toLowerCase().trim();
+      
+      // Filter courses based on search keyword
+      const filtered = courseCards.filter(course => {
+        const title = course.title.toLowerCase();
+        return title.includes(searchTerm);
+      });
+      
+      setFilteredCourses(filtered);
+      setIsSearching(false);
+      console.log(`🔍 HomeScreen: Search for "${keyword}" returned ${filtered.length} results`);
+    }, 300); // 300ms delay
+  };
+
+  // Function to handle search input change
+  const handleSearchChange = (text) => {
+    console.log(`🔍 HomeScreen: Search input changed to: "${text}"`);
+    setSearchKeyword(text);
+    if (text.trim()) {
+      searchCourses(text);
+    } else {
+      setFilteredCourses([]);
+      setIsSearching(false);
+      console.log('🔍 HomeScreen: Search cleared, showing all courses');
+    }
+  };
+
   // Manual refresh function (can be called if needed)
   const refreshCourseData = () => {
     if (token) {
@@ -280,9 +376,7 @@ const HomeScreen = () => {
   // Function to toggle favorite status
   const toggleFavorite = async (courseId, currentFavoriteStatus) => {
     try {
-      console.log('❤️ HomeScreen: Toggling favorite for course:', courseId);
-      console.log('❤️ HomeScreen: Current favorite status:', currentFavoriteStatus);
-      console.log('❤️ HomeScreen: Course ID type:', typeof courseId);
+     
       console.log('❤️ HomeScreen: Token available:', !!token);
       
       // Check if token exists
@@ -298,14 +392,13 @@ const HomeScreen = () => {
       }
       
       // Check if already toggling this course to prevent double calls
-      if (togglingFavorites.has(String(courseId)) || toggleFavoriteRef.current.has(String(courseId))) {
+      if (togglingFavorites.has(String(courseId))) {
         console.log('⚠️ HomeScreen: Already toggling this course, skipping...');
         return;
       }
       
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
-      toggleFavoriteRef.current.add(String(courseId));
       
       console.log('🚀 HomeScreen: About to call courseAPI.toggleFavorite...');
       console.log('🚀 HomeScreen: With token:', token.substring(0, 50) + '...');
@@ -373,7 +466,6 @@ const HomeScreen = () => {
         newSet.delete(String(courseId));
         return newSet;
       });
-      toggleFavoriteRef.current.delete(String(courseId));
     }
   };
 
@@ -386,19 +478,26 @@ const HomeScreen = () => {
 
   // Track courseCards state changes
   useEffect(() => {
-    console.log('🔄 HomeScreen: courseCards state changed!');
-    console.log('🔄 HomeScreen: Number of courses:', courseCards.length);
     
+   
     courseCards.forEach((course, index) => {
       console.log(`🔄 HomeScreen: Course ${index + 1} in state:`, {
         title: course.title,
-        id: course.id,
-        isFavorite: course.isFavorite,
         imageType: typeof course.image,
         imageSource: course.image
       });
     });
   }, [courseCards]);
+
+  // Filter courses when search keyword or courseCards change
+  useEffect(() => {
+    if (searchKeyword.trim()) {
+      searchCourses(searchKeyword);
+    } else {
+      setFilteredCourses([]);
+      setIsSearching(false);
+    }
+  }, [searchKeyword, courseCards]);
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const carouselRef = useRef(null);
@@ -448,46 +547,115 @@ const HomeScreen = () => {
     );
   };
 
-  const renderCarouselItem = (item, index) => (
-    <View key={item.id} style={styles.carouselItem}>
-      {item.id === 3 ? (
-        <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
-          <Image source={item.image} style={styles.carouselBannerImage} resizeMode="cover" />
-        </View>
-      ) : (
-        <LinearGradient
-          colors={['#2285FA', '#0029B9']}
-          style={styles.carouselCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.carouselContentRow}>
-            <Image source={item.image} style={styles.carouselImage} resizeMode="cover" />
-            <View style={styles.carouselTextGroup}>
-              <Text style={styles.carouselTitle} numberOfLines={1}>{item.title}</Text>
-              <Text style={styles.carouselLessons}>{item.lessons}</Text>
-            </View>
-            {item.id !== 2 && (
-              <View style={styles.progressContainerAbsolute}>{renderProgressCircle(item.progress)}</View>
-            )}
+  const renderCarouselItem = (item, index) => {
+    // Use banner data if available, otherwise fall back to featured courses
+    let displayItem = item;
+    let buttonText = item.buttonText;
+    let progress = item.progress;
+    let showProgressCircle = false;
+    let showCourseDetails = true;
+    let isPromoItem = false;
+    
+    // Check if we have banner data and use it for the first two items
+    if (index === 0 && bannerData.recentSubcourse) {
+      // First item: recentSubcourse (no progress key, always show Explore)
+      displayItem = {
+        ...item,
+        title: bannerData.recentSubcourse.subcourseName,
+        lessons: `${bannerData.recentSubcourse.totalLessons} lessons`,
+        image: bannerData.recentSubcourse.thumbnailImageUrl ? { uri: bannerData.recentSubcourse.thumbnailImageUrl } : item.image,
+        progress: 0, // No progress for recent subcourse
+      };
+      buttonText = 'Explore'; // Always show Explore button for recent subcourse
+      progress = 0;
+      showProgressCircle = false; // Don't show progress circle for recent subcourse
+      showCourseDetails = true; // Show course details (title, lessons)
+      isPromoItem = false;
+    } else if (index === 1 && bannerData.recentPurchasedSubcourse) {
+      // Second item: recentPurchasedSubcourse (has progress key, always show Continue Learning)
+      const hasProgress = bannerData.recentPurchasedSubcourse.hasOwnProperty('progress');
+      const progressValue = hasProgress ? parseInt(bannerData.recentPurchasedSubcourse.progress?.replace('%', '') || '0') : 0;
+      
+      displayItem = {
+        ...item,
+        title: bannerData.recentPurchasedSubcourse.subcourseName,
+        lessons: `${bannerData.recentPurchasedSubcourse.totalLessons} lessons`,
+        image: bannerData.recentPurchasedSubcourse.thumbnailImageUrl ? { uri: bannerData.recentPurchasedSubcourse.thumbnailImageUrl } : item.image,
+        progress: progressValue,
+      };
+      
+      // Always show Continue Learning button if progress key exists (even if 0%)
+      if (hasProgress) {
+        buttonText = 'Continue Learning';
+        showProgressCircle = true; // Always show progress circle for Continue Learning
+      } else {
+        buttonText = 'Explore';
+        showProgressCircle = false; // Don't show progress circle for Explore
+      }
+      progress = progressValue;
+      showCourseDetails = true; // Show course details (title, lessons)
+      isPromoItem = false;
+    } else if (index === 2 && bannerData.promos && bannerData.promos.length > 0) {
+      // Third item: promos (complete image banner, no text, no buttons, no course details)
+      const promo = bannerData.promos[0];
+      displayItem = {
+        ...item,
+        image: promo.promo ? { uri: promo.promo } : item.image,
+      };
+      buttonText = ''; // No button for promo image
+      progress = 0;
+      showProgressCircle = false; // Don't show progress circle for promo
+      showCourseDetails = false; // Don't show course details for promo
+      isPromoItem = true; // Mark as promo item
+    }
+    
+    return (
+      <View key={displayItem.id || index} style={styles.carouselItem}>
+        {isPromoItem ? (
+          // Third item: Promo image as complete card
+          <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
+            <Image source={displayItem.image} style={styles.carouselBannerImage} resizeMode="cover" />
           </View>
-          <TouchableOpacity 
-            style={styles.continueButton}
-            onPress={() => {
-              console.log('Button pressed:', item.buttonText);
-              if (item.buttonText === 'Continue Learning') {
-                navigation.navigate('CourseDetail');
-              } else if (item.buttonText === 'Explore') {
-                navigation.navigate('Enroll');
-              }
-            }}
+        ) : (
+          // First and second items: Regular course cards with gradient
+          <LinearGradient
+            colors={['#2285FA', '#0029B9']}
+            style={styles.carouselCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.continueButtonText}>{item.buttonText}</Text>
-          </TouchableOpacity>
-        </LinearGradient>
-      )}
-    </View>
-  );
+            <View style={styles.carouselContentRow}>
+              <Image source={displayItem.image} style={styles.carouselImage} resizeMode="cover" />
+              {showCourseDetails && (
+                <View style={styles.carouselTextGroup}>
+                  <Text style={styles.carouselTitle} numberOfLines={1}>{displayItem.title}</Text>
+                  <Text style={styles.carouselLessons}>{displayItem.lessons}</Text>
+                </View>
+              )}
+              {showProgressCircle && (
+                <View style={styles.progressContainerAbsolute}>{renderProgressCircle(progress)}</View>
+              )}
+            </View>
+            {buttonText && ( // Only show button if buttonText exists
+              <TouchableOpacity 
+                style={styles.continueButton}
+                onPress={() => {
+                  console.log('Button pressed:', buttonText);
+                  if (buttonText === 'Continue Learning') {
+                    navigation.navigate('Enroll');
+                  } else if (buttonText === 'Explore') {
+                    navigation.navigate('Enroll');
+                  }
+                }}
+              >
+                <Text style={styles.continueButtonText}>{buttonText}</Text>
+              </TouchableOpacity>
+            )}
+          </LinearGradient>
+        )}
+      </View>
+    );
+  };
 
   const renderCourseCard = (course) => (
     <TouchableOpacity 
@@ -524,10 +692,7 @@ const HomeScreen = () => {
             styles.heartButton,
             togglingFavorites.has(String(course.id)) && styles.heartButtonLoading
           ]} 
-          onPress={() => {
-            console.log(`❤️ Heart button pressed for course: ${course.title}, current isFavorite: ${course.isFavorite}`);
-            toggleFavorite(course.id, course.isFavorite);
-          }}
+          onPress={() => toggleFavorite(course.id, course.isFavorite)}
           disabled={togglingFavorites.has(String(course.id))}
         >
           <Icon 
@@ -568,17 +733,43 @@ const HomeScreen = () => {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Search Bar */}
-        <TouchableOpacity 
-          style={styles.searchContainer}
-          onPress={() => navigation.navigate('Search')}
-        >
+        <View style={styles.searchContainer}>
           <Image 
             source={require('../assests/images/Search.png')} 
-            style={styles.searchIcon}
+            style={[
+              styles.searchIcon,
+              searchKeyword.trim() && styles.searchIconActive
+            ]}
             resizeMode="contain"
           />
-          <Text style={styles.searchPlaceholder}>Search now...</Text>
-        </TouchableOpacity>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search now..."
+            placeholderTextColor="#999"
+            value={searchKeyword}
+            onChangeText={handleSearchChange}
+            onSubmitEditing={() => {
+              console.log(`🔍 HomeScreen: Search submitted for: "${searchKeyword}"`);
+              searchCourses(searchKeyword);
+            }}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {searchKeyword.trim() && (
+            <TouchableOpacity 
+              style={styles.clearSearchButton}
+              onPress={() => {
+                console.log('🔍 HomeScreen: Clear search button pressed');
+                setSearchKeyword('');
+                setFilteredCourses([]);
+                setIsSearching(false);
+              }}
+            >
+              <Icon name="close-circle" size={20} color="#999" />
+            </TouchableOpacity>
+          )}
+        </View>
 
 
         {/* Featured Course Carousel */}
@@ -679,12 +870,46 @@ const HomeScreen = () => {
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
-          ) : courseCards.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No courses available</Text>
-            </View>
+          ) : searchKeyword.trim() ? (
+            // Show filtered results when searching
+            isSearching ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Searching...</Text>
+              </View>
+            ) : filteredCourses.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No courses found for "{searchKeyword}"</Text>
+                <Text style={styles.emptySubText}>Try a different keyword or check your spelling</Text>
+                <TouchableOpacity 
+                  style={styles.clearSearchButton}
+                  onPress={() => {
+                    console.log('🔍 HomeScreen: Clear search button pressed from no results');
+                    setSearchKeyword('');
+                    setFilteredCourses([]);
+                    setIsSearching(false);
+                  }}
+                >
+                  <Text style={styles.clearSearchButtonText}>Clear Search</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.searchResultsHeader}>
+                  <Text style={styles.searchResultsText}>Search results for "{searchKeyword}"</Text>
+                  <Text style={styles.searchResultsCount}>({filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''})</Text>
+                </View>
+                {filteredCourses.map((course) => renderCourseCard(course))}
+              </>
+            )
           ) : (
-            courseCards.map((course) => renderCourseCard(course))
+            // Show all courses when not searching
+            courseCards.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No courses available</Text>
+              </View>
+            ) : (
+              courseCards.map((course) => renderCourseCard(course))
+            )
           )}
         </View>
       </ScrollView>
@@ -779,12 +1004,27 @@ const styles = StyleSheet.create({
     height: getResponsiveSize(20),
     marginRight: getResponsiveSize(12),
   },
-  searchPlaceholder: {
+  searchIconActive: {
+    tintColor: '#2285FA', // Change color when active
+  },
+  searchInput: {
     flex: 1,
     fontSize: getResponsiveSize(16),
-    color: '#999',
+    color: '#333',
     fontWeight: '400',
     paddingVertical: getResponsiveSize(4),
+  },
+  clearSearchButton: {
+    backgroundColor: '#2285FA',
+    paddingVertical: getResponsiveSize(10),
+    paddingHorizontal: getResponsiveSize(20),
+    borderRadius: getResponsiveSize(12),
+    marginTop: getResponsiveSize(15),
+  },
+  clearSearchButtonText: {
+    color: '#fff',
+    fontSize: getResponsiveSize(14),
+    fontWeight: '600',
   },
   carouselSection: {
     marginBottom: getResponsiveSize(20),
@@ -1084,6 +1324,31 @@ const styles = StyleSheet.create({
     fontSize: getResponsiveSize(18),
     color: '#666',
     textAlign: 'center',
+  },
+  emptySubText: {
+    fontSize: getResponsiveSize(14),
+    color: '#999',
+    marginTop: getResponsiveSize(10),
+    textAlign: 'center',
+  },
+  searchResultsText: {
+    fontSize: getResponsiveSize(16),
+    color: '#333',
+    fontWeight: '600',
+    marginBottom: getResponsiveSize(15),
+    textAlign: 'left',
+  },
+  searchResultsCount: {
+    fontSize: getResponsiveSize(14),
+    color: '#666',
+    fontWeight: '400',
+  },
+  searchResultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: getResponsiveSize(15),
+    paddingHorizontal: getResponsiveSize(20),
   },
   carouselLoadingContainer: {
     height: getResponsiveSize(200),

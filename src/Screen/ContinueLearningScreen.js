@@ -18,7 +18,7 @@ const ContinueLearningScreen = ({ navigation }) => {
   const continueCourses = [
     {
       id: 1,
-      title: '3D Design Basic',
+      title: '3D Design Basicsss',
       progress: 65,
       thumbnail: require('../assests/images/Frame1.png'),
       timeLeft: '2h 30m left',

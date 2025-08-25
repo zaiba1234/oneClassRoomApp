@@ -15,7 +15,6 @@ import MyCoursesScreen from './src/Screen/MyCoursesScreen';
 import PersonalInfoScreen from './src/Screen/PersonalInfoScreen';
 import ContinueLearningScreen from './src/Screen/ContinueLearningScreen';
 import NotificationScreen from './src/Screen/NotificationScreen';
-import CourseDetailScreen from './src/Screen/CourseDetailScreen';
 import LessonVideoScreen from './src/Screen/LessonVideoScreen';
 import PaymentGatewayScreen from './src/Screen/PaymentGatewayScreen';
 import EnrollScreen from './src/Screen/EnrollScreen';
@@ -24,13 +23,15 @@ import StudentScreen from './src/Screen/StudentScreen';
 import ReviewScreen from './src/Screen/ReviewScreen';
 import FeedbackScreen from './src/Screen/FeedbackScreen';
 import BadgeCourseScreen from './src/Screen/BadgeCourseScreen';
-import PaymentSuccessfulScreen from './src/Screen/PaymentSuccessfulScreen';
 import InvoiceHistoryScreen from './src/Screen/InvoiceHistoryScreen';
 import SettingScreen from './src/Screen/SettingScreen';
 import PrivacyPolicyScreen from './src/Screen/PrivacyPolicyScreen';
 import TermsConditionScreen from './src/Screen/TermsConditionScreen';
 import ContactUsScreen from './src/Screen/ContactUsScreen';
 import SubCourseScreen from './src/Screen/SubCourseScreen';
+import RazorpayPaymentScreen from './src/Screen/RazorpayPaymentScreen';
+import CourseCertificateDownload from './src/Screen/CourseCertificateDownload';
+import InternshipLetterScreen from './src/Screen/InternshipLetterScreen';
 
 const Stack = createStackNavigator();
 
@@ -52,7 +53,6 @@ const App = () => {
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
         <Stack.Screen name="ContinueLearning" component={ContinueLearningScreen} />
         <Stack.Screen name="Notification" component={NotificationScreen} />
-        <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
         <Stack.Screen name="LessonVideo" component={LessonVideoScreen} />
         <Stack.Screen name="PaymentGateway" component={PaymentGatewayScreen} />
         <Stack.Screen name="Enroll" component={EnrollScreen} />
@@ -60,7 +60,6 @@ const App = () => {
         <Stack.Screen name="Student" component={StudentScreen} />
         <Stack.Screen name="Review" component={ReviewScreen} />
         <Stack.Screen name="Feedback" component={FeedbackScreen} />
-        <Stack.Screen name="PaymentSuccessful" component={PaymentSuccessfulScreen} />
         <Stack.Screen name="Setting" component={SettingScreen} />
         <Stack.Screen name="BadgeCourse" component={BadgeCourseScreen} />
         <Stack.Screen name="InvoiceHistory" component={InvoiceHistoryScreen} />
@@ -68,7 +67,12 @@ const App = () => {
         <Stack.Screen name="TermsCondition" component={TermsConditionScreen} />
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />
         <Stack.Screen name="SubCourse" component={SubCourseScreen} />
-              </Stack.Navigator>
+        <Stack.Screen name="RazorpayPayment" component={RazorpayPaymentScreen} />
+        <Stack.Screen name="CourseCertificate" component={CourseCertificateDownload} />
+
+        <Stack.Screen name="Internship" component={InternshipLetterScreen} />
+
+        </Stack.Navigator>
       </NavigationContainer>
     </Provider>
   );

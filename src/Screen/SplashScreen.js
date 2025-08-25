@@ -1,12 +1,32 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Image, StyleSheet, Dimensions, Animated } from 'react-native';
+import { View, Image, StyleSheet, Dimensions, Animated, Text } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { useAppSelector, useAppDispatch } from '../Redux/hooks';
+import { loadUserFromStorage, validateStoredToken } from '../Redux/userSlice';
 
 const { width, height } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, isLoading } = useAppSelector((state) => state.user);
+  
   const logoAnimation = useRef(new Animated.Value(-200)).current;
   const opacityAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Load user data from storage when component mounts
+    const initializeApp = async () => {
+      console.log('🚀 SplashScreen: Initializing app...');
+      
+      // First load user data from storage
+      await dispatch(loadUserFromStorage());
+      
+      // Then validate the stored token if we have one
+      await dispatch(validateStoredToken());
+    };
+    
+    initializeApp();
+  }, [dispatch]);
 
   useEffect(() => {
     // Animate logo from top to center
@@ -23,13 +43,45 @@ const SplashScreen = ({ navigation }) => {
       }),
     ]).start();
 
-    // Navigate to OnBoard after animation
+    // Navigate based on authentication status after animation
     const timer = setTimeout(() => {
-      navigation.replace('OnBoard');
+      if (isLoading) {
+        // Still loading, wait a bit more
+        console.log('⏳ SplashScreen: Still loading user data, waiting...');
+        return;
+      }
+      
+      if (isAuthenticated) {
+        console.log('✅ SplashScreen: User is authenticated, navigating to Home');
+        navigation.replace('Home');
+      } else {
+        console.log('❌ SplashScreen: User is not authenticated, navigating to OnBoard');
+        navigation.replace('OnBoard');
+      }
     }, 3000); // 3 seconds total
 
     return () => clearTimeout(timer);
-  }, [navigation, logoAnimation, opacityAnimation]);
+  }, [navigation, logoAnimation, opacityAnimation, isAuthenticated, isLoading]);
+
+  // Additional effect to handle navigation when authentication status changes
+  useEffect(() => {
+    if (!isLoading && isAuthenticated !== undefined) {
+      const timer = setTimeout(() => {
+        if (isAuthenticated) {
+          console.log('✅ SplashScreen: User authenticated, navigating to Home');
+          navigation.replace('Home');
+        } else {
+          console.log('❌ SplashScreen: User not authenticated, navigating to OnBoard');
+          navigation.replace('OnBoard');
+        }
+      }, 500); // Small delay to ensure smooth transition
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, isLoading, navigation]);
+
+  // Show loading message if still initializing
+  const showLoadingMessage = isLoading || isAuthenticated === undefined;
 
   return (
     <View style={styles.container}>
@@ -53,6 +105,9 @@ const SplashScreen = ({ navigation }) => {
             style={styles.logo}
             resizeMode="contain"
           />
+          {showLoadingMessage && (
+            <Text style={styles.loadingText}>Initializing...</Text>
+          )}
         </Animated.View>
       </LinearGradient>
     </View>
@@ -77,6 +132,12 @@ const styles = StyleSheet.create({
     height: height * 0.3,
     maxWidth: 280,
     maxHeight: 200,
+  },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 18,
+    color: '#333',
+    fontWeight: 'bold',
   },
 });
 
