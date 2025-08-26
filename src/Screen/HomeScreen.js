@@ -71,6 +71,22 @@ const HomeScreen = () => {
     }
   }, [token]);
 
+  // Auto-rotate promo images in carousel
+  useEffect(() => {
+    if (bannerData.promos && bannerData.promos.length > 1) {
+      console.log(`🔄 HomeScreen: Setting up auto-rotation for ${bannerData.promos.length} promo images`);
+      const interval = setInterval(() => {
+        setCurrentCarouselIndex(prevIndex => {
+          const newIndex = (prevIndex + 1) % bannerData.promos.length;
+          console.log(`🔄 HomeScreen: Auto-rotating promo from index ${prevIndex} to ${newIndex}`);
+          return newIndex;
+        });
+      }, 3000); // Change image every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [bannerData.promos]);
+
   // Function to fetch featured courses from API
   const fetchFeaturedCourses = async () => {
     try {
@@ -106,8 +122,8 @@ const HomeScreen = () => {
         setFeaturedCourses(transformedFeaturedCourses);
         
       } else {
-        console.log('❌ HomeScreen: Failed to fetch featured courses:', result.data?.message);
-        console.log('❌ HomeScreen: API response:', result);
+        console.log(' HomeScreen: Failed to fetch featured courses:', result.data?.message);
+        console.log(' HomeScreen: API response:', result);
         setFeaturedError(result.data?.message || 'Failed to fetch featured courses');
         // Keep existing featured courses if API fails
       }
@@ -240,16 +256,14 @@ const HomeScreen = () => {
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
         console.log('🎉 HomeScreen: Newest courses received successfully!');
-        console.log('📚 HomeScreen: Number of newest courses:', apiCourses.length);
+       
         console.log('📚 HomeScreen: First newest course:', apiCourses[0]);
         
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
           
-          console.log(`📚 HomeScreen: Newest Course ${index + 1} - ${course.subcourseName}`);
-          console.log(`🖼️ HomeScreen: Thumbnail URL: ${course.thumbnailImageUrl || 'Using fallback image'}`);
-          console.log(`🖼️ HomeScreen: Final image object:`, courseImage);
+          
           console.log(`🖼️ HomeScreen: Image type: ${course.thumbnailImageUrl ? 'URI' : 'require'}`);
           
           return {
@@ -308,6 +322,11 @@ const HomeScreen = () => {
         if (result.success) {
           setBannerData(result.data);
           console.log('✅ HomeScreen: Banner data set successfully:', result.data);
+          console.log('🖼️ HomeScreen: Number of promo images:', result.data.promos?.length || 0);
+          if (result.data.promos && result.data.promos.length > 0) {
+            console.log('🖼️ HomeScreen: First promo image URL:', result.data.promos[0].promo);
+            console.log('🖼️ HomeScreen: All promo URLs:', result.data.promos.map(p => p.promo));
+          }
         } else {
           console.log('❌ HomeScreen: Banner API returned success: false');
           setBannerError(result.message || 'Failed to fetch banner data');
@@ -377,17 +396,17 @@ const HomeScreen = () => {
   const toggleFavorite = async (courseId, currentFavoriteStatus) => {
     try {
      
-      console.log('❤️ HomeScreen: Token available:', !!token);
+      console.log(' HomeScreen: Token available:', !!token);
       
       // Check if token exists
       if (!token) {
-        console.error('❌ HomeScreen: No token available for API call');
+        console.error(' HomeScreen: No token available for API call');
         return;
       }
       
       // Check if courseId exists
       if (!courseId) {
-        console.error('❌ HomeScreen: No courseId available for API call');
+        console.error('HomeScreen: No courseId available for API call');
         return;
       }
       
@@ -597,7 +616,28 @@ const HomeScreen = () => {
       isPromoItem = false;
     } else if (index === 2 && bannerData.promos && bannerData.promos.length > 0) {
       // Third item: promos (complete image banner, no text, no buttons, no course details)
-      const promo = bannerData.promos[0];
+      // Use currentCarouselIndex to cycle through all promo images
+      const promoIndex = currentCarouselIndex % bannerData.promos.length;
+      const promo = bannerData.promos[promoIndex];
+      
+      console.log(`🖼️ HomeScreen: Rendering promo ${promoIndex + 1}/${bannerData.promos.length}:`, promo.promo);
+      
+      displayItem = {
+        ...item,
+        image: promo.promo ? { uri: promo.promo } : item.image,
+      };
+      buttonText = ''; // No button for promo image
+      progress = 0;
+      showProgressCircle = false; // Don't show progress circle for promo
+      showCourseDetails = false; // Don't show course details for promo
+      isPromoItem = true; // Mark as promo item
+    } else if (index >= 3 && bannerData.promos && bannerData.promos.length > 0) {
+      // Additional items: More promo images
+      const promoIndex = (index - 3 + currentCarouselIndex) % bannerData.promos.length;
+      const promo = bannerData.promos[promoIndex];
+      
+      console.log(`🖼️ HomeScreen: Rendering additional promo ${promoIndex + 1}/${bannerData.promos.length} at index ${index}:`, promo.promo);
+      
       displayItem = {
         ...item,
         image: promo.promo ? { uri: promo.promo } : item.image,
@@ -806,20 +846,63 @@ const HomeScreen = () => {
                 style={styles.carousel}
                 contentContainerStyle={styles.carouselContentContainer}
               >
+                {/* Render featured courses first */}
                 {featuredCourses.map((course, index) => renderCarouselItem(course, index))}
+                
+                {/* Render additional promo images if available */}
+                {bannerData.promos && bannerData.promos.length > 0 && 
+                  bannerData.promos.slice(1).map((promo, index) => {
+                    const promoIndex = index + 1; // Start from second promo (first is already shown in index 2)
+                    console.log(`🖼️ HomeScreen: Rendering additional promo ${promoIndex + 1}/${bannerData.promos.length} at carousel index ${featuredCourses.length + index}:`, promo.promo);
+                    return (
+                      <View key={`promo-${promoIndex}`} style={styles.carouselItem}>
+                        <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
+                          <Image 
+                            source={{ uri: promo.promo }} 
+                            style={styles.carouselBannerImage} 
+                            resizeMode="cover" 
+                          />
+                        </View>
+                      </View>
+                    );
+                  })
+                }
               </ScrollView>
               
-              {/* Carousel Dots */}
+              {/* Carousel Dots - Show dots for all carousel items */}
               <View style={styles.dotsContainer}>
-                {featuredCourses.map((_, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.dot,
-                      currentCarouselIndex === index && styles.activeDot,
-                    ]}
-                  />
-                ))}
+                {(() => {
+                  const totalItems = featuredCourses.length + (bannerData.promos && bannerData.promos.length > 1 ? bannerData.promos.length - 1 : 0);
+                  console.log(`🖼️ HomeScreen: Total carousel items: ${totalItems} (${featuredCourses.length} featured + ${bannerData.promos && bannerData.promos.length > 1 ? bannerData.promos.length - 1 : 0} additional promos)`);
+                  
+                  return (
+                    <>
+                      {/* Dots for featured courses */}
+                      {featuredCourses.map((_, index) => (
+                        <View
+                          key={index}
+                          style={[
+                            styles.dot,
+                            currentCarouselIndex === index && styles.activeDot,
+                          ]}
+                        />
+                      ))}
+                      
+                      {/* Dots for additional promo images */}
+                      {bannerData.promos && bannerData.promos.length > 1 && 
+                        bannerData.promos.slice(1).map((_, index) => (
+                          <View
+                            key={`promo-dot-${index + 1}`}
+                            style={[
+                              styles.dot,
+                              currentCarouselIndex === (featuredCourses.length + index) && styles.activeDot,
+                            ]}
+                          />
+                        ))
+                      }
+                    </>
+                  );
+                })()}
               </View>
             </>
           )}
@@ -1152,6 +1235,22 @@ const styles = StyleSheet.create({
   activeDot: {
     backgroundColor: '#2285FA',
     width: getResponsiveSize(12),
+  },
+  promoDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: getResponsiveSize(10),
+  },
+  promoDot: {
+    width: getResponsiveSize(6),
+    height: getResponsiveSize(6),
+    borderRadius: getResponsiveSize(3),
+    backgroundColor: '#D0D0D0',
+    marginHorizontal: getResponsiveSize(3),
+  },
+  activePromoDot: {
+    backgroundColor: '#FF8800',
+    width: getResponsiveSize(8),
   },
   filterContainer: {
     flexDirection: 'row',
