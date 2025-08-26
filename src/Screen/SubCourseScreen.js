@@ -238,8 +238,9 @@ const SubCourseScreen = ({ navigation, route }) => {
                 style={styles.modalButton}
                 onPress={() => {
                   console.log('📜 SubCourseScreen: Get Internship Letter clicked');
+                  console.log('📜 SubCourseScreen: Passing courseId (not subcourseId):', courseId);
                   setShowCompletionPopup(false);
-                  // Navigate to internship letter screen or handle action
+                  // Navigate to internship letter screen with course ID (not subcourse ID)
                   navigation.navigate('Internship', { courseId: courseId });
                 }}
               >

@@ -425,10 +425,7 @@ const HomeScreen = () => {
       
       const result = await courseAPI.toggleFavorite(token, courseId);
       
-      console.log('❤️ HomeScreen: API result received:', result);
-      console.log('❤️ HomeScreen: API result.success:', result.success);
-      console.log('❤️ HomeScreen: API result.data:', result.data);
-      console.log('❤️ HomeScreen: API result.status:', result.status);
+     
       
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response
@@ -681,9 +678,26 @@ const HomeScreen = () => {
                 style={styles.continueButton}
                 onPress={() => {
                   console.log('Button pressed:', buttonText);
-                  if (buttonText === 'Continue Learning') {
-                    navigation.navigate('Enroll');
-                  } else if (buttonText === 'Explore') {
+                  let courseIdToPass = null;
+                  
+                  // Get the correct course ID based on which item this is
+                  if (index === 0 && bannerData.recentSubcourse) {
+                    // First item: recentSubcourse
+                    courseIdToPass = bannerData.recentSubcourse._id;
+                    console.log('🎯 HomeScreen: Navigating with recentSubcourse ID:', courseIdToPass);
+                  } else if (index === 1 && bannerData.recentPurchasedSubcourse) {
+                    // Second item: recentPurchasedSubcourse
+                    courseIdToPass = bannerData.recentPurchasedSubcourse._id;
+                    console.log('🎯 HomeScreen: Navigating with recentPurchasedSubcourse ID:', courseIdToPass);
+                  } else {
+                    // Fallback to featured course ID
+                    courseIdToPass = item.id;
+                    console.log('🎯 HomeScreen: Navigating with featured course ID:', courseIdToPass);
+                  }
+                  
+                  if (courseIdToPass) {
+                    navigation.navigate('Enroll', { courseId: courseIdToPass });
+                  } else {
                     navigation.navigate('Enroll');
                   }
                 }}

@@ -43,12 +43,13 @@ const FavouritesScreen = ({ navigation }) => {
         
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => ({
-          id: course.subcourseId || index + 1,
+          id: course.id?._id || course.subcourseId || index + 1,
           title: course.subcourseName || 'Course Title',
           lessons: `${course.totalLessons || 0} lessons`,
           rating: course.avgRating ? course.avgRating.toString() : '4.8',
           price: `₹${course.price || 0}.00`,
           thumbnail: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Frame1.png'),
+          _id: course.id?._id, // Store the actual _id for navigation
         }));
         
         setFavouriteCourses(transformedCourses);
@@ -68,7 +69,10 @@ const FavouritesScreen = ({ navigation }) => {
     <TouchableOpacity 
       key={course.id} 
       style={styles.courseCard}
-      onPress={() => navigation.navigate('Enroll', { courseId: course.subcourseId })}
+      onPress={() => {
+        console.log('❤️ FavouritesScreen: Navigating to Enroll with courseId:', course._id);
+        navigation.navigate('Enroll', { courseId: course._id });
+      }}
     >
       <Image source={course.thumbnail} style={styles.courseThumbnail} resizeMode="cover" />
       <View style={styles.courseInfo}>

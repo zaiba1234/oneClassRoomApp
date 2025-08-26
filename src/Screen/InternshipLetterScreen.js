@@ -68,6 +68,8 @@ const InternshipLetterScreen = () => {
         
         if (result.success && result.data) {
           setRequestData(result.data);
+          // After successful request, open Razorpay payment
+          openRazorpayPayment(result.data);
         }
       } else {
         const errorResult = await response.json();
@@ -90,6 +92,152 @@ const InternshipLetterScreen = () => {
       );
     } finally {
       setIsRequesting(false);
+    }
+  };
+
+  // Function to open Razorpay payment interface
+  const openRazorpayPayment = async (requestData) => {
+    try {
+      console.log('💳 InternshipLetterScreen: Opening Razorpay payment interface...');
+      
+      // Create order for internship letter payment
+      const orderUrl = getApiUrl('/api/user/internshipLetter/create-order');
+      console.log('🌐 InternshipLetterScreen: Order API URL:', orderUrl);
+      
+      const orderResponse = await fetch(orderUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseId: courseId,
+          amount: 9900, // ₹99.00 in paise
+          currency: 'INR'
+        }),
+      });
+      
+      if (orderResponse.ok) {
+        const orderResult = await orderResponse.json();
+        console.log('✅ InternshipLetterScreen: Order created successfully:', orderResult);
+        
+        if (orderResult.success && orderResult.data) {
+          const orderData = orderResult.data;
+          
+          // Open Razorpay payment interface
+          const paymentData = await handlePaymentWithRazorpay(orderData);
+          
+          if (paymentData) {
+            console.log('🎉 InternshipLetterScreen: Payment successful:', paymentData);
+            // Handle successful payment
+            handleSuccessfulPayment(paymentData, orderData.orderId);
+          }
+        }
+      } else {
+        const errorResult = await orderResponse.json();
+        console.log('❌ InternshipLetterScreen: Failed to create order:', errorResult.message);
+        Alert.alert('Error', 'Failed to create payment order. Please try again.');
+      }
+    } catch (error) {
+      console.error('💥 InternshipLetterScreen: Error opening Razorpay payment:', error);
+      Alert.alert('Error', 'Failed to open payment interface. Please try again.');
+    }
+  };
+
+  // Function to handle payment with Razorpay
+  const handlePaymentWithRazorpay = async (orderData) => {
+    try {
+      console.log('💳 InternshipLetterScreen: Processing Razorpay payment...');
+      
+      // Use the existing Razorpay implementation from HomeScreen
+      // This will open the Razorpay payment interface
+      const paymentData = await new Promise((resolve, reject) => {
+        // Store the options and callbacks globally so WebView can access them
+        global.razorpayOptions = {
+          key: orderData.key,
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: 'Learning Saint',
+          description: 'Internship Letter Payment',
+          order_id: orderData.orderId,
+          prefill: {
+            email: 'student@learningsaint.com',
+            contact: '9876543210',
+            name: 'Student Name'
+          },
+          theme: {
+            color: '#FF6B35'
+          },
+          modal: {
+            ondismiss: () => {
+              console.log('🔒 InternshipLetterScreen: Razorpay modal dismissed');
+              reject(new Error('PAYMENT_CANCELLED'));
+            }
+          }
+        };
+        
+        global.razorpayResolve = resolve;
+        global.razorpayReject = reject;
+        
+        // Navigate to Razorpay payment screen
+        navigation.navigate('RazorpayPayment', { options: global.razorpayOptions });
+      });
+      
+      return paymentData;
+    } catch (error) {
+      console.log('❌ InternshipLetterScreen: Razorpay error:', error);
+      if (error.message === 'PAYMENT_CANCELLED') {
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+      } else {
+        Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
+      }
+      return null;
+    }
+  };
+
+  // Function to handle successful payment
+  const handleSuccessfulPayment = async (paymentData, orderId) => {
+    try {
+      console.log('🎉 InternshipLetterScreen: Handling successful payment...');
+      
+      // Verify payment with backend
+      const verificationUrl = getApiUrl('/api/user/internshipLetter/verify-payment');
+      console.log('🌐 InternshipLetterScreen: Verification API URL:', verificationUrl);
+      
+      const verificationResponse = await fetch(verificationUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId: orderId,
+          paymentId: paymentData.razorpay_payment_id || paymentData.razorpayPaymentId,
+          signature: paymentData.razorpay_signature || paymentData.razorpaySignature,
+          courseId: courseId
+        }),
+      });
+      
+      if (verificationResponse.ok) {
+        const verificationResult = await verificationResponse.json();
+        console.log('✅ InternshipLetterScreen: Payment verified successfully:', verificationResult);
+        
+        if (verificationResult.success) {
+          Alert.alert(
+            'Success! 🎉',
+            'Payment successful! Your internship letter will be available shortly.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert('Error', 'Payment verification failed. Please contact support.');
+        }
+      } else {
+        console.log('❌ InternshipLetterScreen: Payment verification failed');
+        Alert.alert('Error', 'Payment verification failed. Please contact support.');
+      }
+    } catch (error) {
+      console.error('💥 InternshipLetterScreen: Error verifying payment:', error);
+      Alert.alert('Error', 'Failed to verify payment. Please contact support.');
     }
   };
 
@@ -161,9 +309,9 @@ const InternshipLetterScreen = () => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.downloadButtonText}>
-              {isRequesting ? 'Requesting...' : 'Download for ₹99/-'}
-            </Text>
+                      <Text style={styles.downloadButtonText}>
+            {isRequesting ? 'Processing...' : 'Get Internship Letter for ₹99/-'}
+          </Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
