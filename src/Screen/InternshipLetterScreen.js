@@ -126,7 +126,9 @@ const InternshipLetterScreen = () => {
         {/* Congratulations Section */}
         <View style={styles.congratulationsContainer}>
           <Text style={styles.congratulationsText}>Congratulations</Text>
-          <Text style={styles.downloadText}>Download Internship letter</Text>
+          <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
+          
+          {/* Dynamic Course Name - can be added later if needed */}
         </View>
 
         {/* Certificate Image */}
@@ -200,55 +202,48 @@ const styles = StyleSheet.create({
     width: getResponsiveSize(40),
   },
   scrollView: {
-    flex: 1,
+    // flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: getResponsiveSize(20),
+    // paddingBottom: getResponsiveSize(20),
   },
   congratulationsContainer: {
     alignItems: 'center',
-    paddingTop: getResponsiveSize(30),
-    paddingBottom: getResponsiveSize(20),
+    // paddingTop: getResponsiveSize(40),
+    // paddingBottom: getResponsiveSize(10), // Reduced from 30 to 10
   },
   congratulationsText: {
-    fontSize: getResponsiveSize(32),
+    fontSize: getResponsiveSize(36),
     fontWeight: 'bold',
     color: '#2285FA',
     fontStyle: 'italic',
+    // marginBottom: getResponsiveSize(8),
     textAlign: 'center',
-    marginBottom: getResponsiveSize(8),
   },
-  downloadText: {
+  congratulationsSubtext: {
     fontSize: getResponsiveSize(16),
     color: '#333',
-    fontWeight: '500',
+    fontWeight: '400',
     textAlign: 'center',
   },
   certificateContainer: {
     alignItems: 'center',
-    paddingHorizontal: getResponsiveSize(20),
-    marginBottom: getResponsiveSize(25),
+    // marginVertical: getResponsiveSize(10), // Added small margin to control gap
   },
   certificateImage: {
-    width: width - getResponsiveSize(40),
-    height: getResponsiveSize(400),
-    borderRadius: getResponsiveSize(12),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
+    width: width - getResponsiveSize(-10),
+    height: getResponsiveSize(450),
   },
   descriptionContainer: {
     paddingHorizontal: getResponsiveSize(20),
-    marginBottom: getResponsiveSize(20),
+    // marginTop: getResponsiveSize(10), // Reduced from potential larger gap
   },
   descriptionText: {
     fontSize: getResponsiveSize(16),
     color: '#333',
     lineHeight: getResponsiveSize(24),
-    textAlign: 'left',
+    textAlign: 'center',
     fontWeight: '400',
   },
   downloadButtonContainer: {

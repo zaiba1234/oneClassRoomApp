@@ -132,14 +132,16 @@ const EnrollScreen = ({ navigation, route }) => {
     }
   }, [route.params]);
 
+  // Debug log for isCompleted changes
+  useEffect(() => {
+    console.log('🔍 EnrollScreen: courseData.isCompleted changed to:', courseData.isCompleted);
+    console.log('🔍 EnrollScreen: courseData object:', JSON.stringify(courseData, null, 2));
+  }, [courseData.isCompleted]);
+
   // Check if course is completed and navigate to BadgeCourseScreen
   useEffect(() => {
     if (courseData.isCompleted && !route.params?.fromFeedback) {
-      console.log('🎯 EnrollScreen: Course completed! Navigating to BadgeCourseScreen...');
-      console.log('🔍 EnrollScreen: Navigation params being sent:');
-      console.log('  - courseId:', courseId);
-      console.log('  - courseName:', courseData.title);
-      console.log('  - returnToEnroll:', true);
+      console.log('🎯 EnrollScreen: Course is completed, navigating to BadgeCourseScreen');
       
       const navigationParams = { 
         courseId: courseId,
@@ -198,14 +200,14 @@ const EnrollScreen = ({ navigation, route }) => {
           totalLessons: apiCourse.totalLessons || 0,
           lessons: Array.isArray(apiCourse.lessons) ? apiCourse.lessons : [],
           paymentStatus: apiCourse.paymentStatus || false,
-          isCompleted: apiCourse.isCompleted || false,
+          isCompleted: Boolean(apiCourse.isCompleted), // Ensure boolean conversion
         };
         
        
        
-        // Force set isCompleted to true for testing
+        // Set isCompleted from API response
         if (apiCourse.isCompleted === true) {
-          console.log('🎯 Force setting isCompleted to true');
+          console.log('🎯 Setting isCompleted to true from API response');
           transformedCourse.isCompleted = true;
         }
         

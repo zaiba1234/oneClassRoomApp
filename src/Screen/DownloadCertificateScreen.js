@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { getApiUrl } from '../API/config';
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');1
 
 // Responsive dimensions
 const getResponsiveSize = (size) => {

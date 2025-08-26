@@ -69,9 +69,7 @@ const App = () => {
         <Stack.Screen name="SubCourse" component={SubCourseScreen} />
         <Stack.Screen name="RazorpayPayment" component={RazorpayPaymentScreen} />
         <Stack.Screen name="CourseCertificate" component={CourseCertificateDownload} />
-
         <Stack.Screen name="Internship" component={InternshipLetterScreen} />
-
         </Stack.Navigator>
       </NavigationContainer>
     </Provider>
