@@ -163,7 +163,7 @@ const SubCourseScreen = ({ navigation, route }) => {
     <TouchableOpacity 
       key={course.id} 
       style={styles.courseCard}
-      onPress={() => navigation.navigate('Enroll', { courseId: course.subcourseId })}
+      onPress={() => navigation.navigate('Enroll', { courseId: course.id })}
     >
       <Image source={course.thumbnail} style={styles.courseThumbnail} resizeMode="cover" />
       <View style={styles.courseInfo}>
