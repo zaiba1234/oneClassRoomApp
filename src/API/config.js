@@ -4,9 +4,18 @@ const API_CONFIG = {
   
   // Base URL configuration for different platforms
   BASE_URL: Platform.select({
-    android: 'http://10.0.2.2:3000', // Android emulator
-   
+    android: 'http://192.168.1.39:3000', 
+    // android: 'http://10.0.2.2:3000', 
+      
+      // A android: 'http://10.0.2.2:3000', ndroid emulator
+    ios: 'http://localhost:3000', // iOS simulator
+    default: 'http://localhost:3000', // Default fallback
   }),
+
+  // Razorpay configuration
+  RAZORPAY: {
+    KEY: 'rzp_test_YOUR_KEY', // Replace with your actual Razorpay test key
+  },
 
   // API Endpoints
   ENDPOINTS: {
@@ -16,12 +25,22 @@ const API_CONFIG = {
     VERIFY_OTP: '/api/auth/verify-otp',
     GET_USER_PROFILE: '/api/user/profile/get-profile',
     UPDATE_USER_PROFILE: '/api/user/profile/update-profile',
+    
+    // Course endpoints
     GET_ALL_SUBCOURSES: '/api/user/course/getAll-subcourses',
     GET_POPULAR_SUBCOURSES: '/api/user/course/getPopular-subcourses',
     GET_NEWEST_SUBCOURSES: '/api/user/course/getNewest-subcourses',
     GET_SUBCOURSE_BY_ID: '/api/user/course/getsubcourseById',
     GET_ALL_COURSES: '/api/user/course/getAllCourses',
-     
+    GET_PURCHASED_SUBCOURSES: '/api/user/course/purchased-subcourses',
+    GET_IN_PROGRESS_SUBCOURSES: '/api/user/course/in-progress-subcourses',
+    GET_COMPLETED_SUBCOURSES: '/api/user/course/completed-subcourses',
+    GET_PURCHASED_COURSE: '/api/user/course/get-purchased-course',
+    HOMEPAGE_BANNER: '/api/user/course/homePage-banner',
+    
+    // Favorite endpoints
+    GET_FAVORITE_COURSES: '/api/user/favorite/get-favouriteCourses', // Fixed spelling: favourite -> favorite
+    ADD_FAVORITE_COURSE: '/api/user/favorite/add-favouriteCourse', // Fixed spelling: favourite -> favorite
   },
 
   HEADERS: {

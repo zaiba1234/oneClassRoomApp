@@ -15,7 +15,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
-import { getApiUrl } from '../API/config';
+import { getApiUrl, API_CONFIG } from '../API/config';
+import { courseAPI } from '../API/courseAPI';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,13 +33,25 @@ const InternshipLetterScreen = () => {
   const [isRequesting, setIsRequesting] = useState(false);
   const [requestData, setRequestData] = useState(null);
 
+  // Function to get user profile data (same as EnrollScreen)
+  const getUserProfileData = () => {
+    // For now, return default values - you can enhance this later
+    return {
+      email: 'student@learningsaint.com',
+      contact: '9876543210',
+      name: 'Student Name'
+    };
+  };
+
   // Get courseId from route params (coming from SubCourseScreen)
   const courseId = route.params?.courseId;
 
-  // Fetch internship letter request data when component mounts
+  // Don't automatically request internship letter when component mounts
+  // Only request when user clicks the download button
   useEffect(() => {
     if (courseId && token) {
-      requestInternshipLetter();
+      console.log('📜 InternshipLetterScreen: Component mounted with courseId:', courseId);
+      // Don't auto-request - wait for user to click download button
     }
   }, [courseId, token]);
 
@@ -62,24 +75,24 @@ const InternshipLetterScreen = () => {
         }),
       });
       
-      if (response.ok) {
-        const result = await response.json();
+      const result = await response.json();
+      console.log('📜 InternshipLetterScreen: API Response Status:', response.status);
+      console.log('📜 InternshipLetterScreen: API Response:', result);
+      
+      if (response.ok && result.success && result.data) {
         console.log('✅ InternshipLetterScreen: Internship letter request successful:', result);
-        
-        if (result.success && result.data) {
-          setRequestData(result.data);
-          // After successful request, open Razorpay payment
-          openRazorpayPayment(result.data);
-        }
+        console.log('📜 InternshipLetterScreen: Request data received:', result.data);
+        setRequestData(result.data);
+        // After successful request, open Razorpay payment
+        openRazorpayPayment(result.data);
       } else {
-        const errorResult = await response.json();
         console.log('❌ InternshipLetterScreen: Failed to request internship letter:', response.status);
-        console.log('❌ InternshipLetterScreen: Error message:', errorResult.message);
+        console.log('❌ InternshipLetterScreen: Error message:', result.message);
         
         // Show error message to user
         Alert.alert(
           'Request Failed',
-          errorResult.message || 'Failed to request internship letter',
+          result.message || 'Failed to request internship letter',
           [{ text: 'OK' }]
         );
       }
@@ -99,44 +112,38 @@ const InternshipLetterScreen = () => {
   const openRazorpayPayment = async (requestData) => {
     try {
       console.log('💳 InternshipLetterScreen: Opening Razorpay payment interface...');
+      console.log('📜 InternshipLetterScreen: Using request data:', requestData);
       
-      // Create order for internship letter payment
-      const orderUrl = getApiUrl('/api/user/internshipLetter/create-order');
-      console.log('🌐 InternshipLetterScreen: Order API URL:', orderUrl);
+      // Use the data from the first API response directly
+      // The first API already creates the order and returns razorpayOrderId
+      console.log('📜 InternshipLetterScreen: Full requestData structure:', JSON.stringify(requestData, null, 2));
       
-      const orderResponse = await fetch(orderUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          courseId: courseId,
-          amount: 9900, // ₹99.00 in paise
-          currency: 'INR'
-        }),
-      });
-      
-      if (orderResponse.ok) {
-        const orderResult = await orderResponse.json();
-        console.log('✅ InternshipLetterScreen: Order created successfully:', orderResult);
+      if (requestData.internshipLetter && requestData.internshipLetter.razorpayOrderId) {
+        console.log('✅ InternshipLetterScreen: Using existing order ID:', requestData.internshipLetter.razorpayOrderId);
         
-        if (orderResult.success && orderResult.data) {
-          const orderData = orderResult.data;
-          
-          // Open Razorpay payment interface
-          const paymentData = await handlePaymentWithRazorpay(orderData);
-          
-          if (paymentData) {
-            console.log('🎉 InternshipLetterScreen: Payment successful:', paymentData);
-            // Handle successful payment
-            handleSuccessfulPayment(paymentData, orderData.orderId);
-          }
+        // Create order data from the first API response - using the same structure as EnrollScreen
+        const orderData = {
+          key: API_CONFIG.RAZORPAY.KEY, // Use Razorpay key from config
+          amount: requestData.internshipLetter.paymentAmount * 100, // Convert to paise (₹99 = 9900 paise)
+          currency: requestData.internshipLetter.paymentCurrency || 'INR',
+          orderId: requestData.internshipLetter.razorpayOrderId,
+        };
+        
+        console.log('💳 InternshipLetterScreen: Order data prepared:', orderData);
+        
+        // Open Razorpay payment interface using the same method as EnrollScreen
+        const paymentData = await handlePaymentWithRazorpay(orderData);
+        
+        if (paymentData) {
+          console.log('🎉 InternshipLetterScreen: Payment successful:', paymentData);
+          // Handle successful payment
+          handleSuccessfulPayment(paymentData, requestData.internshipLetter.razorpayOrderId);
         }
       } else {
-        const errorResult = await orderResponse.json();
-        console.log('❌ InternshipLetterScreen: Failed to create order:', errorResult.message);
-        Alert.alert('Error', 'Failed to create payment order. Please try again.');
+        console.log('❌ InternshipLetterScreen: No order ID found in response');
+        console.log('❌ InternshipLetterScreen: requestData.internshipLetter:', requestData.internshipLetter);
+        console.log('❌ InternshipLetterScreen: razorpayOrderId:', requestData.internshipLetter?.razorpayOrderId);
+        Alert.alert('Error', 'No payment order found. Please try again.');
       }
     } catch (error) {
       console.error('💥 InternshipLetterScreen: Error opening Razorpay payment:', error);
@@ -144,53 +151,59 @@ const InternshipLetterScreen = () => {
     }
   };
 
-  // Function to handle payment with Razorpay
+  // Function to handle payment with Razorpay - using the exact same pattern as EnrollScreen
   const handlePaymentWithRazorpay = async (orderData) => {
     try {
-      console.log('💳 InternshipLetterScreen: Processing Razorpay payment...');
+      console.log('💳 InternshipLetterScreen: Opening Razorpay payment interface...');
       
-      // Use the existing Razorpay implementation from HomeScreen
-      // This will open the Razorpay payment interface
-      const paymentData = await new Promise((resolve, reject) => {
-        // Store the options and callbacks globally so WebView can access them
-        global.razorpayOptions = {
-          key: orderData.key,
-          amount: orderData.amount,
-          currency: orderData.currency,
-          name: 'Learning Saint',
-          description: 'Internship Letter Payment',
-          order_id: orderData.orderId,
-          prefill: {
-            email: 'student@learningsaint.com',
-            contact: '9876543210',
-            name: 'Student Name'
-          },
-          theme: {
-            color: '#FF6B35'
-          },
-          modal: {
-            ondismiss: () => {
-              console.log('🔒 InternshipLetterScreen: Razorpay modal dismissed');
-              reject(new Error('PAYMENT_CANCELLED'));
-            }
+      // Use the exact same Razorpay options structure as EnrollScreen
+      const userProfile = getUserProfileData();
+      const razorpayOptions = {
+        key: orderData.key, // Your Razorpay key from API response
+        amount: orderData.amount, // Amount in paise (9900 = ₹99)
+        currency: orderData.currency,
+        name: 'Learning Saint',
+        description: 'Internship Letter Payment',
+        order_id: orderData.orderId,
+        prefill: {
+          email: userProfile.email,
+          contact: userProfile.contact,
+          name: userProfile.name
+        },
+        theme: {
+          color: '#FF6B35'
+        },
+        modal: {
+          ondismiss: () => {
+            console.log('🔒 InternshipLetterScreen: Razorpay modal dismissed');
           }
-        };
-        
+        }
+      };
+      
+      console.log('🎨 InternshipLetterScreen: Razorpay options configured:', razorpayOptions);
+      
+      // Validate Razorpay options
+      if (!razorpayOptions.key || !razorpayOptions.amount || !razorpayOptions.order_id) {
+        throw new Error('Invalid Razorpay options: missing key, amount, or order_id');
+      }
+      
+      // Use the same global pattern as EnrollScreen
+      global.razorpayOptions = razorpayOptions;
+      global.razorpayResolve = null;
+      global.razorpayReject = null;
+      
+      // Navigate to Razorpay payment screen
+      navigation.navigate('RazorpayPayment', { options: razorpayOptions });
+      
+      // Return a promise that will be resolved by the RazorpayPayment screen
+      return new Promise((resolve, reject) => {
         global.razorpayResolve = resolve;
         global.razorpayReject = reject;
-        
-        // Navigate to Razorpay payment screen
-        navigation.navigate('RazorpayPayment', { options: global.razorpayOptions });
       });
       
-      return paymentData;
     } catch (error) {
       console.log('❌ InternshipLetterScreen: Razorpay error:', error);
-      if (error.message === 'PAYMENT_CANCELLED') {
-        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
-      } else {
-        Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
-      }
+      Alert.alert('Error', 'Failed to open Razorpay payment interface. Please try again.');
       return null;
     }
   };

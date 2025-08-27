@@ -8,16 +8,22 @@ import {
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import { useFocusEffect } from '@react-navigation/native';
 
 const FavouritesScreen = ({ navigation }) => {
   const { token } = useAppSelector((state) => state.user);
   const [favouriteCourses, setFavouriteCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [togglingFavorites, setTogglingFavorites] = useState(new Set());
 
   // Fetch favorite courses when component mounts
   useEffect(() => {
@@ -28,6 +34,15 @@ const FavouritesScreen = ({ navigation }) => {
       setError('No token available');
     }
   }, [token]);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (token) {
+        fetchFavoriteCourses();
+      }
+    }, [token])
+  );
 
   const fetchFavoriteCourses = async () => {
     try {
@@ -50,6 +65,7 @@ const FavouritesScreen = ({ navigation }) => {
           price: `₹${course.price || 0}.00`,
           thumbnail: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Frame1.png'),
           _id: course.id?._id, // Store the actual _id for navigation
+          isFavorite: true, // All courses in favorites are favorited
         }));
         
         setFavouriteCourses(transformedCourses);
@@ -62,6 +78,68 @@ const FavouritesScreen = ({ navigation }) => {
       setError('Failed to load favorite courses');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchFavoriteCourses();
+    setRefreshing(false);
+  };
+
+  // Function to toggle favorite status (remove from favorites)
+  const toggleFavorite = async (courseId) => {
+    try {
+      console.log('❤️ FavouritesScreen: Toggling favorite for courseId:', courseId);
+      
+      // Check if token exists
+      if (!token) {
+        console.error('❌ FavouritesScreen: No token available for API call');
+        return;
+      }
+      
+      // Check if courseId exists
+      if (!courseId) {
+        console.error('❌ FavouritesScreen: No courseId available for API call');
+        return;
+      }
+      
+      // Check if already toggling this course to prevent double calls
+      if (togglingFavorites.has(String(courseId))) {
+        console.log('⚠️ FavouritesScreen: Already toggling this course, skipping...');
+        return;
+      }
+      
+      // Set loading state for this specific course
+      setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
+      
+      console.log('🚀 FavouritesScreen: Calling courseAPI.toggleFavorite...');
+      const result = await courseAPI.toggleFavorite(token, courseId);
+      
+      if (result.success && result.data.success) {
+        // Get the new favorite status from the API response
+        const newFavoriteStatus = result.data.data.isLike;
+        console.log('✅ FavouritesScreen: Favorite toggled successfully! New status:', newFavoriteStatus);
+        
+        if (!newFavoriteStatus) {
+          // Course was removed from favorites, remove it from the list
+          console.log('🗑️ FavouritesScreen: Course removed from favorites, updating list...');
+          setFavouriteCourses(prevCourses => 
+            prevCourses.filter(course => String(course._id) !== String(courseId))
+          );
+        }
+      } else {
+        console.log('❌ FavouritesScreen: Failed to toggle favorite:', result.data?.message);
+      }
+    } catch (error) {
+      console.error('💥 FavouritesScreen: Error toggling favorite:', error);
+    } finally {
+      // Remove loading state for this course
+      setTogglingFavorites(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(String(courseId));
+        return newSet;
+      });
     }
   };
 
@@ -81,8 +159,20 @@ const FavouritesScreen = ({ navigation }) => {
         <Text style={styles.courseRating}>⭐ {course.rating}</Text>
       </View>
       <View style={styles.courseActions}>
-
-        <Image source={require('../assests/images/Heart.png')} style={styles.heartIcon} resizeMode="contain" />
+        <TouchableOpacity 
+          style={[
+            styles.heartButton,
+            togglingFavorites.has(String(course._id)) && styles.heartButtonLoading
+          ]} 
+          onPress={() => toggleFavorite(course._id)}
+          disabled={togglingFavorites.has(String(course._id))}
+        >
+          <Icon 
+            name={togglingFavorites.has(String(course._id)) ? "heart-half" : "heart"} 
+            size={20} 
+            color={togglingFavorites.has(String(course._id)) ? "#FF8800" : "#FF0000"}
+          />
+        </TouchableOpacity>
         <Text style={styles.coursePrice}>{course.price}</Text>
       </View>
     </TouchableOpacity>
@@ -95,13 +185,26 @@ const FavouritesScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Favourites</Text>
+        {refreshing && (
+          <View style={styles.refreshIndicator}>
+            <ActivityIndicator size="small" color="#FF8800" />
+            <Text style={styles.refreshText}>Refreshing...</Text>
+          </View>
+        )}
       </View>
 
       {/* Course List */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         <View style={styles.courseList}>
           {isLoading ? (
             <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF8800" />
               <Text style={styles.loadingText}>Loading favorite courses...</Text>
             </View>
           ) : error ? (
@@ -212,10 +315,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 50,
   },
   loadingText: {
     fontSize: 18,
     color: '#666',
+    marginTop: 15,
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,
@@ -250,5 +356,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  heartButton: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  heartButtonLoading: {
+    opacity: 0.7,
+  },
+  refreshIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    backgroundColor: '#FF8800',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  refreshText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 5,
   },
 });

@@ -12,12 +12,15 @@ import {
   Animated,
   SafeAreaView,
   TextInput,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
-import { getApiUrl } from '../API/config';
+import { getApiUrl, ENDPOINTS } from '../API/config';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -62,14 +65,47 @@ const HomeScreen = () => {
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // State for user's favorite courses
+  const [userFavoriteCourses, setUserFavoriteCourses] = useState(new Set());
+
+  // State for refreshing
+  const [refreshing, setRefreshing] = useState(false);
+
   // Fetch course data when component mounts or token changes
   useEffect(() => {
     if (token) {
-      fetchCourseData();
-      fetchFeaturedCourses();
-      fetchBannerData();
+      // First fetch user's favorite courses, then fetch other data
+      const initializeData = async () => {
+        try {
+          console.log('🔄 HomeScreen: Initializing data in sequence...');
+          
+          // Step 1: Fetch user's favorite courses first
+          await fetchUserFavoriteCourses();
+          
+          // Step 2: After favorites are loaded, fetch course data
+          await fetchCourseData();
+          await fetchFeaturedCourses();
+          await fetchBannerData();
+          
+          console.log('✅ HomeScreen: All data initialized successfully!');
+        } catch (error) {
+          console.error('💥 HomeScreen: Error initializing data:', error);
+        }
+      };
+      
+      initializeData();
     }
   }, [token]);
+
+  // Auto-refresh favorites when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (token) {
+        console.log('🔄 HomeScreen: Screen focused, refreshing favorites...');
+        fetchUserFavoriteCourses();
+      }
+    }, [token])
+  );
 
   // Auto-rotate promo images in carousel
   useEffect(() => {
@@ -115,6 +151,7 @@ const HomeScreen = () => {
             progress: progress,
             image: courseImage,
             buttonText: progress > 0 ? 'Continue Learning' : 'Explore',
+            isFavorite: userFavoriteCourses.has(String(course.subcourseId)), // Mark as favorite if in user's favorites
           };
         });
         
@@ -166,7 +203,7 @@ const HomeScreen = () => {
             rating: course.avgRating ? course.avgRating.toString() : '4.5',
             price: `₹${course.price || 0}.00`,
             image: courseImage,
-            isFavorite: false, // Start as not favorited
+            isFavorite: userFavoriteCourses.has(String(course._id)), // Mark as favorite if in user's favorites
           };
         });
         
@@ -220,7 +257,7 @@ const HomeScreen = () => {
             rating: course.avgRating ? course.avgRating.toString() : '4.5',
             price: `₹${course.price || 0}.00`,
             image: courseImage,
-            isFavorite: false, // Start as not favorited
+            isFavorite: userFavoriteCourses.has(String(course._id)), // Mark as favorite if in user's favorites
           };
         });
         
@@ -273,7 +310,7 @@ const HomeScreen = () => {
             rating: course.avgRating ? course.avgRating.toString() : '4.5',
             price: `₹${course.price || 0}.00`,
             image: courseImage,
-            isFavorite: false, // Start as not favorited
+            isFavorite: userFavoriteCourses.has(String(course._id)), // Mark as favorite if in user's favorites
           };
         });
         
@@ -304,7 +341,7 @@ const HomeScreen = () => {
       console.log('🏠 HomeScreen: Fetching banner data from homePage-banner API...');
       console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
       
-      const apiUrl = getApiUrl('/api/user/course/homePage-banner');
+      const apiUrl = getApiUrl(ENDPOINTS.HOMEPAGE_BANNER);
       console.log('🌐 HomeScreen: Banner API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
@@ -340,6 +377,39 @@ const HomeScreen = () => {
       setBannerError(error.message || 'Network error occurred');
     } finally {
       setIsLoadingBanner(false);
+    }
+  };
+
+  // Function to fetch user's favorite courses from API
+  const fetchUserFavoriteCourses = async () => {
+    try {
+      console.log('🏠 HomeScreen: Fetching user\'s favorite courses with token...');
+      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
+
+      const result = await courseAPI.getFavoriteCourses(token);
+
+      if (result.success && result.data.success) {
+        const favoriteCourseIds = result.data.data.map(course => {
+          // Handle different possible ID structures from API
+          const courseId = course.id?._id || course.subcourseId || course._id;
+          return String(courseId);
+        }).filter(id => id && id !== 'undefined'); // Filter out invalid IDs
+        
+        console.log('🎉 HomeScreen: User\'s favorite courses received successfully!');
+        console.log('📚 HomeScreen: Number of favorite courses:', favoriteCourseIds.length);
+        console.log('📚 HomeScreen: Favorite course IDs:', favoriteCourseIds);
+        
+        setUserFavoriteCourses(new Set(favoriteCourseIds));
+      } else {
+        console.log('❌ HomeScreen: Failed to fetch user\'s favorite courses:', result.data?.message);
+        console.log('❌ HomeScreen: API response:', result);
+        // Don't set course error here, just log it
+        setUserFavoriteCourses(new Set()); // Set empty set on failure
+      }
+    } catch (error) {
+      console.error('💥 HomeScreen: Error fetching user\'s favorite courses:', error);
+      // Don't set course error here, just log it
+      setUserFavoriteCourses(new Set()); // Set empty set on error
     }
   };
 
@@ -383,12 +453,42 @@ const HomeScreen = () => {
   };
 
   // Manual refresh function (can be called if needed)
-  const refreshCourseData = () => {
+  const refreshCourseData = async () => {
     if (token) {
       console.log('🔄 HomeScreen: Manual refresh triggered');
-      fetchCourseData();
+      try {
+        // Refresh in sequence: favorites first, then courses
+        await fetchUserFavoriteCourses();
+        await fetchCourseData();
+        console.log('✅ HomeScreen: Manual refresh completed successfully!');
+      } catch (error) {
+        console.error('💥 HomeScreen: Error during manual refresh:', error);
+      }
     } else {
       console.log('⚠️ HomeScreen: No token available for refresh');
+    }
+  };
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    if (token) {
+      console.log('🔄 HomeScreen: Pull-to-refresh triggered');
+      setRefreshing(true);
+      try {
+        // Refresh all data in sequence
+        await fetchUserFavoriteCourses();
+        await fetchCourseData();
+        await fetchFeaturedCourses();
+        await fetchBannerData();
+        console.log('✅ HomeScreen: Pull-to-refresh completed successfully!');
+      } catch (error) {
+        console.error('💥 HomeScreen: Error during pull-to-refresh:', error);
+      } finally {
+        setRefreshing(false);
+      }
+    } else {
+      console.log('⚠️ HomeScreen: No token available for pull-to-refresh');
+      setRefreshing(false);
     }
   };
 
@@ -783,9 +883,19 @@ const HomeScreen = () => {
           </TouchableOpacity>
          
         </View>
+        {refreshing && (
+          <View style={styles.refreshIndicator}>
+            <ActivityIndicator size="small" color="#FF8800" />
+            <Text style={styles.refreshText}>Refreshing...</Text>
+          </View>
+        )}
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <Image 
@@ -934,11 +1044,26 @@ const HomeScreen = () => {
               onPress={() => {
                 setSelectedFilter(filter);
                 if (filter === 'Popular' && token) {
-                  fetchPopularCourses();
+                  // Refresh favorites first, then fetch popular courses
+                  const refreshAndFetchPopular = async () => {
+                    await fetchUserFavoriteCourses();
+                    await fetchPopularCourses();
+                  };
+                  refreshAndFetchPopular();
                 } else if (filter === 'All Course' && token) {
-                  fetchCourseData();
+                  // Refresh favorites first, then fetch all courses
+                  const refreshAndFetchAll = async () => {
+                    await fetchUserFavoriteCourses();
+                    await fetchCourseData();
+                  };
+                  refreshAndFetchAll();
                 } else if (filter === 'Newest' && token) {
-                  fetchNewestCourses(); // For now, use same as All Course, can be changed later
+                  // Refresh favorites first, then fetch newest courses
+                  const refreshAndFetchNewest = async () => {
+                    await fetchUserFavoriteCourses();
+                    await fetchNewestCourses();
+                  };
+                  refreshAndFetchNewest();
                 }
               }}
             >
@@ -1492,5 +1617,21 @@ const styles = StyleSheet.create({
     fontSize: getResponsiveSize(18),
     color: '#666',
     textAlign: 'center',
+  },
+  refreshIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: getResponsiveSize(10),
+    backgroundColor: '#F0F8FF',
+    borderRadius: getResponsiveSize(10),
+    marginTop: getResponsiveSize(10),
+    marginHorizontal: getResponsiveSize(20),
+  },
+  refreshText: {
+    marginLeft: getResponsiveSize(5),
+    fontSize: getResponsiveSize(14),
+    color: '#FF8800',
+    fontWeight: '600',
   },
 });

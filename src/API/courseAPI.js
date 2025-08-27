@@ -1,4 +1,4 @@
-import { getApiUrl, getApiHeaders } from './config';
+import { getApiUrl, getApiHeaders, ENDPOINTS } from './config';
 
 export const courseAPI = {
   getAllSubcourses: async (token) => {
@@ -6,7 +6,7 @@ export const courseAPI = {
       console.log('🚀 courseAPI: Fetching all subcourses...');
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
 
-      const url = getApiUrl('/api/user/course/getAll-subcourses');
+      const url = getApiUrl(ENDPOINTS.GET_ALL_SUBCOURSES);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
@@ -42,7 +42,7 @@ export const courseAPI = {
       console.log('🚀 courseAPI: Fetching all courses...');
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
 
-      const url = getApiUrl('/api/user/course/getAllCourses');
+      const url = getApiUrl(ENDPOINTS.GET_ALL_COURSES);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
@@ -78,7 +78,7 @@ export const courseAPI = {
       console.log('🚀 courseAPI: Fetching popular subcourses...');
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
 
-      const url = getApiUrl('/api/user/course/getPopular-subcourses');
+      const url = getApiUrl(ENDPOINTS.GET_POPULAR_SUBCOURSES);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
@@ -127,7 +127,7 @@ export const courseAPI = {
       console.log('🚀 courseAPI: Fetching newest subcourses...');
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
 
-      const url = getApiUrl('/api/user/course/getNewest-subcourses');
+      const url = getApiUrl(ENDPOINTS.GET_NEWEST_SUBCOURSES);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
@@ -737,7 +737,7 @@ export const courseAPI = {
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
       console.log('🆔 courseAPI: Subcourse ID:', subcourseId);
 
-      const url = getApiUrl('/api/user/favourite/add-favouriteCourse');
+      const url = getApiUrl(ENDPOINTS.ADD_FAVORITE_COURSE);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
@@ -782,7 +782,7 @@ export const courseAPI = {
       console.log('🚀 courseAPI: Fetching favorite courses...');
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
 
-      const url = getApiUrl('/api/user/favourite/get-favouriteCourses');
+      const url = getApiUrl(ENDPOINTS.GET_FAVORITE_COURSES);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
