@@ -4,17 +4,16 @@ const API_CONFIG = {
   
   // Base URL configuration for different platforms
   BASE_URL: Platform.select({
-    android: 'http://192.168.1.39:3000', 
-    // android: 'http://10.0.2.2:3000', 
-      
-      // A android: 'http://10.0.2.2:3000', ndroid emulator
-    ios: 'http://localhost:3000', // iOS simulator
-    default: 'http://localhost:3000', // Default fallback
+    android: 'http://192.168.1.24:3000', 
+    // android: 'https://main.learningsaint.com', 
+    // android: 'http://192.168.1.10:3000', 
+    ios: 'http://localhost:3000', 
+    default: 'http://localhost:3000', 
   }),
 
   // Razorpay configuration
   RAZORPAY: {
-    KEY: 'rzp_test_YOUR_KEY', // Replace with your actual Razorpay test key
+    KEY: 'rzp_live_ZumwCLoX1AZdm9', // Replace with your actual Razorpay test key
   },
 
   // API Endpoints
@@ -23,6 +22,9 @@ const API_CONFIG = {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
     VERIFY_OTP: '/api/auth/verify-otp',
+    RESEND_OTP: '/api/auth/resend-otp',
+    SEND_EMAIL_OTP: '/api/auth/send-emailotp',
+    VERIFY_EMAIL_OTP: '/api/auth/verify-emailOtp',
     GET_USER_PROFILE: '/api/user/profile/get-profile',
     UPDATE_USER_PROFILE: '/api/user/profile/update-profile',
     
@@ -41,6 +43,7 @@ const API_CONFIG = {
     // Favorite endpoints
     GET_FAVORITE_COURSES: '/api/user/favorite/get-favouriteCourses', // Fixed spelling: favourite -> favorite
     ADD_FAVORITE_COURSE: '/api/user/favorite/add-favouriteCourse', // Fixed spelling: favourite -> favorite
+    TOGGLE_FAVORITE: '/api/user/favorite/toggle-favouriteCourse', // Add missing toggle endpoint
   },
 
   HEADERS: {

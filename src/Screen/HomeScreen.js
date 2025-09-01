@@ -77,8 +77,6 @@ const HomeScreen = () => {
       // First fetch user's favorite courses, then fetch other data
       const initializeData = async () => {
         try {
-          console.log('🔄 HomeScreen: Initializing data in sequence...');
-          
           // Step 1: Fetch user's favorite courses first
           await fetchUserFavoriteCourses();
           
@@ -86,10 +84,8 @@ const HomeScreen = () => {
           await fetchCourseData();
           await fetchFeaturedCourses();
           await fetchBannerData();
-          
-          console.log('✅ HomeScreen: All data initialized successfully!');
         } catch (error) {
-          console.error('💥 HomeScreen: Error initializing data:', error);
+          // Handle error silently
         }
       };
       
@@ -101,7 +97,6 @@ const HomeScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       if (token) {
-        console.log('🔄 HomeScreen: Screen focused, refreshing favorites...');
         fetchUserFavoriteCourses();
       }
     }, [token])
@@ -110,11 +105,9 @@ const HomeScreen = () => {
   // Auto-rotate promo images in carousel
   useEffect(() => {
     if (bannerData.promos && bannerData.promos.length > 1) {
-      console.log(`🔄 HomeScreen: Setting up auto-rotation for ${bannerData.promos.length} promo images`);
       const interval = setInterval(() => {
         setCurrentCarouselIndex(prevIndex => {
           const newIndex = (prevIndex + 1) % bannerData.promos.length;
-          console.log(`🔄 HomeScreen: Auto-rotating promo from index ${prevIndex} to ${newIndex}`);
           return newIndex;
         });
       }, 3000); // Change image every 3 seconds
@@ -129,15 +122,10 @@ const HomeScreen = () => {
       setIsLoadingFeatured(true);
       setFeaturedError(null);
       
-      console.log('🏠 HomeScreen: Fetching featured courses (banner) with token...');
-      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-      
       const result = await courseAPI.getPurchasedCourse(token);
       
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('🎉 HomeScreen: Featured courses received successfully!');
-        
         
         // Transform API data to match existing UI structure
         const transformedFeaturedCourses = apiCourses.slice(0, 3).map((course, index) => {
@@ -155,17 +143,13 @@ const HomeScreen = () => {
           };
         });
         
-        console.log('🔄 HomeScreen: Transformed featured courses:', transformedFeaturedCourses);
         setFeaturedCourses(transformedFeaturedCourses);
         
       } else {
-        console.log(' HomeScreen: Failed to fetch featured courses:', result.data?.message);
-        console.log(' HomeScreen: API response:', result);
         setFeaturedError(result.data?.message || 'Failed to fetch featured courses');
         // Keep existing featured courses if API fails
       }
     } catch (error) {
-      console.error('💥 HomeScreen: Error fetching featured courses:', error);
       setFeaturedError(error.message || 'Network error occurred');
       // Keep existing featured courses if error occurs
     } finally {
@@ -179,22 +163,14 @@ const HomeScreen = () => {
       setIsLoadingCourses(true);
       setCourseError(null);
       
-      console.log('🏠 HomeScreen: Fetching course data with token...');
-      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-      
       const result = await courseAPI.getAllSubcourses(token);
       
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('🎉 HomeScreen: Course data received successfully!');
-        console.log('📚 HomeScreen: Number of courses:', apiCourses.length);
-        console.log('📚 HomeScreen: First course:', apiCourses[0]);
         
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
-          
-         
           
           return {
             id: course._id || index + 1,
@@ -207,16 +183,13 @@ const HomeScreen = () => {
           };
         });
         
-        console.log('🔄 HomeScreen: Transformed courses:', transformedCourses);
         setCourseCards(transformedCourses);
         
       } else {
-        
         setCourseError(result.data?.message || 'Failed to fetch courses');
         // Keep existing course data if API fails
       }
     } catch (error) {
-      console.error('💥 HomeScreen: Error fetching course data:', error);
       setCourseError(error.message || 'Network error occurred');
       // Keep existing course data if error occurs
     } finally {
@@ -230,25 +203,14 @@ const HomeScreen = () => {
       setIsLoadingCourses(true);
       setCourseError(null);
       
-      console.log('🏠 HomeScreen: Fetching popular courses with token...');
-      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-      
       const result = await courseAPI.getPopularSubcourses(token);
       
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('🎉 HomeScreen: Popular courses received successfully!');
-        console.log('📚 HomeScreen: Number of popular courses:', apiCourses.length);
-        console.log('📚 HomeScreen: First popular course:', apiCourses[0]);
         
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
-          
-          console.log(`📚 HomeScreen: Popular Course ${index + 1} - ${course.subcourseName}`);
-          console.log(`🖼️ HomeScreen: Thumbnail URL: ${course.thumbnailImageUrl || 'Using fallback image'}`);
-          console.log(`🖼️ HomeScreen: Final image object:`, courseImage);
-          console.log(`🖼️ HomeScreen: Image type: ${course.thumbnailImageUrl ? 'URI' : 'require'}`);
           
           return {
             id: course._id || index + 1,
@@ -261,17 +223,13 @@ const HomeScreen = () => {
           };
         });
         
-        console.log('🔄 HomeScreen: Transformed popular courses:', transformedCourses);
         setCourseCards(transformedCourses);
         
       } else {
-        console.log('❌ HomeScreen: Failed to fetch popular courses:', result.data?.message);
-        console.log('❌ HomeScreen: API response:', result);
         setCourseError(result.data?.message || 'Failed to fetch popular courses');
         // Keep existing course data if API fails
       }
     } catch (error) {
-      console.error('💥 HomeScreen: Error fetching popular courses:', error);
       setCourseError(error.message || 'Network error occurred');
       // Keep existing course data if error occurs
     } finally {
@@ -285,23 +243,14 @@ const HomeScreen = () => {
       setIsLoadingCourses(true);
       setCourseError(null);
       
-      console.log('🏠 HomeScreen: Fetching newest courses with token...');
-      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-      
       const result = await courseAPI.getNewestSubcourses(token);
       
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('🎉 HomeScreen: Newest courses received successfully!');
-       
-        console.log('📚 HomeScreen: First newest course:', apiCourses[0]);
         
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
-          
-          
-          console.log(`🖼️ HomeScreen: Image type: ${course.thumbnailImageUrl ? 'URI' : 'require'}`);
           
           return {
             id: course._id || index + 1,
@@ -314,17 +263,13 @@ const HomeScreen = () => {
           };
         });
         
-        console.log('🔄 HomeScreen: Transformed newest courses:', transformedCourses);
         setCourseCards(transformedCourses);
         
       } else {
-        console.log('❌ HomeScreen: Failed to fetch newest courses:', result.data?.message);
-        console.log('❌ HomeScreen: API response:', result);
         setCourseError(result.data?.message || 'Failed to fetch newest courses');
         // Keep existing course data if API fails
       }
     } catch (error) {
-      console.error('💥 HomeScreen: Error fetching newest courses:', error);
       setCourseError(error.message || 'Network error occurred');
       // Keep existing course data if error occurs
     } finally {
@@ -338,11 +283,7 @@ const HomeScreen = () => {
       setIsLoadingBanner(true);
       setBannerError(null);
       
-      console.log('🏠 HomeScreen: Fetching banner data from homePage-banner API...');
-      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-      
       const apiUrl = getApiUrl(ENDPOINTS.HOMEPAGE_BANNER);
-      console.log('🌐 HomeScreen: Banner API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -353,27 +294,16 @@ const HomeScreen = () => {
       
       if (response.ok) {
         const result = await response.json();
-        console.log('🎉 HomeScreen: Banner data received successfully!');
-        console.log('📚 HomeScreen: Banner API response:', result);
         
         if (result.success) {
           setBannerData(result.data);
-          console.log('✅ HomeScreen: Banner data set successfully:', result.data);
-          console.log('🖼️ HomeScreen: Number of promo images:', result.data.promos?.length || 0);
-          if (result.data.promos && result.data.promos.length > 0) {
-            console.log('🖼️ HomeScreen: First promo image URL:', result.data.promos[0].promo);
-            console.log('🖼️ HomeScreen: All promo URLs:', result.data.promos.map(p => p.promo));
-          }
         } else {
-          console.log('❌ HomeScreen: Banner API returned success: false');
           setBannerError(result.message || 'Failed to fetch banner data');
         }
       } else {
-        console.log('❌ HomeScreen: Banner API request failed:', response.status, response.statusText);
         setBannerError(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      console.error('💥 HomeScreen: Error fetching banner data:', error);
       setBannerError(error.message || 'Network error occurred');
     } finally {
       setIsLoadingBanner(false);
@@ -383,9 +313,6 @@ const HomeScreen = () => {
   // Function to fetch user's favorite courses from API
   const fetchUserFavoriteCourses = async () => {
     try {
-      console.log('🏠 HomeScreen: Fetching user\'s favorite courses with token...');
-      console.log('🔑 HomeScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-
       const result = await courseAPI.getFavoriteCourses(token);
 
       if (result.success && result.data.success) {
@@ -395,20 +322,11 @@ const HomeScreen = () => {
           return String(courseId);
         }).filter(id => id && id !== 'undefined'); // Filter out invalid IDs
         
-        console.log('🎉 HomeScreen: User\'s favorite courses received successfully!');
-        console.log('📚 HomeScreen: Number of favorite courses:', favoriteCourseIds.length);
-        console.log('📚 HomeScreen: Favorite course IDs:', favoriteCourseIds);
-        
         setUserFavoriteCourses(new Set(favoriteCourseIds));
       } else {
-        console.log('❌ HomeScreen: Failed to fetch user\'s favorite courses:', result.data?.message);
-        console.log('❌ HomeScreen: API response:', result);
-        // Don't set course error here, just log it
         setUserFavoriteCourses(new Set()); // Set empty set on failure
       }
     } catch (error) {
-      console.error('💥 HomeScreen: Error fetching user\'s favorite courses:', error);
-      // Don't set course error here, just log it
       setUserFavoriteCourses(new Set()); // Set empty set on error
     }
   };
@@ -435,44 +353,36 @@ const HomeScreen = () => {
       
       setFilteredCourses(filtered);
       setIsSearching(false);
-      console.log(`🔍 HomeScreen: Search for "${keyword}" returned ${filtered.length} results`);
     }, 300); // 300ms delay
   };
 
   // Function to handle search input change
   const handleSearchChange = (text) => {
-    console.log(`🔍 HomeScreen: Search input changed to: "${text}"`);
     setSearchKeyword(text);
     if (text.trim()) {
       searchCourses(text);
     } else {
       setFilteredCourses([]);
       setIsSearching(false);
-      console.log('🔍 HomeScreen: Search cleared, showing all courses');
     }
   };
 
   // Manual refresh function (can be called if needed)
   const refreshCourseData = async () => {
     if (token) {
-      console.log('🔄 HomeScreen: Manual refresh triggered');
       try {
         // Refresh in sequence: favorites first, then courses
         await fetchUserFavoriteCourses();
         await fetchCourseData();
-        console.log('✅ HomeScreen: Manual refresh completed successfully!');
       } catch (error) {
-        console.error('💥 HomeScreen: Error during manual refresh:', error);
+        // Handle error silently
       }
-    } else {
-      console.log('⚠️ HomeScreen: No token available for refresh');
     }
   };
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
     if (token) {
-      console.log('🔄 HomeScreen: Pull-to-refresh triggered');
       setRefreshing(true);
       try {
         // Refresh all data in sequence
@@ -480,14 +390,12 @@ const HomeScreen = () => {
         await fetchCourseData();
         await fetchFeaturedCourses();
         await fetchBannerData();
-        console.log('✅ HomeScreen: Pull-to-refresh completed successfully!');
       } catch (error) {
-        console.error('💥 HomeScreen: Error during pull-to-refresh:', error);
+        // Handle error silently
       } finally {
         setRefreshing(false);
       }
     } else {
-      console.log('⚠️ HomeScreen: No token available for pull-to-refresh');
       setRefreshing(false);
     }
   };
@@ -495,86 +403,56 @@ const HomeScreen = () => {
   // Function to toggle favorite status
   const toggleFavorite = async (courseId, currentFavoriteStatus) => {
     try {
-     
-      console.log(' HomeScreen: Token available:', !!token);
-      
       // Check if token exists
       if (!token) {
-        console.error(' HomeScreen: No token available for API call');
         return;
       }
       
       // Check if courseId exists
       if (!courseId) {
-        console.error('HomeScreen: No courseId available for API call');
         return;
       }
       
       // Check if already toggling this course to prevent double calls
       if (togglingFavorites.has(String(courseId))) {
-        console.log('⚠️ HomeScreen: Already toggling this course, skipping...');
         return;
       }
       
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
       
-      console.log('🚀 HomeScreen: About to call courseAPI.toggleFavorite...');
-      console.log('🚀 HomeScreen: With token:', token.substring(0, 50) + '...');
-      console.log('🚀 HomeScreen: With courseId:', courseId);
-      
       const result = await courseAPI.toggleFavorite(token, courseId);
-      
-     
       
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response
         const newFavoriteStatus = result.data.data.isLike;
-        console.log('✅ HomeScreen: Favorite toggled successfully! New status:', newFavoriteStatus);
-        console.log('✅ HomeScreen: API response:', result.data);
         
         // Update the course in the local state
         setCourseCards(prevCourses => {
-          console.log('🔄 HomeScreen: Previous courses:', prevCourses.length);
           const updatedCourses = prevCourses.map(course => {
-            console.log(`🔄 HomeScreen: Checking course ID: ${course.id} (${typeof course.id}) vs ${courseId} (${typeof courseId})`);
             // Convert both IDs to strings for comparison to handle type mismatches
             if (String(course.id) === String(courseId)) {
-              console.log(`✅ HomeScreen: Found course to update: ${course.title}`);
-              console.log(`✅ HomeScreen: Updating isFavorite from ${course.isFavorite} to ${newFavoriteStatus}`);
               return { ...course, isFavorite: newFavoriteStatus };
             }
             return course;
           });
-          console.log('🔄 HomeScreen: Updated courses:', updatedCourses.length);
           return updatedCourses;
         });
         
         // Also update featured courses if this course is in there
         setFeaturedCourses(prevFeatured => {
-          console.log('🔄 HomeScreen: Previous featured courses:', prevFeatured.length);
           const updatedFeatured = prevFeatured.map(course => {
             if (String(course.id) === String(courseId)) {
-              console.log(`✅ HomeScreen: Found featured course to update: ${course.title}`);
-              console.log(`✅ HomeScreen: Updating isFavorite from ${course.isFavorite} to ${newFavoriteStatus}`);
               return { ...course, isFavorite: newFavoriteStatus };
             }
             return course;
           });
-          console.log('🔄 HomeScreen: Updated featured courses:', updatedFeatured.length);
           return updatedFeatured;
         });
         
-      } else {
-        console.log('❌ HomeScreen: Failed to toggle favorite:', result.data?.message);
-        console.log('❌ HomeScreen: Full result:', result);
-        // You could show a toast/alert here if needed
       }
     } catch (error) {
-      console.error('💥 HomeScreen: Error toggling favorite:', error);
-      console.error('💥 HomeScreen: Error stack:', error.stack);
-      console.error('💥 HomeScreen: Error message:', error.message);
-      // You could show a toast/alert here if needed
+      // Handle error silently
     } finally {
       // Remove loading state for this course
       setTogglingFavorites(prev => {
@@ -587,22 +465,12 @@ const HomeScreen = () => {
 
   // Track Redux state changes
   useEffect(() => {
-    console.log('🔄 HomeScreen: Redux state changed!');
-    console.log('🔄 HomeScreen: New fullName:', fullName);
- 
+    // Redux state changed
   }, [fullName, mobileNumber, token, isAuthenticated]);
 
   // Track courseCards state changes
   useEffect(() => {
-    
-   
-    courseCards.forEach((course, index) => {
-      console.log(`🔄 HomeScreen: Course ${index + 1} in state:`, {
-        title: course.title,
-        imageType: typeof course.image,
-        imageSource: course.image
-      });
-    });
+    // Course cards state changed
   }, [courseCards]);
 
   // Filter courses when search keyword or courseCards change
@@ -717,8 +585,6 @@ const HomeScreen = () => {
       const promoIndex = currentCarouselIndex % bannerData.promos.length;
       const promo = bannerData.promos[promoIndex];
       
-      console.log(`🖼️ HomeScreen: Rendering promo ${promoIndex + 1}/${bannerData.promos.length}:`, promo.promo);
-      
       displayItem = {
         ...item,
         image: promo.promo ? { uri: promo.promo } : item.image,
@@ -732,8 +598,6 @@ const HomeScreen = () => {
       // Additional items: More promo images
       const promoIndex = (index - 3 + currentCarouselIndex) % bannerData.promos.length;
       const promo = bannerData.promos[promoIndex];
-      
-      console.log(`🖼️ HomeScreen: Rendering additional promo ${promoIndex + 1}/${bannerData.promos.length} at index ${index}:`, promo.promo);
       
       displayItem = {
         ...item,
@@ -777,22 +641,18 @@ const HomeScreen = () => {
               <TouchableOpacity 
                 style={styles.continueButton}
                 onPress={() => {
-                  console.log('Button pressed:', buttonText);
                   let courseIdToPass = null;
                   
                   // Get the correct course ID based on which item this is
                   if (index === 0 && bannerData.recentSubcourse) {
                     // First item: recentSubcourse
                     courseIdToPass = bannerData.recentSubcourse._id;
-                    console.log('🎯 HomeScreen: Navigating with recentSubcourse ID:', courseIdToPass);
                   } else if (index === 1 && bannerData.recentPurchasedSubcourse) {
                     // Second item: recentPurchasedSubcourse
                     courseIdToPass = bannerData.recentPurchasedSubcourse._id;
-                    console.log('🎯 HomeScreen: Navigating with recentPurchasedSubcourse ID:', courseIdToPass);
                   } else {
                     // Fallback to featured course ID
                     courseIdToPass = item.id;
-                    console.log('🎯 HomeScreen: Navigating with featured course ID:', courseIdToPass);
                   }
                   
                   if (courseIdToPass) {
@@ -816,7 +676,6 @@ const HomeScreen = () => {
       key={course.id} 
       style={styles.courseCard}
       onPress={() => {
-        console.log('Course card pressed:', course.title, 'ID:', course.id);
         navigation.navigate('Enroll', { courseId: course.id });
       }}
     >
@@ -824,9 +683,6 @@ const HomeScreen = () => {
         source={course.image} 
         style={styles.courseCardImage} 
         resizeMode="cover"
-        onLoad={() => console.log(`✅ Image loaded successfully for course: ${course.title}`)}
-        onError={(error) => console.log(`❌ Image failed to load for course: ${course.title}`, error.nativeEvent)}
-        onLoadStart={() => console.log(`🔄 Starting to load image for course: ${course.title}`)}
       />
       <View style={styles.courseCardContent}>
         <Text style={styles.courseCardTitle}>{course.title}</Text>
@@ -840,7 +696,6 @@ const HomeScreen = () => {
           </View>
       </View>
       <View style={styles.courseCardRight}>
-        {console.log(`🖤 Rendering heart for course: ${course.title}, isFavorite: ${course.isFavorite}, ID: ${course.id}`)}
         <TouchableOpacity 
           style={[
             styles.heartButton,
@@ -913,7 +768,6 @@ const HomeScreen = () => {
             value={searchKeyword}
             onChangeText={handleSearchChange}
             onSubmitEditing={() => {
-              console.log(`🔍 HomeScreen: Search submitted for: "${searchKeyword}"`);
               searchCourses(searchKeyword);
             }}
             returnKeyType="search"
@@ -924,7 +778,6 @@ const HomeScreen = () => {
             <TouchableOpacity 
               style={styles.clearSearchButton}
               onPress={() => {
-                console.log('🔍 HomeScreen: Clear search button pressed');
                 setSearchKeyword('');
                 setFilteredCourses([]);
                 setIsSearching(false);
@@ -977,7 +830,6 @@ const HomeScreen = () => {
                 {bannerData.promos && bannerData.promos.length > 0 && 
                   bannerData.promos.slice(1).map((promo, index) => {
                     const promoIndex = index + 1; // Start from second promo (first is already shown in index 2)
-                    console.log(`🖼️ HomeScreen: Rendering additional promo ${promoIndex + 1}/${bannerData.promos.length} at carousel index ${featuredCourses.length + index}:`, promo.promo);
                     return (
                       <View key={`promo-${promoIndex}`} style={styles.carouselItem}>
                         <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
@@ -997,7 +849,6 @@ const HomeScreen = () => {
               <View style={styles.dotsContainer}>
                 {(() => {
                   const totalItems = featuredCourses.length + (bannerData.promos && bannerData.promos.length > 1 ? bannerData.promos.length - 1 : 0);
-                  console.log(`🖼️ HomeScreen: Total carousel items: ${totalItems} (${featuredCourses.length} featured + ${bannerData.promos && bannerData.promos.length > 1 ? bannerData.promos.length - 1 : 0} additional promos)`);
                   
                   return (
                     <>
@@ -1105,7 +956,6 @@ const HomeScreen = () => {
                 <TouchableOpacity 
                   style={styles.clearSearchButton}
                   onPress={() => {
-                    console.log('🔍 HomeScreen: Clear search button pressed from no results');
                     setSearchKeyword('');
                     setFilteredCourses([]);
                     setIsSearching(false);

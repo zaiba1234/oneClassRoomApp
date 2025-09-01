@@ -9,6 +9,8 @@ import {
   StatusBar,
   SafeAreaView,
   Modal,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 
 import { useAppSelector } from '../Redux/hooks';
@@ -28,6 +30,7 @@ const SubCourseScreen = ({ navigation, route }) => {
   const [subcourseError, setSubcourseError] = useState(null);
   const [courseData, setCourseData] = useState(null);
   const [showCompletionPopup, setShowCompletionPopup] = useState(false); // Add state for completion popup
+  const [isRefreshing, setIsRefreshing] = useState(false); // Add refresh state
 
   // Fetch subcourse data when component mounts
   useEffect(() => {
@@ -49,9 +52,13 @@ const SubCourseScreen = ({ navigation, route }) => {
   }, [courseData?.isCourseCompleted]);
 
   // Function to fetch subcourse data from API
-  const fetchSubcourseData = async () => {
+  const fetchSubcourseData = async (isRefresh = false) => {
     try {
-      setIsLoadingSubcourses(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoadingSubcourses(true);
+      }
       setSubcourseError(null);
 
       console.log('📚 SubCourseScreen: Fetching subcourses for course ID:', courseId);
@@ -103,7 +110,11 @@ const SubCourseScreen = ({ navigation, route }) => {
       setSubcourseError(error.message || 'Network error occurred');
       // Keep existing subcourse data if error occurs
     } finally {
-      setIsLoadingSubcourses(false);
+      if (isRefresh) {
+        setIsRefreshing(false);
+      } else {
+        setIsLoadingSubcourses(false);
+      }
     }
   };
 
@@ -150,6 +161,12 @@ const SubCourseScreen = ({ navigation, route }) => {
       thumbnail: require('../assests/images/Frame.png'),
     },
   ];
+
+  // Function to handle refresh
+  const handleRefresh = () => {
+    console.log('🔄 SubCourseScreen: Pull to refresh triggered');
+    fetchSubcourseData(true);
+  };
 
   // Use API data if available, otherwise use fallback data
   const displaySubcourses = subcourses.length > 0 ? subcourses : favouriteCourses;
@@ -201,10 +218,24 @@ const SubCourseScreen = ({ navigation, route }) => {
       </View>
 
       {/* Course List */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#FF8800']}
+            tintColor="#FF8800"
+            title="Pull to refresh..."
+            titleColor="#666666"
+          />
+        }
+      >
         <View style={styles.courseList}>
           {isLoadingSubcourses ? (
             <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF8800" />
               <Text style={styles.loadingText}>Loading subcourses...</Text>
             </View>
           ) : subcourseError ? (

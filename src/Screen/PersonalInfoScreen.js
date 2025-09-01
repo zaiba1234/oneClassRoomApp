@@ -16,7 +16,7 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { setFullName, setMobileNumber, setProfileData } from '../Redux/userSlice';
 import { profileAPI } from '../API/profileAPI';
-import { getApiUrl } from '../API/config';
+import { getApiUrl, ENDPOINTS } from '../API/config';
 
 const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -121,6 +121,89 @@ const PersonalInfoScreen = ({ navigation }) => {
     } catch (error) {
       console.error('PersonalInfoScreen - Basic connectivity test failed:', error);
       return false;
+    }
+  };
+
+  const handleEmailVerification = async () => {
+    if (!userEmail || !userEmail.trim()) {
+      Alert.alert('Error', 'Please enter an email address first');
+      return;
+    }
+
+    if (!userEmail.includes('@') || !userEmail.includes('.')) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('📧 PersonalInfoScreen: Starting email verification...');
+      console.log('📧 PersonalInfoScreen: Email to verify:', userEmail);
+
+      // Call send-emailotp API
+      const response = await fetch(getApiUrl(ENDPOINTS.SEND_EMAIL_OTP), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: userEmail.trim()
+        })
+      });
+
+      console.log('📡 PersonalInfoScreen: Response status:', response.status);
+      console.log('📡 PersonalInfoScreen: Response headers:', response.headers);
+      
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('❌ PersonalInfoScreen: API error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      let result;
+      try {
+        result = await response.json();
+        console.log('📡 PersonalInfoScreen: Send email OTP response:', result);
+      } catch (parseError) {
+        console.error('💥 PersonalInfoScreen: JSON parse error:', parseError);
+        console.log('📡 PersonalInfoScreen: Raw response text:', await response.text());
+        throw new Error('Invalid response from server. Please try again.');
+      }
+
+      if (result.success) {
+        console.log('✅ PersonalInfoScreen: Email OTP sent successfully!');
+        Alert.alert(
+          'OTP Sent', 
+          `OTP has been sent to ${userEmail}`,
+          [
+            {
+              text: 'Verify Now',
+              onPress: () => {
+                // Navigate to verification screen with email
+                navigation.navigate('Verify', {
+                  email: userEmail.trim(),
+                  isEmailVerification: true,
+                  token: token
+                });
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
+      } else {
+        console.log('❌ PersonalInfoScreen: Failed to send email OTP:', result.message);
+        Alert.alert('Error', result.message || 'Failed to send OTP');
+      }
+    } catch (error) {
+      console.error('💥 PersonalInfoScreen: Email verification error:', error);
+      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -350,12 +433,6 @@ const PersonalInfoScreen = ({ navigation }) => {
             value={name}
             onChangeText={setName}
           />
-          <TouchableOpacity style={styles.inlineEditBtn} onPress={() => { /* Add edit logic here if needed */ }}>
-            <Image 
-              source={require('../assests/images/Edit.png')} 
-              style={styles.inlineEditIcon}
-            />
-          </TouchableOpacity>
         </View>
 
         <Text style={styles.label}>Address</Text>
@@ -365,12 +442,6 @@ const PersonalInfoScreen = ({ navigation }) => {
             value={userAddress}
             onChangeText={setUserAddress}
           />
-          <TouchableOpacity style={styles.inlineEditBtn} onPress={() => { /* Add edit logic here if needed */ }}>
-            <Image 
-              source={require('../assests/images/Edit.png')} 
-              style={styles.inlineEditIcon}
-            />
-          </TouchableOpacity>
         </View>
 
         <Text style={styles.label}>E-mail</Text>
@@ -381,11 +452,8 @@ const PersonalInfoScreen = ({ navigation }) => {
             onChangeText={setUserEmail}
             keyboardType="email-address"
           />
-          <TouchableOpacity style={styles.inlineEditBtn} onPress={() => { /* Add edit logic here if needed */ }}>
-            <Image 
-              source={require('../assests/images/Edit.png')} 
-              style={styles.inlineEditIcon}
-            />
+          <TouchableOpacity style={styles.verifyBtn} onPress={handleEmailVerification}>
+            <Text style={styles.verifyBtnText}>Verify</Text>
           </TouchableOpacity>
         </View>
 
@@ -526,6 +594,18 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     tintColor: '#00AEEF',
+  },
+  verifyBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#00AEEF',
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  verifyBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
   },
   inlineEditText: {
     color: '#00AEEF',

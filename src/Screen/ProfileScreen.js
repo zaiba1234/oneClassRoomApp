@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   SafeAreaView,
   Platform,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -23,6 +25,10 @@ const { width, height } = Dimensions.get('window');
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const nav = useNavigation();
+  
+  // State for refreshing
+  const [refreshing, setRefreshing] = useState(false);
+  
   // Get user data from Redux
   const { fullName, mobileNumber, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
 
@@ -131,6 +137,18 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    console.log('🔄 ProfileScreen: Pull-to-refresh triggered');
+    setRefreshing(true);
+    
+    // Simulate refresh delay and refresh user data
+    setTimeout(() => {
+      console.log('✅ ProfileScreen: Pull-to-refresh completed');
+      setRefreshing(false);
+    }, 1000);
+  };
+
   const renderMenuItem = (item) => (
     <TouchableOpacity 
       key={item.id} 
@@ -155,6 +173,12 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </View>
+      {refreshing && (
+        <View style={styles.refreshIndicator}>
+          <ActivityIndicator size="small" color="#FF8800" />
+          <Text style={styles.refreshText}>Refreshing...</Text>
+        </View>
+      )}
 
       {/* Profile Card */}
       <View style={styles.profileCardContainer}>
@@ -180,7 +204,13 @@ const ProfileScreen = ({ navigation }) => {
       </View>
 
       {/* Menu Items */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         <View style={styles.menuContainer}>
           {menuItems.map((item) => renderMenuItem(item))}
         </View>
@@ -303,6 +333,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
+  },
+  refreshIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  refreshText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#FF8800',
   },
 
 });

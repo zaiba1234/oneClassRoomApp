@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch } from 'react-redux';
+import { NavigationContainer } from '@react-navigation/native';
 import store from './src/Redux/store';
 import SplashScreen from './src/Screen/SplashScreen';
 import OnBoardScreen from './src/Screen/OnBoardScreen';
 import LoginScreen from './src/Screen/LoginScreen';
-import { NavigationContainer } from '@react-navigation/native'; 
 import VerificationScreen from './src/Screen/VerificationScreen';
 import RegisterScreen from './src/Screen/RegisterScreen';
 import RegisteredPopupScreen from './src/Screen/RegisteredPopupScreen';
@@ -35,12 +35,17 @@ import InternshipLetterScreen from './src/Screen/InternshipLetterScreen';
 
 const Stack = createStackNavigator();
 
-const App = () => {
-    
+// Main App Component
+const AppContent = () => {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    console.log('🚀 App started!');
+  }, [dispatch]);
+
   return (
-    <Provider store={store}>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="OnBoard" component={OnBoardScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -70,8 +75,15 @@ const App = () => {
         <Stack.Screen name="RazorpayPayment" component={RazorpayPaymentScreen} />
         <Stack.Screen name="CourseCertificate" component={CourseCertificateDownload} />
         <Stack.Screen name="Internship" component={InternshipLetterScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+const App = () => {
+  return (
+    <Provider store={store}>
+      <AppContent />
     </Provider>
   );
 };

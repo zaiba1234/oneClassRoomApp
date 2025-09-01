@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
@@ -24,6 +26,7 @@ const LibraryScreen = ({ navigation }) => {
   const [libraryCourses, setLibraryCourses] = useState([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [courseError, setCourseError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch course data when component mounts
   useEffect(() => {
@@ -31,6 +34,20 @@ const LibraryScreen = ({ navigation }) => {
       fetchCourseData();
     }
   }, [token]);
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    console.log('🔄 LibraryScreen: Pull-to-refresh triggered');
+    setRefreshing(true);
+    try {
+      await fetchCourseData();
+      console.log('✅ LibraryScreen: Pull-to-refresh completed');
+    } catch (error) {
+      console.error('💥 LibraryScreen: Error during pull-to-refresh:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Function to fetch course data from API
   const fetchCourseData = async () => {
@@ -113,9 +130,21 @@ const LibraryScreen = ({ navigation }) => {
         <Text style={styles.headerTitle}>Library</Text>
        
       </View>
+      {refreshing && (
+        <View style={styles.refreshIndicator}>
+          <ActivityIndicator size="small" color="#007BFF" />
+          <Text style={styles.refreshText}>Refreshing...</Text>
+        </View>
+      )}
 
       {/* Library Cards */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         <View style={styles.libraryCardsContainer}>
           {isLoadingCourses ? (
             <View style={styles.loadingContainer}>
@@ -256,5 +285,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  refreshIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#f0f0f0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  refreshText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#007BFF',
   },
 });

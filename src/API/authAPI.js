@@ -35,4 +35,13 @@ export const authAPI = {
     console.log('authAPI.verifyOTP result:', result);
     return result;
   },
+
+  // Resend OTP
+  async resendOTP(mobileNumber) {
+    console.log('authAPI.resendOTP called with:', mobileNumber);
+    console.log('Using endpoint:', ENDPOINTS.RESEND_OTP);
+    const result = await apiService.post(ENDPOINTS.RESEND_OTP, { mobileNumber });
+    console.log('authAPI.resendOTP result:', result);
+    return result;
+  },
 };

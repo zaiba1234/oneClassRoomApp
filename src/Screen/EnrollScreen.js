@@ -13,6 +13,8 @@ import {
   Linking,
   Modal,
   Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
@@ -20,6 +22,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
 import { getApiUrl } from '../API/config';
+import { RAZORPAY_KEY_ID } from '../config/env';
 
 // Custom Razorpay implementation using WebView
 let RazorpayCheckout = null;
@@ -108,6 +111,7 @@ const EnrollScreen = ({ navigation, route }) => {
   const [courseError, setCourseError] = useState(null);
   const [isEnrolling, setIsEnrolling] = useState(false); // Add loading state for enrollment
   const [paymentStatus, setPaymentStatus] = useState('idle'); // 'idle', 'processing', 'success', 'failed'
+  const [refreshing, setRefreshing] = useState(false); // Add refresh state
 
   // Fetch course data when component mounts
   useEffect(() => {
@@ -151,7 +155,11 @@ const EnrollScreen = ({ navigation, route }) => {
       
       console.log('📤 EnrollScreen: Full navigation params:', JSON.stringify(navigationParams, null, 2));
       
-      navigation.navigate('BadgeCourse', navigationParams);
+      // Add delay before navigation
+      setTimeout(() => {
+        console.log('⏰ EnrollScreen: Delay completed, now navigating to BadgeCourse');
+        navigation.navigate('BadgeCourse', navigationParams);
+      }, 1000); // Wait for 3 seconds (3000ms)
     }
   }, [courseData.isCompleted, courseId, courseData.title, navigation, route.params?.fromFeedback]);
 
@@ -223,6 +231,20 @@ const EnrollScreen = ({ navigation, route }) => {
       setCourseError(error.message || 'Network error occurred');
     } finally {
       setIsLoadingCourse(false);
+    }
+  };
+
+  // Function to handle pull-to-refresh
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      console.log('🔄 EnrollScreen: Pull-to-refresh triggered');
+      await fetchCourseDetails();
+      console.log('✅ EnrollScreen: Refresh completed successfully');
+    } catch (error) {
+      console.error('❌ EnrollScreen: Refresh failed:', error);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -366,8 +388,8 @@ const EnrollScreen = ({ navigation, route }) => {
       const orderData = orderResult.data.data;
       console.log('✅ EnrollScreen: Course order created successfully:', orderData);
       
-      // Validate order data
-      if (!orderData.key || !orderData.amount || !orderData.orderId) {
+      // Validate order data (key will come from frontend config)
+      if (!orderData.amount || !orderData.orderId) {
         console.log('❌ EnrollScreen: Invalid order data received:', orderData);
         setPaymentStatus('failed');
         Alert.alert('Error', 'Invalid order data received. Please try again.');
@@ -491,9 +513,19 @@ const EnrollScreen = ({ navigation, route }) => {
 
     try {
       console.log('💳 EnrollScreen: Opening Razorpay payment interface...');
+      console.log('🔑 EnrollScreen: Using Razorpay key from frontend config:', RAZORPAY_KEY_ID ? RAZORPAY_KEY_ID.substring(0, 20) + '...' : 'Not found');
+      
+      // Validate Razorpay key is available
+      if (!RAZORPAY_KEY_ID) {
+        console.log('❌ EnrollScreen: Razorpay key not found in frontend config');
+        Alert.alert('Error', 'Razorpay configuration not found. Please contact support.');
+        setPaymentStatus('failed');
+        return null;
+      }
+      
       const userProfile = getUserProfileData();
       const razorpayOptions = {
-        key: orderData.key, // Your Razorpay key from API response
+        key: RAZORPAY_KEY_ID, // Use Razorpay key from frontend config for security
         amount: orderData.amount, // Amount in paise (100 = ₹1)
         currency: orderData.currency,
         name: 'Learning Saint',
@@ -832,37 +864,65 @@ const EnrollScreen = ({ navigation, route }) => {
             ? { uri: lesson.thumbnailImageUrl }
             : require('../assests/images/Course.png');
 
+          // Check if lesson should be locked
+          const isFirstLesson = index === 0;
+          const isLessonLocked = !courseData.paymentStatus || 
+            (!isFirstLesson && !courseData.lessons[index - 1]?.isCompleted);
+
           console.log('🔍 Rendering lesson:', {
             index,
             lessonTitle,
             lessonDuration,
             hasThumbnail: !!lesson.thumbnailImageUrl,
-            isCompleted: lesson.isCompleted
+            isCompleted: lesson.isCompleted,
+            isFirstLesson,
+            isLessonLocked,
+            paymentStatus: courseData.paymentStatus
           });
 
           return (
             <TouchableOpacity 
               key={`lesson-${index}`}
-              style={styles.lessonItem}
+              style={styles.lessonItem} // Remove lockedLessonItem style
               onPress={() => {
+                if (isLessonLocked) {
+                  if (!courseData.paymentStatus) {
+                    Alert.alert('Lesson Locked', 'Please enroll in the course first to access this lesson.');
+                  } else {
+                    Alert.alert('Lesson Locked', 'Please complete the previous lesson first to unlock this one.');
+                  }
+                  return;
+                }
+                
                 if (courseData.paymentStatus) {
                   console.log('🎬 EnrollScreen: Lesson clicked, navigating to LessonVideo with lessonId:', lesson.lessonId);
                   navigation.navigate('LessonVideo', { lessonId: lesson.lessonId });
-                } else {
-                  console.log('🚫 EnrollScreen: Lesson clicked but user not enrolled yet');
-                  // Do nothing - lesson is not clickable until enrolled
                 }
               }}
+              disabled={isLessonLocked}
             >
               <Image 
                 source={thumbnailSource}
-                style={styles.lessonThumbnail}
+                style={styles.lessonThumbnail} // Remove lockedLessonThumbnail style
               />
               <View style={styles.lessonInfo}>
-                <Text style={styles.lessonTitle}>{lessonTitle}</Text>
-                <Text style={styles.lessonDuration}>{lessonDuration}</Text>
+                <Text style={styles.lessonTitle}> {/* Remove lockedLessonTitle style */}
+                  {lessonTitle}
+                </Text>
+                <Text style={styles.lessonDuration}> {/* Remove lockedLessonDuration style */}
+                  {lessonDuration}
+                </Text>
               </View>
-              {lesson.isCompleted && (
+              
+              {/* Show lock icon for locked lessons */}
+              {isLessonLocked && (
+                <View style={styles.lockIconContainer}>
+                  <Icon name="lock-closed" size={24} color="#999999" />
+                </View>
+              )}
+              
+              {/* Show completed badge for completed lessons */}
+              {lesson.isCompleted && !isLessonLocked && (
                 <View style={styles.completedBadge}>
                   <Icon name="checkmark-circle" size={24} color="#2285FA" />
                 </View>
@@ -954,9 +1014,20 @@ const EnrollScreen = ({ navigation, route }) => {
       <ScrollView 
         style={[styles.scrollView, isFullScreen && { display: 'none' }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#FF6B35']}
+            tintColor="#FF6B35"
+            title="Pull to refresh..."
+            titleColor="#FF6B35"
+          />
+        }
       >
         {isLoadingCourse ? (
           <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FF6B35" />
             <Text style={styles.loadingText}>Loading course details...</Text>
           </View>
         ) : courseError ? (
@@ -997,9 +1068,16 @@ const EnrollScreen = ({ navigation, route }) => {
               onPress={handleEnrollNow}
               disabled={isEnrolling}
             >
-              <Text style={styles.enrollButtonText}>
-                {isEnrolling ? 'Processing Payment...' : `Enroll - ${courseData.price}`}
-              </Text>
+              {isEnrolling ? (
+                <View style={styles.enrollButtonLoading}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.enrollButtonText}>Processing Payment...</Text>
+                </View>
+              ) : (
+                <Text style={styles.enrollButtonText}>
+                  Enroll - {courseData.price}
+                </Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -1289,11 +1367,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F8F8',
     borderRadius: getFontSize(8),
   },
+  lockedLessonItem: {
+    backgroundColor: '#F0F0F0',
+    opacity: 0.7,
+  },
   lessonThumbnail: {
     width: getFontSize(60),
     height: getFontSize(40),
     borderRadius: getFontSize(6),
     marginRight: getVerticalSize(12),
+  },
+  lockedLessonThumbnail: {
+    opacity: 0.5,
   },
   lessonInfo: {
     flex: 1,
@@ -1304,9 +1389,24 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginBottom: getVerticalSize(4),
   },
+  lockedLessonTitle: {
+    color: '#999999',
+  },
   lessonDuration: {
     fontSize: getFontSize(14),
     color: '#666666',
+  },
+  lockedLessonDuration: {
+    color: '#999999',
+  },
+  lockIconContainer: {
+    width: getFontSize(24),
+    height: getFontSize(24),
+    borderRadius: getFontSize(12),
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: getVerticalSize(8),
   },
   completedBadge: {
     width: getFontSize(24),
@@ -1315,6 +1415,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: getVerticalSize(8),
   },
   checkIcon: {
     width: getFontSize(12),
@@ -1388,6 +1489,11 @@ const styles = StyleSheet.create({
     borderRadius: getFontSize(25),
     alignItems: 'center',
   },
+  enrollButtonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   enrollButtonText: {
     color: '#FFFFFF',
     fontSize: getFontSize(18),
@@ -1398,10 +1504,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    paddingVertical: getVerticalSize(40),
   },
   loadingText: {
     fontSize: getFontSize(18),
     color: '#666666',
+    marginTop: getVerticalSize(15),
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,

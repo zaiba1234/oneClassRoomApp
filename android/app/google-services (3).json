@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "830620644032",
+    "project_id": "learningsaint-971bd",
+    "storage_bucket": "learningsaint-971bd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:830620644032:android:54d5247078117e3726f325",
+        "android_client_info": {
+          "package_name": "com.learningsaint"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJn8hIkaO-MCKB_HJFyz1mNi3IwMUdiAg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

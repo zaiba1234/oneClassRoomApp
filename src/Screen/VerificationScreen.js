@@ -4,7 +4,9 @@ import { authAPI } from '../API/authAPI';
 import { profileAPI } from '../API/profileAPI';
 import { useAppDispatch } from '../Redux/hooks';
 import { setUserData, saveUserToStorage } from '../Redux/userSlice';
+import { getApiUrl } from '../API/config';
 import {
+  Alert,
   TextInput,
   View,                                                                           
   Text,
@@ -31,10 +33,14 @@ const VerificationScreen = ({ route }) => {
   const dispatch = useAppDispatch();
   const [otp, setOtp] = useState(['', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendTimer, setResendTimer] = useState(45);
   const otpRefs = useRef([]);
   
   const mobileNumber = route.params?.mobileNumber || '+91 ******333';
   const fullName = route.params?.fullName || '';
+  const email = route.params?.email || '';
+  const isEmailVerification = route.params?.isEmailVerification || false;
 
   // Test Redux dispatch to verify it's working
   useEffect(() => {
@@ -45,6 +51,17 @@ const VerificationScreen = ({ route }) => {
     // Test dispatch - only run once
     console.log('✅ VerificationScreen: Redux actions are available and ready');
   }, []);
+
+  // Timer effect for resend OTP
+  useEffect(() => {
+    let interval;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   const handleOtpChange = (index, value) => {
     const newOtp = [...otp];
@@ -78,6 +95,160 @@ const VerificationScreen = ({ route }) => {
       if (index > 0) {
         otpRefs.current[index - 1]?.focus();
       }
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (isResending || resendTimer > 0) {
+      console.log('⚠️ VerificationScreen: Resend OTP blocked - timer active or already resending');
+      return;
+    }
+
+    console.log('🔄 VerificationScreen: Starting resend OTP...');
+    
+    // For email verification, we need to resend email OTP, not mobile OTP
+    if (isEmailVerification) {
+      console.log('📧 VerificationScreen: Resending email OTP...');
+      console.log('📧 VerificationScreen: Email for resend:', email);
+      
+      setIsResending(true);
+      
+      try {
+        // Call send-emailotp API again
+        const response = await fetch(getApiUrl('/api/auth/send-emailotp'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${route.params?.token || ''}`,
+          },
+          body: JSON.stringify({
+            email: email
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ VerificationScreen: Email OTP resent successfully!');
+            // Reset timer to 45 seconds
+            setResendTimer(45);
+            // Clear OTP fields
+            setOtp(['', '', '', '']);
+            // Focus on first OTP field
+            otpRefs.current[0]?.focus();
+          } else {
+            console.log('❌ VerificationScreen: Email OTP resend failed:', result.message);
+          }
+        } else {
+          console.log('❌ VerificationScreen: Email OTP resend failed:', response.status);
+        }
+      } catch (error) {
+        console.error('💥 VerificationScreen: Email OTP resend error:', error);
+      } finally {
+        setIsResending(false);
+      }
+    } else {
+      // Mobile OTP resend (existing logic)
+      console.log('📱 VerificationScreen: Mobile number for resend:', mobileNumber);
+      
+      setIsResending(true);
+      
+      try {
+        const result = await authAPI.resendOTP(mobileNumber);
+        console.log('📡 VerificationScreen: Resend OTP API response:', result);
+        
+        if (result.success) {
+          console.log('✅ VerificationScreen: OTP resent successfully!');
+          // Reset timer to 45 seconds
+          setResendTimer(45);
+          // Clear OTP fields
+          setOtp(['', '', '', '']);
+          // Focus on first OTP field
+          otpRefs.current[0]?.focus();
+        } else {
+          console.log('❌ VerificationScreen: Resend OTP failed:', result.data?.message);
+        }
+      } catch (error) {
+        console.error('💥 VerificationScreen: Resend OTP error:', error);
+      } finally {
+        setIsResending(false);
+      }
+    }
+  };
+
+  const handleVerifyEmailOTP = async () => {
+    const otpString = otp.join('');
+    console.log('📧 VerificationScreen: Starting email OTP verification...');
+    console.log('📧 VerificationScreen: OTP entered:', otpString);
+    console.log('📧 VerificationScreen: Email from route:', email);
+    
+    if (otpString.length !== 4) {
+      console.log('❌ VerificationScreen: OTP incomplete, length:', otpString.length);
+      return;
+    }
+
+    setIsLoading(true);
+    console.log('🔄 VerificationScreen: Loading started, calling verify-emailOtp API...');
+    
+    try {
+      // Call verify-emailOtp API
+      const response = await fetch(getApiUrl('/api/auth/verify-emailOtp'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${route.params?.token || ''}`,
+        },
+        body: JSON.stringify({
+          email: email,
+          otp: otpString
+        })
+      });
+
+      console.log('📡 VerificationScreen: Response status:', response.status);
+      console.log('📡 VerificationScreen: Response headers:', response.headers);
+      
+      // Check if response is ok before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('❌ VerificationScreen: API error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      let result;
+      try {
+        result = await response.json();
+        console.log('📡 VerificationScreen: Email OTP verification response:', result);
+      } catch (parseError) {
+        console.error('💥 VerificationScreen: JSON parse error:', parseError);
+        console.log('📡 VerificationScreen: Raw response text:', await response.text());
+        throw new Error('Invalid response from server. Please try again.');
+      }
+      
+      if (result.success) {
+        console.log('✅ VerificationScreen: Email OTP verification successful!');
+        Alert.alert(
+          'Success', 
+          'Email verified successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Navigate back to PersonalInfoScreen
+                navigation.navigate('PersonalInfo');
+              }
+            }
+          ]
+        );
+      } else {
+        console.log('❌ VerificationScreen: Email OTP verification failed:', result.message);
+        Alert.alert('Error', result.message || 'Failed to verify email OTP');
+      }
+    } catch (error) {
+      console.error('💥 VerificationScreen: Email OTP verification error:', error);
+      Alert.alert('Error', 'Failed to verify email OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
+      console.log('🔄 VerificationScreen: Loading finished');
     }
   };
 
@@ -252,9 +423,11 @@ const VerificationScreen = ({ route }) => {
               />
             </View>
 
-            <Text style={styles.title}>Verify OTP</Text>
+            <Text style={styles.title}>
+              {isEmailVerification ? 'Verify Email OTP' : 'Verify OTP'}
+            </Text>
             <Text style={styles.subtitle}>
-              Enter the OTP sent to {mobileNumber}
+              Enter the OTP sent to {isEmailVerification ? email : mobileNumber}
             </Text>
 
             {/* OTP Input Fields */}
@@ -281,12 +454,24 @@ const VerificationScreen = ({ route }) => {
             <View style={styles.resendContainer}>
               <Text style={styles.resendText}>
                 Didn't you receive the OTP?{' '}
-                <Text style={styles.resendLink}>Resend OTP</Text>
+                {resendTimer > 0 ? (
+                  <Text style={styles.resendLinkDisabled}>Resend OTP</Text>
+                ) : (
+                  <TouchableOpacity onPress={handleResendOTP} disabled={isResending}>
+                    <Text style={styles.resendLink}>
+                      {isResending ? 'Resending...' : 'Resend OTP'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </Text>
-              <View style={styles.timerContainer}>
-                <Icon name="time-outline" size={14} color="#FF8800" />
-                <Text style={styles.timerText}>00:45</Text>
-              </View>
+              {resendTimer > 0 && (
+                <View style={styles.timerContainer}>
+                  <Icon name="time-outline" size={14} color="#FF8800" />
+                  <Text style={styles.timerText}>
+                    {Math.floor(resendTimer / 60).toString().padStart(2, '0')}:{(resendTimer % 60).toString().padStart(2, '0')}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -301,11 +486,13 @@ const VerificationScreen = ({ route }) => {
                 style={styles.button}
               >
                 <TouchableOpacity
-                  onPress={handleVerifyOTP}
+                  onPress={isEmailVerification ? handleVerifyEmailOTP : handleVerifyOTP}
                   style={{ width: '100%', alignItems: 'center' }}
                   disabled={isLoading}
                 >
-                  <Text style={styles.buttonText}>{isLoading ? 'Verifying...' : 'Verify OTP'}</Text>
+                  <Text style={styles.buttonText}>
+                    {isLoading ? 'Verifying...' : (isEmailVerification ? 'Verify Email OTP' : 'Verify OTP')}
+                  </Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
@@ -403,6 +590,11 @@ const styles = StyleSheet.create({
   },
   resendLink: {
     color: '#FF8800',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  resendLinkDisabled: {
+    color: '#999',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
