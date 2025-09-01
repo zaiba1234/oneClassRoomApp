@@ -210,12 +210,92 @@ const InternshipLetterScreen = () => {
 
 
 
+  // Function to check internship status before proceeding with payment
+  const checkInternshipStatus = async () => {
+    console.log('🔍 InternshipLetterScreen: checkInternshipStatus called');
+    console.log('🔍 InternshipLetterScreen: courseId:', courseId);
+    console.log('🔑 InternshipLetterScreen: token:', token ? token.substring(0, 30) + '...' : 'No token');
+    
+    try {
+      // Build the check status API URL with courseId as query parameter
+      const checkStatusUrl = getApiUrl(`/api/user/internshipLetter/check-internshipStatus/${courseId}`);
+      console.log('🌐 InternshipLetterScreen: Check status API URL:', checkStatusUrl);
+      
+      console.log('🔍 InternshipLetterScreen: Making GET request to check internship status...');
+      const response = await fetch(checkStatusUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('📡 InternshipLetterScreen: Check status response received - status:', response.status, response.statusText);
+      
+      const result = await response.json();
+      console.log('📄 InternshipLetterScreen: Check status response parsed:', JSON.stringify(result, null, 2));
+      
+      if (response.ok && result.success) {
+        console.log('✅ InternshipLetterScreen: Check status API call successful');
+        console.log('🔍 InternshipLetterScreen: isEnrolled flag:', result.data?.isEnrolled);
+        
+        if (result.data?.isEnrolled === true) {
+          console.log('✅ InternshipLetterScreen: User is already enrolled, skipping Razorpay payment');
+          Alert.alert(
+            'Already Enrolled',
+            'You are already enrolled for this internship letter!',
+            [{ text: 'OK' }]
+          );
+          return { isEnrolled: true };
+        } else {
+          console.log('❌ InternshipLetterScreen: User is not enrolled, proceeding with Razorpay payment');
+          return { isEnrolled: false };
+        }
+      } else {
+        console.log('❌ InternshipLetterScreen: Check status API call failed - response.ok:', response.ok, 'result.success:', result.success);
+        console.log('❌ InternshipLetterScreen: Error message:', result.message);
+        Alert.alert(
+          'Status Check Failed',
+          result.message || 'Failed to check internship status',
+          [{ text: 'OK' }]
+        );
+        return { isEnrolled: false, error: true };
+      }
+    } catch (error) {
+      console.error('💥 InternshipLetterScreen: Error in checkInternshipStatus:', error);
+      Alert.alert(
+        'Error',
+        'Network error occurred while checking internship status',
+        [{ text: 'OK' }]
+      );
+      return { isEnrolled: false, error: true };
+    }
+  };
+
   // Function to request internship letter from API
   const requestInternshipLetter = async () => {
     console.log('🎯 InternshipLetterScreen: requestInternshipLetter called');
     try {
       console.log('🎯 InternshipLetterScreen: Setting isRequesting to true');
       setIsRequesting(true);
+      
+      // First, check internship status
+      console.log('🔍 InternshipLetterScreen: Step 1 - Checking internship status...');
+      const statusCheck = await checkInternshipStatus();
+      console.log('🔍 InternshipLetterScreen: Status check result:', JSON.stringify(statusCheck, null, 2));
+      
+      if (statusCheck.error) {
+        console.log('❌ InternshipLetterScreen: Status check failed, stopping process');
+        return;
+      }
+      
+      if (statusCheck.isEnrolled) {
+        console.log('✅ InternshipLetterScreen: User already enrolled, stopping process');
+        return;
+      }
+      
+      // If not enrolled, proceed with Razorpay payment
+      console.log('🎯 InternshipLetterScreen: Step 2 - User not enrolled, proceeding with Razorpay payment...');
       
       console.log('🎯 InternshipLetterScreen: Building API URL');
       const apiUrl = getApiUrl('/api/user/internshipLetter/request-InternshipLetter');
@@ -315,10 +395,7 @@ const InternshipLetterScreen = () => {
         await handleSuccessfulPayment(paymentData, requestData.internshipLetter.razorpayOrderId, requestData);
         
       } else {
-        console.log('❌ InternshipLetterScreen: No payment order found in response');
-        console.log('❌ InternshipLetterScreen: requestData.internshipLetter:', !!requestData.internshipLetter);
-        console.log('❌ InternshipLetterScreen: razorpayOrderId:', requestData.internshipLetter?.razorpayOrderId);
-        console.log('❌ InternshipLetterScreen: Available fields in requestData:', Object.keys(requestData));
+        
         if (requestData.internshipLetter) {
           console.log('❌ InternshipLetterScreen: Available fields in internshipLetter:', Object.keys(requestData.internshipLetter));
         }
@@ -335,10 +412,7 @@ const InternshipLetterScreen = () => {
 
   // Function to handle payment with Razorpay - EXACT SAME AS ENROLLSCREEN
   const handlePaymentWithRazorpay = async (orderData) => {
-    console.log('🔍 InternshipLetterScreen: handlePaymentWithRazorpay called');
-    console.log('🔍 InternshipLetterScreen: handlePaymentWithRazorpay called with:', JSON.stringify(orderData, null, 2));
-    console.log('🔍 InternshipLetterScreen: razorpayCheckout available:', !!razorpayCheckout);
-    console.log('🔍 InternshipLetterScreen: razorpayCheckout.open function:', typeof razorpayCheckout?.open);
+   
     
     if (!razorpayCheckout || typeof razorpayCheckout.open !== 'function') {
       console.log('❌ InternshipLetterScreen: Razorpay not available');
