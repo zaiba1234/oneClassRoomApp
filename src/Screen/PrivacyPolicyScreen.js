@@ -7,10 +7,28 @@ import {
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
+  Linking,
+  Alert,
 } from 'react-native';
 import BackButton from '../Component/BackButton';
+import LinearGradient from 'react-native-linear-gradient';
 
 const PrivacyPolicyScreen = ({ navigation }) => {
+  const handleOpenPrivacyPolicy = async () => {
+    const url = 'https://www.learningsaint.com/privacy-policy';
+    
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Cannot open the privacy policy link');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to open privacy policy');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -35,6 +53,23 @@ const PrivacyPolicyScreen = ({ navigation }) => {
           <Text style={styles.paragraph}>
             We use the information we collect to provide, maintain, and improve our services, to communicate with you, and to develop new features.
           </Text>
+          
+          {/* View Full Privacy Policy Button */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={handleOpenPrivacyPolicy}
+            >
+              <LinearGradient
+                colors={['#FF8A00', '#FFB300']}
+                style={styles.gradientButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.buttonText}>View Full Privacy Policy</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -86,5 +121,30 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#666',
     marginBottom: 15,
+  },
+  buttonContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  button: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#FF8A00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    width: '100%',
+  },
+  gradientButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

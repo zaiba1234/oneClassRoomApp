@@ -19,6 +19,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { logout, clearUserFromStorage } from '../Redux/userSlice';
 import { useNavigation } from '@react-navigation/native';
+import { getApiUrl } from '../API/config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,61 +29,62 @@ const ProfileScreen = ({ navigation }) => {
   
   // State for refreshing
   const [refreshing, setRefreshing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Get user data from Redux
-  const { fullName, mobileNumber, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
-
-  // Debug logging
-  console.log('👤 ProfileScreen: Redux state - fullName:', fullName);
-  console.log('👤 ProfileScreen: Redux state - mobileNumber:', mobileNumber);
-  console.log('👤 ProfileScreen: Redux state - _id:', _id);
-  console.log('👤 ProfileScreen: Redux state - userId:', userId);
-  console.log('👤 ProfileScreen: Redux state - profileImageUrl:', profileImageUrl);
-  console.log('👤 ProfileScreen: Redux state - address:', address);
-  console.log('👤 ProfileScreen: Redux state - email:', email);
+  const { fullName, mobileNumber, _id, userId, profileImageUrl, address, email, token } = useAppSelector((state) => state.user);
 
   const menuItems = [
     {
       id: 1,
       title: 'Personal Info',
-      imageSource: require('../assests/images/PersonalInfo.png'),
+      iconName: 'person-outline',
+      iconColor: '#4CAF50',
       screenName: 'PersonalInfo',
     },
-    {
-      id: 2,
-      title: 'Payment Method',
-      imageSource: require('../assests/images/PaymentMethod.png'),
-      screenName: 'PaymentMethod',
-    },
+   
     {
       id: 3,
       title: 'Invoice History',
-      imageSource: require('../assests/images/PaymentMethod.png'),
+      iconName: 'receipt-outline',
+      iconColor: '#2196F3',
       screenName: 'InvoiceHistory',
     },
     {
       id: 4,
       title: 'Settings',
-      imageSource: require('../assests/images/Setting.png'),
+      iconName: 'settings-outline',
+      iconColor: '#FF9800',
       screenName: 'Setting',
     },
          {
        id: 5,
        title: 'Privacy and Policy',
-       imageSource: require('../assests/images/PrivacyPolicy.png'),
+       iconName: 'shield-checkmark-outline',
+       iconColor: '#9C27B0',
        screenName: 'PrivacyPolicy',
      },
      {
        id: 6,
        title: 'Terms and Condition',
-       imageSource: require('../assests/images/TermsCondition.png'),
+       iconName: 'document-text-outline',
+       iconColor: '#607D8B',
        screenName: 'TermsCondition',
      },
      {
        id: 7,
        title: 'Contact Us',
-       imageSource: require('../assests/images/Contactus.png'),
+       iconName: 'mail-outline',
+       iconColor: '#E91E63',
        screenName: 'ContactUs',
+     },
+     {
+       id: 8,
+       title: 'Delete Account',
+       iconName: 'trash-outline',
+       iconColor: '#FF4444',
+       screenName: 'DeleteAccount',
+       isDestructive: true,
      },
   ];
 
@@ -108,6 +110,9 @@ const ProfileScreen = ({ navigation }) => {
         break;
       case 'ContactUs':
         navigation.navigate('ContactUs');
+        break;
+      case 'DeleteAccount':
+        handleDeleteAccount();
         break;
       default:
         console.log('Screen not implemented yet');
@@ -137,6 +142,99 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: () => {
+            // Show second confirmation
+            Alert.alert(
+              'Final Confirmation',
+              'This is your last chance. Are you absolutely sure you want to delete your account?',
+              [
+                {
+                  text: 'Cancel',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Yes, Delete Forever',
+                  style: 'destructive',
+                  onPress: deleteAccountAPI,
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const deleteAccountAPI = async () => {
+    try {
+      setIsDeleting(true);
+      console.log('🗑️ Starting account deletion process...');
+
+      const apiUrl = getApiUrl('/api/user/profile/delete-profile');
+      
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📡 Delete account response status:', response.status);
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Account deleted successfully:', result);
+        
+        Alert.alert(
+          'Account Deleted',
+          'Your account has been successfully deleted. We\'re sorry to see you go.',
+          [
+            {
+              text: 'OK',
+              onPress: async () => {
+                // Clear user data and navigate to login
+                await dispatch(clearUserFromStorage());
+                dispatch(logout());
+                nav.navigate('Login');
+              },
+            },
+          ]
+        );
+      } else {
+        const errorData = await response.json();
+        console.error('❌ Delete account failed:', errorData);
+        
+        Alert.alert(
+          'Delete Failed',
+          errorData.message || 'Failed to delete account. Please try again later.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('💥 Delete account error:', error);
+      Alert.alert(
+        'Error',
+        'Something went wrong while deleting your account. Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Handle pull-to-refresh
   const handleRefresh = async () => {
     console.log('🔄 ProfileScreen: Pull-to-refresh triggered');
@@ -152,12 +250,44 @@ const ProfileScreen = ({ navigation }) => {
   const renderMenuItem = (item) => (
     <TouchableOpacity 
       key={item.id} 
-      style={styles.menuItem}
+      style={[
+        styles.menuItem,
+        item.isDestructive && styles.destructiveMenuItem
+      ]}
       onPress={() => handleMenuItemPress(item?.screenName)}
+      disabled={isDeleting && item.isDestructive}
     >
-      <Image source={item.imageSource} style={styles.menuIcon} />
-      <Text style={styles.menuTitle}>{item.title}</Text>
-      <Icon name="chevron-forward" size={20} color="#666" />
+      {item.imageSource ? (
+        <Image 
+          source={item.imageSource} 
+          style={[
+            styles.menuIcon,
+            item.isDestructive && styles.destructiveMenuIcon
+          ]} 
+        />
+      ) : (
+        <Icon 
+          name={item.iconName} 
+          size={24} 
+          color={item.iconColor || (item.isDestructive ? "#FF4444" : "#666")}
+          style={styles.menuIconContainer}
+        />
+      )}
+      <Text style={[
+        styles.menuTitle,
+        item.isDestructive && styles.destructiveMenuTitle
+      ]}>
+        {item.title}
+      </Text>
+      {isDeleting && item.isDestructive ? (
+        <ActivityIndicator size="small" color="#FF4444" />
+      ) : (
+        <Icon 
+          name="chevron-forward" 
+          size={20} 
+          color={item.isDestructive ? "#FF4444" : "#666"} 
+        />
+      )}
     </TouchableOpacity>
   );
 
@@ -328,6 +458,9 @@ const styles = StyleSheet.create({
     height: 30,
     marginRight: 15,
   },
+  menuIconContainer: {
+    marginRight: 15,
+  },
   menuTitle: {
     flex: 1,
     fontSize: 16,
@@ -348,5 +481,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FF8800',
   },
-
+  destructiveMenuItem: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF4444',
+  },
+  destructiveMenuIcon: {
+    tintColor: '#FF4444',
+  },
+  destructiveMenuTitle: {
+    color: '#FF4444',
+    fontWeight: '600',
+  },
 });

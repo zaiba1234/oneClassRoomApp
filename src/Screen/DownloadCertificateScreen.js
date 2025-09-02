@@ -588,7 +588,7 @@ const DownloadCertificateScreen = () => {
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.downloadButtonText}>
-              {isDownloading ? 'Downloading...' : 'Download Certificate'}
+              {isDownloading ? 'Downloading...' : 'Download Certificate '}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: getResponsiveSize(20),
     paddingTop: getResponsiveSize(10),
     paddingBottom: getResponsiveSize(15),
-    marginTop: getResponsiveSize(20),
+    marginTop: getResponsiveSize(30),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',

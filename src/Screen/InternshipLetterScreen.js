@@ -820,6 +820,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: getResponsiveSize(20),
     paddingTop: getResponsiveSize(10),
     paddingBottom: getResponsiveSize(15),
+    marginTop: getResponsiveSize(20),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
