@@ -8,6 +8,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import BackButton from '../Component/BackButton';
 
 const InvoiceHistoryScreen = ({ navigation }) => {
   return (
@@ -16,12 +17,7 @@ const InvoiceHistoryScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-        <Icon name="chevron-back" size={24} color="#FF8800" />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Invoice</Text>
         <View style={styles.placeholder} />
       </View>
@@ -56,20 +52,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
+    marginTop: 10,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#FFF8EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
+
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',

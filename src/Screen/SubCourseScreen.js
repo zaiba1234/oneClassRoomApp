@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import BackButton from '../Component/BackButton';
 
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
@@ -203,14 +204,7 @@ const SubCourseScreen = ({ navigation, route }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <View style={styles.backButtonContainer}>
-            <Icon name="chevron-back" size={20} color="#FF8800" />
-          </View>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         
         <Text style={styles.headerTitle} numberOfLines={2} ellipsizeMode="tail">{displayCourseName}</Text>
         
@@ -409,20 +403,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FF8800',
   },
-  backButton: {
-    padding: 8,
-    flexShrink: 0,
-  },
-  backButtonContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#FFE4D6',
-    
-    
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
   certificateButton: {
     backgroundColor: '#FF8800',
     paddingHorizontal: 16,

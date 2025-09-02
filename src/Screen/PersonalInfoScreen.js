@@ -18,6 +18,7 @@ import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { setFullName, setMobileNumber, setProfileData } from '../Redux/userSlice';
 import { profileAPI } from '../API/profileAPI';
 import { getApiUrl, ENDPOINTS } from '../API/config';
+import BackButton from '../Component/BackButton';
 
 const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -363,9 +364,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Icon name="chevron-back" size={24} color="#FF8800" />
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.goBack()} />
           <Text style={styles.headerTitle}>Personal Info</Text>
           <View style={{ width: 32 }} />
         </View>
@@ -381,9 +380,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="chevron-back" size={24} color="#FF8800" />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Personal Info</Text>
         <View style={{ width: 32 }} />
       </View>
@@ -499,19 +496,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     justifyContent: 'space-between',
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#FFF8EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
+
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
