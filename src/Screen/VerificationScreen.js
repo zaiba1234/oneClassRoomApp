@@ -31,7 +31,7 @@ const { width, height } = Dimensions.get('window');
 const VerificationScreen = ({ route }) => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
-  const [otp, setOtp] = useState(['', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(45);
@@ -41,12 +41,23 @@ const VerificationScreen = ({ route }) => {
   const fullName = route.params?.fullName || '';
   const email = route.params?.email || '';
   const isEmailVerification = route.params?.isEmailVerification || false;
+  const verificationId = route.params?.verificationId || null;
+  const isFromLogin = route.params?.isFromLogin || false;
+  const isFromRegister = route.params?.isFromRegister || false;
 
   // Test Redux dispatch to verify it's working
   useEffect(() => {
     console.log('🧪 VerificationScreen: Testing Redux dispatch...');
     console.log('🧪 VerificationScreen: setUserData action available:', !!setUserData);
     console.log('🧪 VerificationScreen: saveUserToStorage action available:', !!saveUserToStorage);
+    
+    // Debug: Log which flow we're in
+    console.log('🔄 VerificationScreen: Flow detection:');
+    console.log('🔄 VerificationScreen: isFromLogin:', isFromLogin);
+    console.log('🔄 VerificationScreen: isFromRegister:', isFromRegister);
+    console.log('🔄 VerificationScreen: isEmailVerification:', isEmailVerification);
+    console.log('🔄 VerificationScreen: mobileNumber:', mobileNumber);
+    console.log('🔄 VerificationScreen: fullName:', fullName);
     
     // Test dispatch - only run once
     console.log('✅ VerificationScreen: Redux actions are available and ready');
@@ -83,7 +94,7 @@ const VerificationScreen = ({ route }) => {
       setOtp(newOtp);
       
       // Move to next field if not the last one
-      if (index < 3) {
+      if (index < 5) {
         otpRefs.current[index + 1]?.focus();
       }
     }
@@ -133,7 +144,7 @@ const VerificationScreen = ({ route }) => {
             // Reset timer to 45 seconds
             setResendTimer(45);
             // Clear OTP fields
-            setOtp(['', '', '', '']);
+            setOtp(['', '', '', '', '', '']);
             // Focus on first OTP field
             otpRefs.current[0]?.focus();
           } else {
@@ -155,21 +166,21 @@ const VerificationScreen = ({ route }) => {
       
       try {
         const result = await authAPI.resendOTP(mobileNumber);
-        console.log('📡 VerificationScreen: Resend OTP API response:', result);
+        console.log('🔥 Firebase VerificationScreen: Resend OTP API response:', result);
         
         if (result.success) {
-          console.log('✅ VerificationScreen: OTP resent successfully!');
+          console.log('✅ Firebase VerificationScreen: OTP resent successfully!');
           // Reset timer to 45 seconds
           setResendTimer(45);
           // Clear OTP fields
-          setOtp(['', '', '', '']);
+          setOtp(['', '', '', '', '', '']);
           // Focus on first OTP field
           otpRefs.current[0]?.focus();
         } else {
-          console.log('❌ VerificationScreen: Resend OTP failed:', result.data?.message);
+          console.log('❌ Firebase VerificationScreen: Resend OTP failed:', result.data?.message);
         }
       } catch (error) {
-        console.error('💥 VerificationScreen: Resend OTP error:', error);
+        console.error('💥 Firebase VerificationScreen: Resend OTP error:', error);
       } finally {
         setIsResending(false);
       }
@@ -182,7 +193,7 @@ const VerificationScreen = ({ route }) => {
     console.log('📧 VerificationScreen: OTP entered:', otpString);
     console.log('📧 VerificationScreen: Email from route:', email);
     
-    if (otpString.length !== 4) {
+    if (otpString.length !== 6) {
       console.log('❌ VerificationScreen: OTP incomplete, length:', otpString.length);
       return;
     }
@@ -254,22 +265,35 @@ const VerificationScreen = ({ route }) => {
 
   const handleVerifyOTP = async () => {
     const otpString = otp.join('');
-    console.log('🔐 VerificationScreen: Starting OTP verification...');
-    console.log('🔐 VerificationScreen: OTP entered:', otpString);
-    console.log('🔐 VerificationScreen: Mobile number from route:', mobileNumber);
-    console.log('🔐 VerificationScreen: Full name from route:', fullName);
+    console.log('🔥 Firebase VerificationScreen: Starting OTP verification...');
+    console.log('🔥 Firebase VerificationScreen: OTP entered:', otpString);
+    console.log('🔥 Firebase VerificationScreen: Mobile number from route:', mobileNumber);
+    console.log('🔥 Firebase VerificationScreen: Verification ID:', verificationId);
+    console.log('🔥 Firebase VerificationScreen: Flow - isFromLogin:', isFromLogin, 'isFromRegister:', isFromRegister);
     
-    if (otpString.length !== 4) {
-      console.log('❌ VerificationScreen: OTP incomplete, length:', otpString.length);
+    if (otpString.length !== 6) {
+      console.log('❌ Firebase VerificationScreen: OTP incomplete, length:', otpString.length);
       return;
     }
 
     setIsLoading(true);
-    console.log('🔄 VerificationScreen: Loading started, calling verifyOTP API...');
+    console.log('🔄 Firebase VerificationScreen: Loading started, calling Firebase verifyOTP...');
     
     try {
-      const result = await authAPI.verifyOTP(mobileNumber, otpString);
-      console.log('📡 VerificationScreen: verifyOTP API response:', result);
+      // Use the appropriate API based on the flow
+      let result;
+      if (isFromRegister) {
+        console.log('🔄 Firebase VerificationScreen: Using register flow verification...');
+        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+      } else if (isFromLogin) {
+        console.log('🔄 Firebase VerificationScreen: Using login flow verification...');
+        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+      } else {
+        console.log('🔄 Firebase VerificationScreen: Using default verification...');
+        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+      }
+      
+      console.log('📡 Firebase VerificationScreen: verifyOTP API response:', result);
      
       
       
@@ -383,8 +407,46 @@ const VerificationScreen = ({ route }) => {
         console.log('🏠 VerificationScreen: Navigating to Home screen...');
         navigation.navigate('Home');
       } else {
-        console.log('❌ VerificationScreen: OTP verification failed:', result.data?.message);
+        console.log('❌ VerificationScreen: OTP verification failed:', result.message);
         console.log('❌ VerificationScreen: Full error response:', result);
+        
+        // Check if user needs to register
+        console.log('🔍 VerificationScreen: Checking error message:', result.message);
+        console.log('🔍 VerificationScreen: Message includes "not registered":', result.message?.includes('not registered'));
+        console.log('🔍 VerificationScreen: Message includes "Mobile number not registered":', result.message?.includes('Mobile number not registered'));
+        console.log('🔍 VerificationScreen: Message includes "not verified":', result.message?.includes('not verified'));
+        
+        if (result.message?.includes('not registered') || 
+            result.message?.includes('Mobile number not registered') ||
+            result.message?.includes('not verified') ||
+            result.message?.includes('User not found')) {
+          console.log('🔄 VerificationScreen: User not registered, showing alert...');
+          console.log('🔄 VerificationScreen: Mobile number for navigation:', mobileNumber);
+          
+          Alert.alert(
+            'Mobile Number Not Registered',
+            'This mobile number is not registered. Please complete your registration.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  console.log('🔄 VerificationScreen: OK button pressed!');
+                  console.log('🔄 VerificationScreen: About to navigate to Register screen...');
+                  console.log('🔄 VerificationScreen: Mobile number being passed:', mobileNumber);
+                  
+                  // Navigate to Register screen with mobile number
+                  navigation.navigate('Register', { mobileNumber: mobileNumber });
+                  console.log('✅ VerificationScreen: Navigation to Register screen initiated!');
+                }
+              }
+            ]
+          );
+          console.log('🔄 VerificationScreen: Alert.alert called successfully!');
+        } else {
+          console.log('❌ VerificationScreen: Error message does not match registration check');
+          // Show error message for other failures
+          Alert.alert('Error', result.message || 'OTP verification failed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('💥 VerificationScreen: OTP verification error:', error);
@@ -396,23 +458,24 @@ const VerificationScreen = ({ route }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
-          <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-          
-          {/* Back Button */}
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="chevron-back" size={20} color="#FF8800" />
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Icon name="chevron-back" size={20} color="#FF8800" />
+      </TouchableOpacity>
 
-          {/* Main Content */}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.content}>
             {/* Verification Icon */}
             <View style={styles.iconContainer}>
@@ -427,7 +490,7 @@ const VerificationScreen = ({ route }) => {
               {isEmailVerification ? 'Verify Email OTP' : 'Verify OTP'}
             </Text>
             <Text style={styles.subtitle}>
-              Enter the OTP sent to {isEmailVerification ? email : mobileNumber}
+              Enter the OTP sent to {isEmailVerification ? email : mobileNumber} 
             </Text>
 
             {/* OTP Input Fields */}
@@ -438,7 +501,7 @@ const VerificationScreen = ({ route }) => {
                   style={[
                     styles.otpInput,
                     digit && styles.otpInputFilled,
-                    index === 3 && digit && styles.otpInputActive
+                    index === 5 && digit && styles.otpInputActive
                   ]}
                   keyboardType="numeric"
                   maxLength={1}
@@ -453,7 +516,9 @@ const VerificationScreen = ({ route }) => {
             {/* Resend OTP Section */}
             <View style={styles.resendContainer}>
               <Text style={styles.resendText}>
-                Didn't you receive the OTP?{' '}
+                Didn't you receive the OTP?
+              </Text>
+              <View style={styles.resendActionContainer}>
                 {resendTimer > 0 ? (
                   <Text style={styles.resendLinkDisabled}>Resend OTP</Text>
                 ) : (
@@ -463,7 +528,7 @@ const VerificationScreen = ({ route }) => {
                     </Text>
                   </TouchableOpacity>
                 )}
-              </Text>
+              </View>
               {resendTimer > 0 && (
                 <View style={styles.timerContainer}>
                   <Icon name="time-outline" size={14} color="#FF8800" />
@@ -474,32 +539,29 @@ const VerificationScreen = ({ route }) => {
               )}
             </View>
           </View>
+        </TouchableWithoutFeedback>
+      </ScrollView>
 
-        
-
-
-<View style={styles.buttonContainer}>
-              <LinearGradient
-                colors={['#FF9800', '#FFB300']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.button}
-              >
-                <TouchableOpacity
-                  onPress={isEmailVerification ? handleVerifyEmailOTP : handleVerifyOTP}
-                  style={{ width: '100%', alignItems: 'center' }}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.buttonText}>
-                    {isLoading ? 'Verifying...' : (isEmailVerification ? 'Verify Email OTP' : 'Verify OTP')}
-                  </Text>
-                </TouchableOpacity>
-              </LinearGradient>
-            </View>
-
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      {/* Fixed Button Container */}
+      <View style={styles.buttonContainer}>
+        <LinearGradient
+          colors={['#FF9800', '#FFB300']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.button}
+        >
+          <TouchableOpacity
+            onPress={isEmailVerification ? handleVerifyEmailOTP : handleVerifyOTP}
+            style={styles.buttonTouchable}
+            disabled={isLoading}
+          >
+            <Text style={styles.buttonText}>
+              {isLoading ? 'Verifying...' : (isEmailVerification ? 'Verify Email OTP' : 'Verify OTP')}
+            </Text>
+          </TouchableOpacity>
+        </LinearGradient>
+      </View>
+    </View>
   );
 };
 
@@ -512,10 +574,17 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 30,
+    top: Platform.OS === 'ios' ? 50 : 30,
     left: 20,
     zIndex: 10,
     padding: 10,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   content: {
     flex: 1,
@@ -581,26 +650,38 @@ const styles = StyleSheet.create({
   },
   resendContainer: {
     alignItems: 'center',
+    marginTop: 20,
   },
   resendText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  resendActionContainer: {
+    marginBottom: 12,
   },
   resendLink: {
     color: '#FF8800',
     fontWeight: '600',
+    fontSize: 14,
     textDecorationLine: 'underline',
   },
   resendLinkDisabled: {
     color: '#999',
     fontWeight: '600',
+    fontSize: 14,
     textDecorationLine: 'underline',
   },
   timerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
   },
   clockImage: {
     width: 14,
@@ -614,16 +695,22 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
- buttonContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  marginBottom:140,  
-  
+  buttonContainer: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 40 : 20,
+    left: 40,
+    right: 40,
+    zIndex: 10,
   },
   button: {
     width: '100%',
     borderRadius: 15,
     paddingVertical: 16,
+  },
+  buttonTouchable: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#fff',

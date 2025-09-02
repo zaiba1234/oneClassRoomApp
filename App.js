@@ -12,6 +12,7 @@ import {
 } from './src/services/firebaseConfig';
 import { getFCMTokenService } from './src/services/fcmTokenService';
 import { testFCMTokenGeneration, getFCMTokenInfo, testFirebaseConfig } from './src/services/fcmTest';
+import websocketService from './src/services/websocketService';
 import SplashScreen from './src/Screen/SplashScreen';
 import OnBoardScreen from './src/Screen/OnBoardScreen';
 import LoginScreen from './src/Screen/LoginScreen';
@@ -52,6 +53,40 @@ const AppContent = () => {
 
   useEffect(() => {
     console.log('🚀 App started!');
+    
+    // Initialize WebSocket connection
+    const initWebSocket = async () => {
+      try {
+        console.log('🔌 App: Initializing WebSocket connection...');
+        await websocketService.connect();
+        console.log('✅ App: WebSocket connection established successfully!');
+        
+        // Set up global WebSocket event listeners
+        websocketService.on('live_lesson', (data) => {
+          console.log('📺 App: Live lesson notification received:', data);
+          // Handle live lesson notification
+        });
+        
+        websocketService.on('request_internship_letter', (data) => {
+          console.log('📜 App: Internship letter request received:', data);
+          // Handle internship letter request
+        });
+        
+        websocketService.on('upload_internship_letter', (data) => {
+          console.log('📄 App: Internship letter upload notification received:', data);
+          // Handle internship letter upload
+        });
+        
+        websocketService.on('buy_course', (data) => {
+          console.log('💳 App: Course purchase notification received:', data);
+          // Handle course purchase notification
+        });
+        
+      } catch (error) {
+        console.error('❌ App: WebSocket connection failed:', error);
+        console.log('🛡️ App: App will continue without real-time features');
+      }
+    };
     
     // Simple Firebase initialization
     const initFirebase = async () => {
@@ -94,7 +129,8 @@ const AppContent = () => {
       console.error('💥 App: Error setting up message listener:', error);
     }
 
-    // Initialize Firebase
+    // Initialize WebSocket and Firebase
+    initWebSocket();
     initFirebase();
     
     // Test FCM after 5 seconds
@@ -117,6 +153,23 @@ const AppContent = () => {
     global.testFCM = () => testFCMTokenGeneration();
     global.checkFirebase = () => checkFirebaseStatus();
     global.testConfig = () => testFirebaseConfig();
+    
+    // Add global WebSocket functions for debugging
+    global.websocketStatus = () => {
+      const status = websocketService.getConnectionStatus();
+      console.log('🔌 WebSocket Status:', status);
+      return status;
+    };
+    global.reconnectWebSocket = () => {
+      const { _id, userId } = store.getState().user;
+      const userIdentifier = _id || userId;
+      console.log('🔄 Reconnecting WebSocket...');
+      return websocketService.reconnect(userIdentifier);
+    };
+    global.disconnectWebSocket = () => {
+      console.log('🔌 Disconnecting WebSocket...');
+      websocketService.disconnect();
+    };
     global.showFCMToken = async () => {
       try {
         const { getStoredFCMToken } = require('./src/services/firebaseConfig');
@@ -145,28 +198,56 @@ const AppContent = () => {
           console.error('💥 App: Error cleaning up message listener:', error);
         }
       }
+      
+      // Disconnect WebSocket when app unmounts
+      try {
+        websocketService.disconnect();
+        console.log('🔌 App: WebSocket disconnected on app unmount');
+      } catch (error) {
+        console.error('💥 App: Error disconnecting WebSocket:', error);
+      }
     };
   }, [dispatch, token]);
 
-  // Effect to send FCM token when user logs in
+  // Effect to send FCM token and join WebSocket room when user logs in
   useEffect(() => {
-    const sendTokenOnLogin = async () => {
+    const handleUserLogin = async () => {
       if (token) {
         try {
-          console.log('🔔 App: User logged in, sending FCM token to backend...');
+          console.log('🔔 App: User logged in, handling post-login tasks...');
+          
+          // Send FCM token to backend
+          console.log('🔔 App: Sending FCM token to backend...');
           const sent = await fcmService.sendStoredTokenToBackend();
           if (sent) {
             console.log('✅ App: FCM token sent to backend on login successfully');
           } else {
             console.log('ℹ️ App: No FCM token to send or failed to send');
           }
+          
+          // Join WebSocket user room
+          console.log('🔌 App: Joining WebSocket user room...');
+          const { _id, userId } = store.getState().user;
+          const userIdentifier = _id || userId;
+          
+          if (userIdentifier) {
+            websocketService.emit('join', { userId: userIdentifier });
+            console.log('✅ App: Joined WebSocket user room:', userIdentifier);
+          } else {
+            console.log('⚠️ App: No user ID available for WebSocket room join');
+          }
+          
         } catch (error) {
-          console.error('💥 App: Error sending FCM token on login:', error);
+          console.error('💥 App: Error handling user login tasks:', error);
         }
+      } else {
+        // User logged out, leave WebSocket room
+        console.log('👋 App: User logged out, leaving WebSocket room...');
+        websocketService.emit('leave', {});
       }
     };
 
-    sendTokenOnLogin();
+    handleUserLogin();
   }, [token, fcmService]);
 
   return (

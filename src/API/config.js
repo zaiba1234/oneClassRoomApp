@@ -18,11 +18,11 @@ const API_CONFIG = {
 
   // API Endpoints
   ENDPOINTS: {
-    // Auth endpoints
-    LOGIN: '/api/auth/login',
-    REGISTER: '/api/auth/register',
-    VERIFY_OTP: '/api/auth/verify-otp',
-    RESEND_OTP: '/api/auth/resend-otp',
+    // Auth endpoints (Firebase)
+    LOGIN: '/api/auth/firebase/login',
+    REGISTER: '/api/auth/firebase/register',
+    VERIFY_OTP: '/api/auth/firebase/verify-otp',
+    RESEND_OTP: '/api/auth/firebase/resend-otp',
     SEND_EMAIL_OTP: '/api/auth/send-emailotp',
     VERIFY_EMAIL_OTP: '/api/auth/verify-emailOtp',
     GET_USER_PROFILE: '/api/user/profile/get-profile',

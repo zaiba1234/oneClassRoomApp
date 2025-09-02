@@ -34,6 +34,9 @@ const SubCourseScreen = ({ navigation, route }) => {
   const [showCompletionPopup, setShowCompletionPopup] = useState(false); // Add state for completion popup
   const [isRefreshing, setIsRefreshing] = useState(false); // Add refresh state
 
+  // State for favorite toggling (same as HomeScreen)
+  const [togglingFavorites, setTogglingFavorites] = useState(new Set());
+
   // Fetch subcourse data when component mounts
   useEffect(() => {
     console.log('🚀 SubCourseScreen: Component mounted with route params:', { courseId, courseName });
@@ -170,6 +173,73 @@ const SubCourseScreen = ({ navigation, route }) => {
     fetchSubcourseData(true);
   };
 
+  // Function to toggle favorite status (same as HomeScreen)
+  const toggleFavorite = async (courseId, currentFavoriteStatus) => {
+    try {
+      // Check if token exists
+      if (!token) {
+        console.log('❌ SubCourseScreen: No token available for toggle favorite');
+        return;
+      }
+      
+      // Check if courseId exists
+      if (!courseId) {
+        console.log('❌ SubCourseScreen: No courseId provided for toggle favorite');
+        return;
+      }
+      
+      // Check if already toggling this course to prevent double calls
+      if (togglingFavorites.has(String(courseId))) {
+        console.log('⏳ SubCourseScreen: Already toggling favorite for course:', courseId);
+        return;
+      }
+      
+      console.log('❤️ SubCourseScreen: Starting toggle favorite for course:', courseId);
+      console.log('❤️ SubCourseScreen: Current favorite status:', currentFavoriteStatus);
+      console.log('❤️ SubCourseScreen: Action will be:', currentFavoriteStatus ? 'REMOVE from favorites' : 'ADD to favorites');
+      
+      // Set loading state for this specific course
+      setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
+      
+      console.log('📡 SubCourseScreen: Calling toggleFavorite API...');
+      const result = await courseAPI.toggleFavorite(token, courseId);
+      console.log('📡 SubCourseScreen: Toggle favorite API response:', result);
+      
+      if (result.success && result.data.success) {
+        // Get the new favorite status from the API response
+        const newFavoriteStatus = result.data.data.isLike;
+        console.log('✅ SubCourseScreen: Toggle successful! New favorite status:', newFavoriteStatus);
+        console.log('✅ SubCourseScreen: Action completed:', newFavoriteStatus ? 'ADDED to favorites' : 'REMOVED from favorites');
+        
+        // Update the course in the local state
+        setSubcourses(prevCourses => {
+          const updatedCourses = prevCourses.map(course => {
+            // Convert both IDs to strings for comparison to handle type mismatches
+            if (String(course.id) === String(courseId)) {
+              console.log('🔄 SubCourseScreen: Updating course in local state:', course.title, 'isLike:', newFavoriteStatus);
+              return { ...course, isLike: newFavoriteStatus };
+            }
+            return course;
+          });
+          return updatedCourses;
+        });
+        
+      } else {
+        console.log('❌ SubCourseScreen: Toggle favorite failed:', result.data?.message || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('💥 SubCourseScreen: Error during toggle favorite:', error);
+    } finally {
+      // Remove loading state for this course
+      setTogglingFavorites(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(String(courseId));
+        return newSet;
+      });
+      console.log('🏁 SubCourseScreen: Toggle favorite process completed for course:', courseId);
+    }
+  };
+
   // Use API data if available, otherwise use fallback data
   const displaySubcourses = subcourses.length > 0 ? subcourses : favouriteCourses;
   const displayCourseName = courseData?.courseName || courseName || 'Cybersecurity';
@@ -178,25 +248,46 @@ const SubCourseScreen = ({ navigation, route }) => {
   console.log('🔄 SubCourseScreen: Display course name:', displayCourseName);
   console.log('🔄 SubCourseScreen: Number of display subcourses:', displaySubcourses.length);
 
-  const renderCourseCard = (course) => (
-    <TouchableOpacity 
-      key={course.id} 
-      style={styles.courseCard}
-      onPress={() => navigation.navigate('Enroll', { courseId: course.id })}
-    >
-      <Image source={course.thumbnail} style={styles.courseThumbnail} resizeMode="cover" />
-      <View style={styles.courseInfo}>
-        <Text style={styles.courseTitle} numberOfLines={2} ellipsizeMode="tail">{course.title}</Text>
-        <Text style={styles.courseLessons} numberOfLines={1} ellipsizeMode="tail">{course.lessons}</Text>
-        <Text style={styles.courseRating} numberOfLines={1} ellipsizeMode="tail">⭐ {course.rating}</Text>
-      </View>
-      <View style={styles.courseActions}>
-
-        <Image source={require('../assests/images/Heart.png')} style={styles.heartIcon} resizeMode="contain" />
-        <Text style={styles.coursePrice}>{course.price}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderCourseCard = (course) => {
+    console.log(`💖 SubCourseScreen: Rendering course card for "${course.title}" - isLike: ${course.isLike}, ID: ${course.id}`);
+    
+    return (
+      <TouchableOpacity 
+        key={course.id} 
+        style={styles.courseCard}
+        onPress={() => navigation.navigate('Enroll', { courseId: course.id })}
+      >
+        <Image source={course.thumbnail} style={styles.courseThumbnail} resizeMode="cover" />
+        <View style={styles.courseInfo}>
+          <Text style={styles.courseTitle} numberOfLines={2} ellipsizeMode="tail">{course.title}</Text>
+          <Text style={styles.courseLessons} numberOfLines={1} ellipsizeMode="tail">{course.lessons}</Text>
+          <Text style={styles.courseRating} numberOfLines={1} ellipsizeMode="tail">⭐ {course.rating}</Text>
+        </View>
+        <View style={styles.courseActions}>
+          <TouchableOpacity 
+            style={[
+              styles.heartButton,
+              togglingFavorites.has(String(course.id)) && styles.heartButtonLoading
+            ]} 
+            onPress={() => {
+              console.log(`💖 SubCourseScreen: Heart button pressed for "${course.title}" (ID: ${course.id})`);
+              console.log(`💖 SubCourseScreen: Current isLike status: ${course.isLike}`);
+              console.log(`💖 SubCourseScreen: Will ${course.isLike ? 'REMOVE from' : 'ADD to'} favorites`);
+              toggleFavorite(course.id, course.isLike);
+            }}
+            disabled={togglingFavorites.has(String(course.id))}
+          >
+            <Icon 
+              name={course.isLike ? "heart" : "heart-outline"} 
+              size={20} 
+              color={course.isLike ? "#FF0000" : "#FF8800"}
+            />
+          </TouchableOpacity>
+          <Text style={styles.coursePrice}>{course.price}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -397,6 +488,16 @@ const styles = StyleSheet.create({
     height: 20,
     tintColor: '#FF8800',
     marginBottom: 8,
+  },
+  heartButton: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  heartButtonLoading: {
+    opacity: 0.7, // Make it look disabled
   },
   coursePrice: {
     fontSize: 16,

@@ -533,7 +533,11 @@ const DownloadCertificateScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <BackButton onPress={handleBackPress} />
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleBackPress}>
+          <Icon name="chevron-back" size={getResponsiveSize(24)} color="#333" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Download Certificate</Text>
         <View style={styles.placeholder} />
       </View>
@@ -620,6 +624,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
+
 
   headerTitle: {
     fontSize: getResponsiveSize(18),

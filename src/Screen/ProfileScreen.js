@@ -298,8 +298,12 @@ const ProfileScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Image source={require('../assests/images/Logout.png')} style={styles.logoutIcon} />
+        <TouchableOpacity 
+          style={styles.logoutButton} 
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Icon name="log-out-outline" size={20} color="#006C99" style={styles.logoutIcon} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </View>
@@ -359,7 +363,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 10 : 20,
     paddingBottom: 20,
@@ -373,16 +377,20 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E0F2FF',
   },
   logoutIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 5,
+    marginRight: 6,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color:'#006C99'
+    color: '#006C99',
   },
   profileCardContainer: {
     paddingHorizontal: 20,
