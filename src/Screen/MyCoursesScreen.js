@@ -119,7 +119,7 @@ const MyCoursesScreen = ({ navigation }) => {
         <View style={styles.progressCircle}>
           <View style={[
             styles.progressBackground,
-            { borderColor: progress === 100 ? '#2285FA' : '#E0E0E0' }
+            { borderColor: progress === 100 ? '#006C99' : '#E0E0E0' }
           ]} />
           {progress === 100 ? (
             <View style={[
@@ -128,7 +128,7 @@ const MyCoursesScreen = ({ navigation }) => {
                 width: radius * 2,
                 height: radius * 2,
                 borderRadius: radius,
-                backgroundColor: '#2285FA',
+                backgroundColor: '#006C99',
                 justifyContent: 'center',
                 alignItems: 'center',
               },
@@ -158,10 +158,10 @@ const MyCoursesScreen = ({ navigation }) => {
                     borderRadius: radius,
                     borderWidth: strokeWidth,
                     borderColor: 'transparent',
-                    borderTopColor: '#2285FA',
-                    borderRightColor: progress > 25 ? '#2285FA' : 'transparent',
-                    borderBottomColor: progress > 50 ? '#2285FA' : 'transparent',
-                    borderLeftColor: progress > 75 ? '#2285FA' : 'transparent',
+                    borderTopColor: '#006C99',
+                    borderRightColor: progress > 25 ? '#006C99' : 'transparent',
+                    borderBottomColor: progress > 50 ? '#006C99' : 'transparent',
+                    borderLeftColor: progress > 75 ? '#006C99' : 'transparent',
                     transform: [{ rotate: `${(progress / 100) * 360}deg` }],
                   },
                 ]}
@@ -169,7 +169,7 @@ const MyCoursesScreen = ({ navigation }) => {
             </View>
           )}
           {progress !== 100 && (
-            <Text style={[styles.progressText, { color: '#2285FA' }]}>
+            <Text style={[styles.progressText, { color: '#006C99' }]}>
               {progress}%
             </Text>
           )}
@@ -341,12 +341,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 15,
     marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#006C991A',
+   
   },
   courseCardImage: {
     width: 60,

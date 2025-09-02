@@ -127,7 +127,7 @@ const LibraryScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Library</Text>
+        <Text style={styles.headerTitle}>Library </Text>
        
       </View>
       {refreshing && (

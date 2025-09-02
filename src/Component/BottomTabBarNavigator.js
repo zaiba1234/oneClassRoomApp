@@ -9,6 +9,7 @@ import LibraryScreen from '../Screen/LibraryScreen';
 import FavouritesScreen from '../Screen/FavouritesScreen';
 import ProfileScreen from '../Screen/ProfileScreen';
 
+
 const Tab = createBottomTabNavigator();
 
 const BottomTabNavigator = () => {
@@ -19,15 +20,15 @@ const BottomTabNavigator = () => {
           let iconSource;
 
           if (route.name === 'Home') {
-            iconSource = require('../assests/images/Home.png');
+            iconSource = require('../assests/icons/main.png');
           } else if (route.name === 'Courses') {
-            iconSource = require('../assests/images/Courses.png');
+            iconSource = require('../assests/icons/courses.png');
           } else if (route.name === 'Programs') {
-            iconSource = require('../assests/images/Programs.png');
+            iconSource = require('../assests/icons/home.png');
           } else if (route.name === 'Favorites') {
-            iconSource = require('../assests/images/like.png');
+            iconSource = require('../assests/icons/heart.png');
           } else if (route.name === 'Profile') {
-            iconSource = require('../assests/images/TabbarProfile.png');
+            iconSource = require('../assests/icons/user.png');
           }
 
           return (
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   tabIcon: {
-    top:10,
+    marginTop: 10,
     width: 24,
     height: 24,
   },

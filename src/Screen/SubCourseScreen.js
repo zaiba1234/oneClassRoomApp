@@ -12,6 +12,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
@@ -206,15 +207,14 @@ const SubCourseScreen = ({ navigation, route }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <View style={styles.backButtonCircle}>
-            <Text style={styles.backArrow}>←</Text>
+          <View style={styles.backButtonContainer}>
+            <Icon name="chevron-back" size={20} color="#FF8800" />
           </View>
         </TouchableOpacity>
         
         <Text style={styles.headerTitle} numberOfLines={2} ellipsizeMode="tail">{displayCourseName}</Text>
         
-        {/* Download button removed - keeping empty space for balance */}
-        <View style={styles.emptySpace} />
+        <View style={styles.placeholder} />
       </View>
 
       {/* Course List */}
@@ -264,6 +264,14 @@ const SubCourseScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.completionModal}>
+            {/* Close Button positioned at top-right corner */}
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setShowCompletionPopup(false)}
+            >
+              <Icon name="close" size={24} color="#FF8800" />
+            </TouchableOpacity>
+            
             <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={styles.modalButton}
@@ -311,6 +319,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
+    marginTop: 10,
     minHeight: 80,
   },
   headerTitle: {
@@ -404,19 +413,15 @@ const styles = StyleSheet.create({
     padding: 8,
     flexShrink: 0,
   },
-  backButtonCircle: {
+  backButtonContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: '#FFE4D6',
+    
+    
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-  },
-  backArrow: {
-    fontSize: 20,
-    color: '#FF8800',
-    fontWeight: 'bold',
   },
   certificateButton: {
     backgroundColor: '#FF8800',
@@ -500,8 +505,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // NO SHADOW PROPERTIES - COMPLETELY CLEAN
   },
-  modalHeader: {
-    marginBottom: 20,
+  closeButton: {
+    position: 'absolute',
+    top: -15,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2C2C2E',
+    borderWidth: 2,
+    borderColor: '#FF8800',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
   },
   modalTitle: {
     fontSize: 24,
@@ -532,7 +548,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  emptySpace: {
+  placeholder: {
     width: 40, // Adjust as needed for spacing
   },
 });
