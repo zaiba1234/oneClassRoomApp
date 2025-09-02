@@ -311,18 +311,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#2285FA',
+    borderColor: '#006C99',
     marginHorizontal: 4,
     backgroundColor: '#fff',
   },
   filterButtonActive: {
-    backgroundColor: '#2285FA',
-    borderColor: '#2285FA',
+    backgroundColor: '#006C99',
+    borderColor: '#006C99',
   },
   filterButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2285FA',
+    color: '#006C99',
     textAlign: 'center',
   },
   filterButtonTextActive: {

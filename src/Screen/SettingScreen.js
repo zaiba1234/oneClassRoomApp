@@ -39,7 +39,7 @@ const SettingScreen = ({ navigation }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Icon name="arrow-back" size={24} color="#FF8800" />
+          <Icon name="chevron-back" size={24} color="#FF8800" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.placeholder} />
@@ -103,7 +103,17 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0',
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#FFF8EF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   headerTitle: {
     fontSize: 20,

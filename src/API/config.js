@@ -4,7 +4,7 @@ const API_CONFIG = {
   
   // Base URL configuration for different platforms
   BASE_URL: Platform.select({
-    android: 'http://192.168.1.24:3000', 
+    android: 'http://10.168.165.106:3000', 
     // android: 'https://main.learningsaint.com', 
     // android: 'http://192.168.1.10:3000', 
     ios: 'http://localhost:3000', 

@@ -1,8 +1,17 @@
 import React, { useEffect } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Provider, useDispatch } from 'react-redux';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
 import store from './src/Redux/store';
+import { 
+  initializeFirebaseMessaging, 
+  sendFCMTokenToBackend,
+  onMessageReceived,
+  checkFirebaseStatus,
+  getFirebaseApp
+} from './src/services/firebaseConfig';
+import { getFCMTokenService } from './src/services/fcmTokenService';
+import { testFCMTokenGeneration, getFCMTokenInfo, testFirebaseConfig } from './src/services/fcmTest';
 import SplashScreen from './src/Screen/SplashScreen';
 import OnBoardScreen from './src/Screen/OnBoardScreen';
 import LoginScreen from './src/Screen/LoginScreen';
@@ -38,10 +47,127 @@ const Stack = createStackNavigator();
 // Main App Component
 const AppContent = () => {
   const dispatch = useDispatch();
+  const { token } = useSelector((state) => state.user);
+  const fcmService = getFCMTokenService(store);
 
   useEffect(() => {
     console.log('🚀 App started!');
-  }, [dispatch]);
+    
+    // Simple Firebase initialization
+    const initFirebase = async () => {
+      try {
+        console.log('🔥 App: Initializing Firebase messaging...');
+        
+        // Wait a bit for Firebase to initialize
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const fcmToken = await initializeFirebaseMessaging();
+        
+        if (fcmToken) {
+          console.log('✅ App: FCM token generated successfully');
+          console.log('🔑 App: FCM Token Value:', fcmToken);
+          console.log('📏 App: Token Length:', fcmToken.length);
+          console.log('👀 App: Token Preview:', fcmToken.substring(0, 50) + '...');
+          
+          // Send token to backend
+          const sent = await fcmService.initializeAndSendToken();
+          if (sent) {
+            console.log('✅ App: FCM token sent to backend successfully');
+          } else {
+            console.log('ℹ️ App: FCM token will be sent after user login');
+          }
+        } else {
+          console.log('❌ App: Failed to generate FCM token');
+        }
+      } catch (error) {
+        console.error('💥 App: Error initializing Firebase:', error);
+      }
+    };
+
+    // Set up message listener
+    let unsubscribe = null;
+    try {
+      unsubscribe = onMessageReceived((remoteMessage) => {
+        console.log('📨 App: Message received:', remoteMessage);
+      });
+    } catch (error) {
+      console.error('💥 App: Error setting up message listener:', error);
+    }
+
+    // Initialize Firebase
+    initFirebase();
+    
+    // Test FCM after 5 seconds
+    setTimeout(() => {
+      try {
+        console.log('🧪 App: Testing FCM...');
+        testFCMTokenGeneration()
+          .then((success) => {
+            console.log('🧪 App: FCM test result:', success ? 'SUCCESS' : 'FAILED');
+          })
+          .catch((error) => {
+            console.error('💥 App: FCM test error:', error);
+          });
+      } catch (error) {
+        console.error('💥 App: Error calling FCM test:', error);
+      }
+    }, 5000);
+
+    // Add global test functions for debugging
+    global.testFCM = () => testFCMTokenGeneration();
+    global.checkFirebase = () => checkFirebaseStatus();
+    global.testConfig = () => testFirebaseConfig();
+    global.showFCMToken = async () => {
+      try {
+        const { getStoredFCMToken } = require('./src/services/firebaseConfig');
+        const token = await getStoredFCMToken();
+        if (token) {
+          console.log('🔑 FCM Token:', token);
+          console.log('🔑 Token Length:', token.length);
+          console.log('🔑 Token Preview:', token.substring(0, 50) + '...');
+          return token;
+        } else {
+          console.log('❌ No FCM token stored');
+          return null;
+        }
+      } catch (error) {
+        console.log('❌ Error getting FCM token:', error.message);
+        return null;
+      }
+    };
+
+    // Cleanup
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        try {
+          unsubscribe();
+        } catch (error) {
+          console.error('💥 App: Error cleaning up message listener:', error);
+        }
+      }
+    };
+  }, [dispatch, token]);
+
+  // Effect to send FCM token when user logs in
+  useEffect(() => {
+    const sendTokenOnLogin = async () => {
+      if (token) {
+        try {
+          console.log('🔔 App: User logged in, sending FCM token to backend...');
+          const sent = await fcmService.sendStoredTokenToBackend();
+          if (sent) {
+            console.log('✅ App: FCM token sent to backend on login successfully');
+          } else {
+            console.log('ℹ️ App: No FCM token to send or failed to send');
+          }
+        } catch (error) {
+          console.error('💥 App: Error sending FCM token on login:', error);
+        }
+      }
+    };
+
+    sendTokenOnLogin();
+  }, [token, fcmService]);
 
   return (
     <NavigationContainer>

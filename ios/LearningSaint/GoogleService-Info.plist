@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyBJn8hIkaO-MCKB_HJFyz1mNi3IwMUdiAg</string>
+	<key>GCM_SENDER_ID</key>
+	<string>830620644032</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.learningsaint</string>
+	<key>PROJECT_ID</key>
+	<string>learningsaint-971bd</string>
+	<key>STORAGE_BUCKET</key>
+	<string>learningsaint-971bd.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:830620644032:ios:54d5247078117e3726f325</string>
+</dict>
+</plist>

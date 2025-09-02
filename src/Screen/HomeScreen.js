@@ -731,7 +731,7 @@ const HomeScreen = () => {
           </View>
           <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notification')}>
             <Image 
-              source={require('../assests/images/Notification.png')} 
+              source={require('../assests/images/not.png')} 
               style={styles.notificationIcon}
               resizeMode="contain"
             />
@@ -1031,16 +1031,16 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   notificationButton: {
-    width: getResponsiveSize(40),
-    height: getResponsiveSize(40),
-    borderRadius: getResponsiveSize(20),
+    width: getResponsiveSize(50),
+    height: getResponsiveSize(50),
+    borderRadius: getResponsiveSize(10),
     backgroundColor: '#F0F8FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   notificationIcon: {
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(20),
+    width: getResponsiveSize(30),
+    height: getResponsiveSize(30),
   },
   refreshButton: {
     width: getResponsiveSize(40),
@@ -1251,7 +1251,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: getResponsiveSize(10),
     paddingHorizontal: getResponsiveSize(15),
-    borderRadius: getResponsiveSize(12),
+    borderRadius: getResponsiveSize(25),
     borderWidth: 1,
     borderColor: '#E0E0E0',
     marginHorizontal: getResponsiveSize(5),
@@ -1277,21 +1277,20 @@ const styles = StyleSheet.create({
   courseCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: getResponsiveSize(16),
+    borderRadius: getResponsiveSize(20),
     padding: getResponsiveSize(16),
     marginBottom: getResponsiveSize(15),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 0.5,
+    borderColor: '#FF88001A',
+    shadowColor: '#000000',
+  
   },
   courseCardImage: {
     width: getResponsiveSize(70),
     height: getResponsiveSize(70),
-    borderRadius: getResponsiveSize(35), // Make it perfectly circular
+    borderRadius: getResponsiveSize(20),
     marginRight: getResponsiveSize(16),
-    overflow: 'hidden', // Ensure circular shape is complete
+    overflow: 'hidden',
   },
   courseCardContent: {
     flex: 1,

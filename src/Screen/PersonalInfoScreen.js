@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { setFullName, setMobileNumber, setProfileData } from '../Redux/userSlice';
@@ -363,14 +364,7 @@ const PersonalInfoScreen = ({ navigation }) => {
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <LinearGradient
-              colors={['#FF8800', '#FFB800']}
-              style={styles.backBtnGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text style={styles.backArrow}>{'<'}</Text>
-            </LinearGradient>
+            <Icon name="chevron-back" size={24} color="#FF8800" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Personal Info</Text>
           <View style={{ width: 32 }} />
@@ -388,14 +382,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <LinearGradient
-            colors={['#FF8800', '#FFB800']}
-            style={styles.backBtnGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Text style={styles.backArrow}>{'<'}</Text>
-          </LinearGradient>
+          <Icon name="chevron-back" size={24} color="#FF8800" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Personal Info</Text>
         <View style={{ width: 32 }} />
@@ -513,21 +500,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  backBtnGradient: {
-    flex: 1,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#FFF8EF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backArrow: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   headerTitle: {
     fontSize: 20,
