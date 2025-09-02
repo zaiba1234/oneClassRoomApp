@@ -22,6 +22,7 @@ import { useAppSelector } from '../Redux/hooks';
 import { getApiUrl } from '../API/config';
 import RNFS from 'react-native-fs'; // Ensure this is imported at the top
 import { Buffer } from 'buffer'; // Add Buffer polyfill for React Native
+import BackButton from '../Component/BackButton';
 
 const { width, height } = Dimensions.get('window');
 
@@ -532,11 +533,7 @@ const DownloadCertificateScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackPress}>
-          <Icon name="chevron-back" size={getResponsiveSize(24)} color="#333" />
-        </TouchableOpacity>
+        <BackButton onPress={handleBackPress} />
         <Text style={styles.headerTitle}>Download Certificate</Text>
         <View style={styles.placeholder} />
       </View>
@@ -618,13 +615,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: getResponsiveSize(20),
     paddingTop: getResponsiveSize(10),
     paddingBottom: getResponsiveSize(15),
+    marginTop: getResponsiveSize(20),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: getResponsiveSize(8),
-  },
+
   headerTitle: {
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',

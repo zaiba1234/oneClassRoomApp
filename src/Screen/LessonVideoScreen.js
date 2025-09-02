@@ -15,16 +15,16 @@ import {
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
 import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import BackButton from '../Component/BackButton';
 
 // Import local assets
-const ArrowIcon = require('../assests/images/Arrow.png');
 const PlayIcon = require('../assests/images/Course.png'); // Using existing course icon as placeholder
 const SpeakerIcon = require('../assests/images/Home.png'); // Using home icon as placeholder for speaker
 const SettingsIcon = require('../assests/images/Setting.png');
 const FullscreenIcon = require('../assests/images/Arrow.png'); // Using arrow as fullscreen icon
-const ClockIcon = require('../assests/images/Clock.png');
 
 // Get screen dimensions for responsive design
 const { width, height } = Dimensions.get('window');
@@ -386,7 +386,7 @@ const LessonVideoScreen = ({ navigation, route }) => {
 
       {/* Course Duration */}
       <View style={styles.durationContainer}>
-        <Image source={ClockIcon} style={styles.durationIcon} />
+        <Icon name="time-outline" size={getFontSize(16)} color="#FF8800" style={styles.durationIcon} />
         <Text style={styles.durationText}>{courseData.duration}</Text>
       </View>
     </View>
@@ -399,13 +399,14 @@ const LessonVideoScreen = ({ navigation, route }) => {
       {/* Header */}
       {!isFullScreen && (
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Image source={ArrowIcon} style={styles.backIcon} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{courseData.title}</Text>
+          <BackButton onPress={() => navigation.goBack()} />
+          <Text style={styles.headerTitle}>
+            {(() => {
+              const title = courseData.title || 'Lesson Title';
+              const words = title.split(' ');
+              return words.slice(0, 3).join(' ');
+            })()}
+          </Text>
           <View style={styles.placeholder} />
         </View>
       )}
@@ -485,25 +486,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: getVerticalSize(20),
-    paddingTop: Platform.OS === 'ios' ? getVerticalSize(10) : getVerticalSize(20),
+    paddingTop: Platform.OS === 'ios' ? getVerticalSize(15) : getVerticalSize(25),
     paddingBottom: getVerticalSize(15),
+    marginTop: getVerticalSize(10),
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: getVerticalSize(8),
-  },
-  backIcon: {
-    width: getFontSize(24),
-    height: getFontSize(24),
-    resizeMode: 'contain',
-  },
   headerTitle: {
+    flex: 1,
     fontSize: getFontSize(18),
     fontWeight: 'bold',
     color: '#000000',
     textAlign: 'center',
+    marginHorizontal: getVerticalSize(10),
   },
   placeholder: {
     width: getFontSize(40),
@@ -649,10 +645,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   durationIcon: {
-    width: getFontSize(16),
-    height: getFontSize(16),
     marginRight: getVerticalSize(8),
-    resizeMode: 'contain',
   },
   durationText: {
     fontSize: getFontSize(14),

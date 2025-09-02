@@ -32,15 +32,6 @@ const ProfileScreen = ({ navigation }) => {
   // Get user data from Redux
   const { fullName, mobileNumber, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
 
-  // Debug logging
-  console.log('👤 ProfileScreen: Redux state - fullName:', fullName);
-  console.log('👤 ProfileScreen: Redux state - mobileNumber:', mobileNumber);
-  console.log('👤 ProfileScreen: Redux state - _id:', _id);
-  console.log('👤 ProfileScreen: Redux state - userId:', userId);
-  console.log('👤 ProfileScreen: Redux state - profileImageUrl:', profileImageUrl);
-  console.log('👤 ProfileScreen: Redux state - address:', address);
-  console.log('👤 ProfileScreen: Redux state - email:', email);
-
   const menuItems = [
     {
       id: 1,
@@ -48,12 +39,7 @@ const ProfileScreen = ({ navigation }) => {
       imageSource: require('../assests/images/PersonalInfo.png'),
       screenName: 'PersonalInfo',
     },
-    {
-      id: 2,
-      title: 'Payment Method',
-      imageSource: require('../assests/images/PaymentMethod.png'),
-      screenName: 'PaymentMethod',
-    },
+   
     {
       id: 3,
       title: 'Invoice History',
@@ -229,14 +215,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 10 : 20,
     paddingBottom: 20,
     marginTop: 30,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#333',
   },

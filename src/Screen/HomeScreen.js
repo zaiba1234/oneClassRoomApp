@@ -17,8 +17,10 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useAppSelector } from '../Redux/hooks';
+import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import { profileAPI } from '../API/profileAPI';
+import { setProfileData } from '../Redux/userSlice';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -32,6 +34,7 @@ const getResponsiveSize = (size) => {
 
 const HomeScreen = () => {
   const navigation=useNavigation();
+  const dispatch = useAppDispatch();
   const [selectedFilter, setSelectedFilter] = useState('All Course');
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
 
@@ -80,7 +83,10 @@ const HomeScreen = () => {
           // Step 1: Fetch user's favorite courses first
           await fetchUserFavoriteCourses();
           
-          // Step 2: After favorites are loaded, fetch course data
+          // Step 2: Fetch fresh profile data to ensure profile image is up to date
+          await fetchUserProfile();
+          
+          // Step 3: After favorites and profile are loaded, fetch course data
           await fetchCourseData();
           await fetchFeaturedCourses();
           await fetchBannerData();
@@ -331,6 +337,25 @@ const HomeScreen = () => {
     }
   };
 
+  // Function to fetch user's profile data from API
+  const fetchUserProfile = async () => {
+    try {
+      const result = await profileAPI.getUserProfile(token);
+
+      if (result.success && result.data.success) {
+        const profileData = result.data.data;
+        console.log('HomeScreen: Profile data fetched:', profileData);
+        
+        // Update Redux store with fresh profile data
+        dispatch(setProfileData(profileData));
+      } else {
+        console.log('HomeScreen: Failed to fetch profile:', result.data?.message);
+      }
+    } catch (error) {
+      console.error('HomeScreen: Error fetching profile:', error);
+    }
+  };
+
   // Function to search courses based on keyword
   const searchCourses = (keyword) => {
     if (!keyword.trim()) {
@@ -387,6 +412,7 @@ const HomeScreen = () => {
       try {
         // Refresh all data in sequence
         await fetchUserFavoriteCourses();
+        await fetchUserProfile(); // Add profile refresh
         await fetchCourseData();
         await fetchFeaturedCourses();
         await fetchBannerData();
@@ -723,7 +749,10 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.profileSection}>
-            <Image source={require('../assests/images/Profile.png')} style={styles.profileImage} />
+            <Image 
+              source={profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png')} 
+              style={styles.profileImage} 
+            />
             <View style={styles.greetingContainer}>
               <Text style={styles.greeting}>Hello!</Text>
               <Text style={styles.userName}>{fullName || 'User'}</Text>

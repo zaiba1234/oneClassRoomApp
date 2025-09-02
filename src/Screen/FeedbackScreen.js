@@ -13,6 +13,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import BackButton from '../Component/BackButton';
 import { courseAPI } from '../API/courseAPI';
 import { useAppSelector } from '../Redux/hooks';
 
@@ -156,11 +157,14 @@ const FeedbackScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
-      {/* Skip Button */}
-      <View style={styles.skipButtonContainer}>
-        <TouchableOpacity onPress={handleSkip}>
-          <Text style={styles.skipButtonText}>Skip</Text>
-        </TouchableOpacity>
+      {/* Header with Back Button and Skip Button */}
+      <View style={styles.header}>
+        <BackButton onPress={() => navigation.goBack()} />
+        <View style={styles.skipButtonContainer}>
+          <TouchableOpacity onPress={handleSkip}>
+            <Text style={styles.skipButtonText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Top Section - White Background */}
@@ -217,11 +221,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  skipButtonContainer: {
+  header: {
     position: 'absolute',
-    top: getResponsiveSize(60),
-    right: getResponsiveSize(20),
+    top: getResponsiveSize(50),
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(20),
     zIndex: 10,
+  },
+  skipButtonContainer: {
+    // Removed absolute positioning since it's now in header
   },
   skipButtonText: {
     color: '#FF8800',

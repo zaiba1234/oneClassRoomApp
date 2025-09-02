@@ -23,6 +23,7 @@ import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
 import { getApiUrl } from '../API/config';
 import { RAZORPAY_KEY_ID } from '../config/env';
+import BackButton from '../Component/BackButton';
 
 // Custom Razorpay implementation using WebView
 let RazorpayCheckout = null;
@@ -50,11 +51,9 @@ class CustomRazorpayCheckout {
 console.log('✅ EnrollScreen: Custom RazorpayCheckout class created successfully');
 
 // Import local assets
-const ArrowIcon = require('../assests/images/Arrow.png');
 const PlayIcon = require('../assests/images/Course.png');
 const StudentIcon = require('../assests/images/student.png');
 const StarIcon = require('../assests/images/star.png');
-const ClockIcon = require('../assests/images/Clock.png');
 const CheckIcon = require('../assests/images/TickMark.png');
 const WarningIcon = require('../assests/images/Danger.png');
 
@@ -142,24 +141,38 @@ const EnrollScreen = ({ navigation, route }) => {
     console.log('🔍 EnrollScreen: courseData object:', JSON.stringify(courseData, null, 2));
   }, [courseData.isCompleted]);
 
-  // Check if course is completed and navigate to BadgeCourseScreen
+  // Check if course is completed and navigate to BadgeCourseScreen (only once)
   useEffect(() => {
     if (courseData.isCompleted && !route.params?.fromFeedback) {
-      console.log('🎯 EnrollScreen: Course is completed, navigating to BadgeCourseScreen');
+      // Check if user has already seen the BadgeCourse for this course
+      const badgeSeenKey = `badgeSeen_${courseId}`;
+      const hasSeenBadge = global.badgeSeenCourses && global.badgeSeenCourses[badgeSeenKey];
       
-      const navigationParams = { 
-        courseId: courseId,
-        courseName: courseData.title,
-        returnToEnroll: true // Flag to indicate return to EnrollScreen
-      };
-      
-      console.log('📤 EnrollScreen: Full navigation params:', JSON.stringify(navigationParams, null, 2));
-      
-      // Add delay before navigation
-      setTimeout(() => {
-        console.log('⏰ EnrollScreen: Delay completed, now navigating to BadgeCourse');
-        navigation.navigate('BadgeCourse', navigationParams);
-      }, 1000); // Wait for 3 seconds (3000ms)
+      if (!hasSeenBadge) {
+        console.log('🎯 EnrollScreen: Course is completed, navigating to BadgeCourseScreen (first time)');
+        
+        // Mark this course badge as seen
+        if (!global.badgeSeenCourses) {
+          global.badgeSeenCourses = {};
+        }
+        global.badgeSeenCourses[badgeSeenKey] = true;
+        
+        const navigationParams = { 
+          courseId: courseId,
+          courseName: courseData.title,
+          returnToEnroll: true // Flag to indicate return to EnrollScreen
+        };
+        
+        console.log('📤 EnrollScreen: Full navigation params:', JSON.stringify(navigationParams, null, 2));
+        
+        // Add delay before navigation
+        setTimeout(() => {
+          console.log('⏰ EnrollScreen: Delay completed, now navigating to BadgeCourse');
+          navigation.navigate('BadgeCourse', navigationParams);
+        }, 1000); // Wait for 1 second
+      } else {
+        console.log('ℹ️ EnrollScreen: User has already seen BadgeCourse for this course, skipping navigation');
+      }
     }
   }, [courseData.isCompleted, courseId, courseData.title, navigation, route.params?.fromFeedback]);
 
@@ -786,7 +799,7 @@ const EnrollScreen = ({ navigation, route }) => {
       
       <View style={styles.courseStats}>
         <View style={styles.statItem}>
-          <Image source={ClockIcon} style={styles.statIcon} />
+          <Icon name="time-outline" size={getFontSize(16)} color="#FF8800" style={styles.statIcon} />
           <Text style={styles.statText}>
             {typeof courseData.duration === 'string' ? courseData.duration : '0h 0min'}
           </Text>
@@ -994,14 +1007,13 @@ const EnrollScreen = ({ navigation, route }) => {
       
       {!isFullScreen && (
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.navigate('MyCourses')}
-          >
-            <Image source={ArrowIcon} style={styles.backIcon} />
-          </TouchableOpacity>
+          <BackButton onPress={() => navigation.navigate('MyCourses')} />
           <Text style={styles.headerTitle}>
-            {typeof courseData.title === 'string' ? courseData.title : 'Course Title'}
+            {(() => {
+              const title = typeof courseData.title === 'string' ? courseData.title : 'Course Title';
+              const words = title.split(' ');
+              return words.slice(0, 2).join(' ');
+            })()}
           </Text>
           {courseData.isCompleted && (
             <View style={styles.headerCompletedBadge}>
@@ -1098,28 +1110,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: getVerticalSize(20),
-    paddingTop: Platform.OS === 'ios' ? getVerticalSize(10) : getVerticalSize(20),
+    paddingTop: Platform.OS === 'ios' ? getVerticalSize(15) : getVerticalSize(25),
     paddingBottom: getVerticalSize(15),
+    marginTop: getVerticalSize(10),
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: getVerticalSize(8),
-  },
-  backIcon: {
-    width: getFontSize(24),
-    height: getFontSize(24),
-    resizeMode: 'contain',
-  },
   headerTitle: {
-    marginTop: 30,
+    flex: 1,
     fontSize: getFontSize(18),
     fontWeight: 'bold',
     color: '#000000',
     textAlign: 'center',
+    marginHorizontal: getVerticalSize(10),
   },
   placeholder: {
     width: getFontSize(40),
@@ -1250,10 +1255,7 @@ const styles = StyleSheet.create({
     marginRight: getVerticalSize(15),
   },
   statIcon: {
-    width: getFontSize(16),
-    height: getFontSize(16),
     marginRight: getVerticalSize(5),
-    resizeMode: 'contain',
   },
   statText: {
     fontSize: getFontSize(14),
@@ -1630,16 +1632,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   headerCompletedBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: getVerticalSize(10),
-    paddingVertical: getVerticalSize(4),
+    backgroundColor: '#FF8800',
+    paddingHorizontal: getVerticalSize(16),
+    paddingVertical: getVerticalSize(8),
     borderRadius: getFontSize(12),
-    marginLeft: getVerticalSize(10),
+    shadowColor: '#FF8800',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerCompletedText: {
     color: '#FFFFFF',
-    fontSize: getFontSize(12),
+    fontSize: getFontSize(14),
     fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

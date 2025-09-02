@@ -8,6 +8,7 @@ import {
   StatusBar,
   SafeAreaView,
 } from 'react-native';
+import BackButton from '../Component/BackButton';
 
 const TermsConditionScreen = ({ navigation }) => {
   return (
@@ -16,9 +17,7 @@ const TermsConditionScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Terms & Conditions</Text>
         <View style={styles.placeholder} />
       </View>
@@ -56,14 +55,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
+    marginTop: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  backButton: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FF8800',
-  },
+
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',

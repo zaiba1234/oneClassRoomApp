@@ -18,6 +18,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import BackButton from '../Component/BackButton';
 import { useAppSelector } from '../Redux/hooks';
 import { getApiUrl } from '../API/config';
 import RNFS from 'react-native-fs'; // Ensure this is imported at the top
@@ -529,11 +530,7 @@ const CourseCertificateDownload = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackPress}>
-          <Icon name="chevron-back" size={getResponsiveSize(24)} color="#333" />
-        </TouchableOpacity>
+        <BackButton onPress={handleBackPress} />
         <Text style={styles.headerTitle}>Download Certificate</Text>
         <View style={styles.placeholder} />
       </View>
@@ -615,9 +612,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: getResponsiveSize(8),
-  },
+
   headerTitle: {
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',

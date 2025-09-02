@@ -238,10 +238,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
+    marginTop: 20,
   },
   headerTitle: {
-    marginTop:30,
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#333',
   },

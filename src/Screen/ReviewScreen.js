@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import BackButton from '../Component/BackButton';
 
 // Import local assets
-const ArrowIcon = require('../assests/images/Arrow.png');
 const DefaultAvatar = require('../assests/images/John.png');
 
 // Get screen dimensions for responsive design
@@ -215,12 +215,7 @@ const ReviewScreen = ({ navigation, route }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Image source={ArrowIcon} style={styles.backIcon} />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Reviews</Text>
         <View style={styles.placeholder} />
       </View>
@@ -247,14 +242,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: getVerticalSize(8),
-  },
-  backIcon: {
-    width: getFontSize(24),
-    height: getFontSize(24),
-    resizeMode: 'contain',
-  },
+
   headerTitle: {
     marginTop:20,
     fontSize: getFontSize(18),

@@ -32,9 +32,8 @@ const LoginScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+  const handleLogin = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      // Use console.log instead of alert for emulator compatibility
       console.log('Please enter a valid mobile number');
       return;
     }
@@ -50,65 +49,32 @@ const LoginScreen = () => {
       }
       
       const mobileNumberFormatted = `+91${digitsOnly}`;
-      console.log('Sending mobile number:', mobileNumberFormatted);
+      console.log('🔥 Firebase Login: Sending OTP to:', mobileNumberFormatted);
      
-      console.log('Request payload:', { mobileNumber: mobileNumberFormatted });
+      // Send OTP using Firebase
       const result = await authAPI.login(mobileNumberFormatted);
       
-      console.log('Login API response:', result);
-    
-      
+      console.log('🔥 Firebase Login response:', result);
       
       if (result.success) {
         // Store mobile number in Redux
         dispatch(setMobileNumber(mobileNumberFormatted));
         
-        // Check the response structure to determine user existence
-        console.log('Checking user existence from response...');
+        // Store verification ID for OTP verification
+        const verificationId = result.data.verificationId;
         
-        // If OTP is sent, user exists and needs verification
-        if (result.data.otp) {
-          console.log('OTP received, user exists, navigating to verification');
-          navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
-        }
-        // If userExists field is present, use that
-        else if (result.data.userExists === true) {
-          console.log('User exists (userExists: true), navigating to verification');
-          navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
-        }
-        // If userExists field is false, user doesn't exist
-        else if (result.data.userExists === false) {
-          console.log('User does not exist (userExists: false), navigating to register');
-          navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
-        }
-        // If neither OTP nor userExists, check message for clues
-        else {
-          console.log('No clear user existence info, checking message...');
-          const message = result.data.message || '';
-          
-          if (message.toLowerCase().includes('otp sent') || message.toLowerCase().includes('login')) {
-            console.log('Message indicates user exists, navigating to verification');
-            navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
-          } else if (message.toLowerCase().includes('not registered') || message.toLowerCase().includes('not found')) {
-            console.log('Message indicates user not registered, navigating to register');
-            navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
-          } else {
-            // Default: navigate to verification since API was successful
-            console.log('Default: navigating to verification (API success)');
-            navigation.navigate('Verify', { mobileNumber: mobileNumberFormatted });
-          }
-                }
+        console.log('🔥 Firebase: OTP sent successfully, navigating to verification');
+        navigation.navigate('Verify', { 
+          mobileNumber: mobileNumberFormatted,
+          verificationId: verificationId,
+          isFromLogin: true  // Flag to indicate this is from login flow
+        });
       } else {
-        console.log(result.data.message || 'Login failed');
-        // Check if the error message indicates user not registered
-        if (result.data.message && result.data.message.toLowerCase().includes('not registered')) {
-          // Navigate to register screen when user is not registered
-          console.log('User not registered, navigating to register');
-          navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
-        }
+        console.log('🔥 Firebase Login failed:', result.data.message || 'Failed to send OTP');
+        // You can show an alert or error message here
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('🔥 Firebase Login error:', error);
       console.log('Network error. Please try again.');
     } finally {
       setIsLoading(false);

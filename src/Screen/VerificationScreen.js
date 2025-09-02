@@ -31,7 +31,7 @@ const { width, height } = Dimensions.get('window');
 const VerificationScreen = ({ route }) => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
-  const [otp, setOtp] = useState(['', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(45);
@@ -41,12 +41,23 @@ const VerificationScreen = ({ route }) => {
   const fullName = route.params?.fullName || '';
   const email = route.params?.email || '';
   const isEmailVerification = route.params?.isEmailVerification || false;
+  const verificationId = route.params?.verificationId || null;
+  const isFromLogin = route.params?.isFromLogin || false;
+  const isFromRegister = route.params?.isFromRegister || false;
 
   // Test Redux dispatch to verify it's working
   useEffect(() => {
     console.log('🧪 VerificationScreen: Testing Redux dispatch...');
     console.log('🧪 VerificationScreen: setUserData action available:', !!setUserData);
     console.log('🧪 VerificationScreen: saveUserToStorage action available:', !!saveUserToStorage);
+    
+    // Debug: Log which flow we're in
+    console.log('🔄 VerificationScreen: Flow detection:');
+    console.log('🔄 VerificationScreen: isFromLogin:', isFromLogin);
+    console.log('🔄 VerificationScreen: isFromRegister:', isFromRegister);
+    console.log('🔄 VerificationScreen: isEmailVerification:', isEmailVerification);
+    console.log('🔄 VerificationScreen: mobileNumber:', mobileNumber);
+    console.log('🔄 VerificationScreen: fullName:', fullName);
     
     // Test dispatch - only run once
     console.log('✅ VerificationScreen: Redux actions are available and ready');
@@ -83,7 +94,7 @@ const VerificationScreen = ({ route }) => {
       setOtp(newOtp);
       
       // Move to next field if not the last one
-      if (index < 3) {
+      if (index < 5) {
         otpRefs.current[index + 1]?.focus();
       }
     }
@@ -133,7 +144,7 @@ const VerificationScreen = ({ route }) => {
             // Reset timer to 45 seconds
             setResendTimer(45);
             // Clear OTP fields
-            setOtp(['', '', '', '']);
+            setOtp(['', '', '', '', '', '']);
             // Focus on first OTP field
             otpRefs.current[0]?.focus();
           } else {
@@ -155,21 +166,21 @@ const VerificationScreen = ({ route }) => {
       
       try {
         const result = await authAPI.resendOTP(mobileNumber);
-        console.log('📡 VerificationScreen: Resend OTP API response:', result);
+        console.log('🔥 Firebase VerificationScreen: Resend OTP API response:', result);
         
         if (result.success) {
-          console.log('✅ VerificationScreen: OTP resent successfully!');
+          console.log('✅ Firebase VerificationScreen: OTP resent successfully!');
           // Reset timer to 45 seconds
           setResendTimer(45);
           // Clear OTP fields
-          setOtp(['', '', '', '']);
+          setOtp(['', '', '', '', '', '']);
           // Focus on first OTP field
           otpRefs.current[0]?.focus();
         } else {
-          console.log('❌ VerificationScreen: Resend OTP failed:', result.data?.message);
+          console.log('❌ Firebase VerificationScreen: Resend OTP failed:', result.data?.message);
         }
       } catch (error) {
-        console.error('💥 VerificationScreen: Resend OTP error:', error);
+        console.error('💥 Firebase VerificationScreen: Resend OTP error:', error);
       } finally {
         setIsResending(false);
       }
@@ -182,7 +193,7 @@ const VerificationScreen = ({ route }) => {
     console.log('📧 VerificationScreen: OTP entered:', otpString);
     console.log('📧 VerificationScreen: Email from route:', email);
     
-    if (otpString.length !== 4) {
+    if (otpString.length !== 6) {
       console.log('❌ VerificationScreen: OTP incomplete, length:', otpString.length);
       return;
     }
@@ -254,22 +265,35 @@ const VerificationScreen = ({ route }) => {
 
   const handleVerifyOTP = async () => {
     const otpString = otp.join('');
-    console.log('🔐 VerificationScreen: Starting OTP verification...');
-    console.log('🔐 VerificationScreen: OTP entered:', otpString);
-    console.log('🔐 VerificationScreen: Mobile number from route:', mobileNumber);
-    console.log('🔐 VerificationScreen: Full name from route:', fullName);
+    console.log('🔥 Firebase VerificationScreen: Starting OTP verification...');
+    console.log('🔥 Firebase VerificationScreen: OTP entered:', otpString);
+    console.log('🔥 Firebase VerificationScreen: Mobile number from route:', mobileNumber);
+    console.log('🔥 Firebase VerificationScreen: Verification ID:', verificationId);
+    console.log('🔥 Firebase VerificationScreen: Flow - isFromLogin:', isFromLogin, 'isFromRegister:', isFromRegister);
     
-    if (otpString.length !== 4) {
-      console.log('❌ VerificationScreen: OTP incomplete, length:', otpString.length);
+    if (otpString.length !== 6) {
+      console.log('❌ Firebase VerificationScreen: OTP incomplete, length:', otpString.length);
       return;
     }
 
     setIsLoading(true);
-    console.log('🔄 VerificationScreen: Loading started, calling verifyOTP API...');
+    console.log('🔄 Firebase VerificationScreen: Loading started, calling Firebase verifyOTP...');
     
     try {
-      const result = await authAPI.verifyOTP(mobileNumber, otpString);
-      console.log('📡 VerificationScreen: verifyOTP API response:', result);
+      // Use the appropriate API based on the flow
+      let result;
+      if (isFromRegister) {
+        console.log('🔄 Firebase VerificationScreen: Using register flow verification...');
+        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+      } else if (isFromLogin) {
+        console.log('🔄 Firebase VerificationScreen: Using login flow verification...');
+        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+      } else {
+        console.log('🔄 Firebase VerificationScreen: Using default verification...');
+        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+      }
+      
+      console.log('📡 Firebase VerificationScreen: verifyOTP API response:', result);
      
       
       
@@ -383,8 +407,46 @@ const VerificationScreen = ({ route }) => {
         console.log('🏠 VerificationScreen: Navigating to Home screen...');
         navigation.navigate('Home');
       } else {
-        console.log('❌ VerificationScreen: OTP verification failed:', result.data?.message);
+        console.log('❌ VerificationScreen: OTP verification failed:', result.message);
         console.log('❌ VerificationScreen: Full error response:', result);
+        
+        // Check if user needs to register
+        console.log('🔍 VerificationScreen: Checking error message:', result.message);
+        console.log('🔍 VerificationScreen: Message includes "not registered":', result.message?.includes('not registered'));
+        console.log('🔍 VerificationScreen: Message includes "Mobile number not registered":', result.message?.includes('Mobile number not registered'));
+        console.log('🔍 VerificationScreen: Message includes "not verified":', result.message?.includes('not verified'));
+        
+        if (result.message?.includes('not registered') || 
+            result.message?.includes('Mobile number not registered') ||
+            result.message?.includes('not verified') ||
+            result.message?.includes('User not found')) {
+          console.log('🔄 VerificationScreen: User not registered, showing alert...');
+          console.log('🔄 VerificationScreen: Mobile number for navigation:', mobileNumber);
+          
+          Alert.alert(
+            'Mobile Number Not Registered',
+            'This mobile number is not registered. Please complete your registration.',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  console.log('🔄 VerificationScreen: OK button pressed!');
+                  console.log('🔄 VerificationScreen: About to navigate to Register screen...');
+                  console.log('🔄 VerificationScreen: Mobile number being passed:', mobileNumber);
+                  
+                  // Navigate to Register screen with mobile number
+                  navigation.navigate('Register', { mobileNumber: mobileNumber });
+                  console.log('✅ VerificationScreen: Navigation to Register screen initiated!');
+                }
+              }
+            ]
+          );
+          console.log('🔄 VerificationScreen: Alert.alert called successfully!');
+        } else {
+          console.log('❌ VerificationScreen: Error message does not match registration check');
+          // Show error message for other failures
+          Alert.alert('Error', result.message || 'OTP verification failed. Please try again.');
+        }
       }
     } catch (error) {
       console.error('💥 VerificationScreen: OTP verification error:', error);
@@ -438,7 +500,7 @@ const VerificationScreen = ({ route }) => {
                   style={[
                     styles.otpInput,
                     digit && styles.otpInputFilled,
-                    index === 3 && digit && styles.otpInputActive
+                    index === 5 && digit && styles.otpInputActive
                   ]}
                   keyboardType="numeric"
                   maxLength={1}

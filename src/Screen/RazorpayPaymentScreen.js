@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import BackButton from '../Component/BackButton';
 
 const RazorpayPaymentScreen = () => {
   console.log('🚀 RazorpayPaymentScreen: Component initialized');
@@ -401,15 +402,10 @@ const RazorpayPaymentScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => {
-            console.log('⬅️ RazorpayPaymentScreen: Back button pressed');
-            navigation.goBack();
-          }}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
+        <BackButton onPress={() => {
+          console.log('⬅️ RazorpayPaymentScreen: Back button pressed');
+          navigation.goBack();
+        }} />
         <Text style={styles.headerTitle}>Payment Gateway</Text>
         <View style={styles.placeholder} />
       </View>
@@ -459,19 +455,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingTop: 20,
+    paddingBottom: 15,
+    marginTop: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: 8,
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: '#FF6B35',
-    fontWeight: '600',
-  },
+
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
