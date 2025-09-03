@@ -23,6 +23,8 @@ import { profileAPI } from '../API/profileAPI';
 import { setProfileData } from '../Redux/userSlice';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import { useFocusEffect } from '@react-navigation/native';
+import NotificationBadge from '../Component/NotificationBadge';
+import notificationTester from '../services/notificationTester';
 
 const { width, height } = Dimensions.get('window');
 
@@ -759,11 +761,15 @@ const HomeScreen = () => {
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notification')}>
-            <Image 
-              source={require('../assests/images/not.png')} 
-              style={styles.notificationIcon}
-              resizeMode="contain"
-            />
+            <NotificationBadge size={24} color="#000000" showBadge={true} />
+          </TouchableOpacity>
+          
+          {/* Debug Test Button - Remove in production */}
+          <TouchableOpacity 
+            style={styles.debugButton} 
+            onPress={() => notificationTester.runCompleteTest()}
+          >
+            <Text style={styles.debugButtonText}>🧪</Text>
           </TouchableOpacity>
          
         </View>
@@ -1070,6 +1076,22 @@ const styles = StyleSheet.create({
   notificationIcon: {
     width: getResponsiveSize(30),
     height: getResponsiveSize(30),
+  },
+  debugButton: {
+    position: 'absolute',
+    top: getResponsiveSize(10),
+    right: getResponsiveSize(10),
+    backgroundColor: '#FF6B35',
+    width: getResponsiveSize(30),
+    height: getResponsiveSize(30),
+    borderRadius: getResponsiveSize(15),
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  debugButtonText: {
+    fontSize: getResponsiveSize(16),
+    color: '#FFFFFF',
   },
   refreshButton: {
     width: getResponsiveSize(40),

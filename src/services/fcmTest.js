@@ -6,9 +6,9 @@ import {
 } from './firebaseConfig';
 
 // Simple FCM token generation test
-export const testFCMTokenGeneration = async () => {
+export const testFCMTokenGeneration = async () => { 
   try {
-    console.log('🧪 FCM Test: Starting...');
+    console.log('🧪 FCM Test: Starting...'); 
     
     const token = await getFCMToken();
     

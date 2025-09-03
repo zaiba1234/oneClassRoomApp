@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import messaging from '@react-native-firebase/messaging';
+import messaging, { getMessaging, getToken } from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initializeApp, getApp, getApps } from '@react-native-firebase/app';
 
@@ -72,7 +72,7 @@ export const requestUserPermission = async () => {
   }
 };
 
-// Simple FCM token generation
+// Simple FCM token generation (using modern API)
 export const getFCMToken = async () => {
   try {
     console.log('🔔 Getting FCM token...');
@@ -94,8 +94,9 @@ export const getFCMToken = async () => {
       return null;
     }
     
-    // Get token
-    const token = await messaging().getToken();
+    // Get token using modern API (no warnings)
+    const messagingInstance = getMessaging(firebaseApp);
+    const token = await getToken(messagingInstance);
     console.log('✅ FCM Token generated:', token ? 'SUCCESS' : 'FAILED');
     
     if (token) {
@@ -137,10 +138,11 @@ export const initializeFirebaseMessaging = async () => {
   }
 };
 
-// Message listener
+// Message listener (using modern API)
 export const onMessageReceived = (callback) => {
   try {
-    return messaging().onMessage((remoteMessage) => {
+    const messagingInstance = getMessaging(firebaseApp);
+    return messagingInstance.onMessage((remoteMessage) => {
       console.log('📨 Message received');
       if (callback) callback(remoteMessage);
     });
@@ -150,10 +152,11 @@ export const onMessageReceived = (callback) => {
   }
 };
 
-// Token refresh
+// Token refresh (using modern API)
 export const onTokenRefresh = (callback) => {
   try {
-    return messaging().onTokenRefresh((token) => {
+    const messagingInstance = getMessaging(firebaseApp);
+    return messagingInstance.onTokenRefresh((token) => {
       console.log('🔄 Token refreshed');
       AsyncStorage.setItem(FCM_TOKEN_KEY, token);
       if (callback) callback(token);
@@ -169,9 +172,10 @@ export const onBackgroundMessage = async (remoteMessage) => {
   console.log('📨 Background message:', remoteMessage);
 };
 
-// Set background handler
+// Set background handler (using modern API)
 try {
-  messaging().setBackgroundMessageHandler(onBackgroundMessage);
+  const messagingInstance = getMessaging(firebaseApp);
+  messagingInstance.setBackgroundMessageHandler(onBackgroundMessage);
 } catch (error) {
   console.log('❌ Background handler error:', error.message);
 }

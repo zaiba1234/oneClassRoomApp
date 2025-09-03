@@ -458,23 +458,24 @@ const VerificationScreen = ({ route }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1 }}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.container}>
-          <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-          
-          {/* Back Button */}
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="chevron-back" size={20} color="#FF8800" />
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      {/* Back Button */}
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Icon name="chevron-back" size={20} color="#FF8800" />
+      </TouchableOpacity>
 
-          {/* Main Content */}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.content}>
             {/* Verification Icon */}
             <View style={styles.iconContainer}>
@@ -489,7 +490,7 @@ const VerificationScreen = ({ route }) => {
               {isEmailVerification ? 'Verify Email OTP' : 'Verify OTP'}
             </Text>
             <Text style={styles.subtitle}>
-              Enter the OTP sent to {isEmailVerification ? email : mobileNumber}
+              Enter the OTP sent to {isEmailVerification ? email : mobileNumber} 
             </Text>
 
             {/* OTP Input Fields */}
@@ -515,7 +516,9 @@ const VerificationScreen = ({ route }) => {
             {/* Resend OTP Section */}
             <View style={styles.resendContainer}>
               <Text style={styles.resendText}>
-                Didn't you receive the OTP?{' '}
+                Didn't you receive the OTP?
+              </Text>
+              <View style={styles.resendActionContainer}>
                 {resendTimer > 0 ? (
                   <Text style={styles.resendLinkDisabled}>Resend OTP</Text>
                 ) : (
@@ -525,7 +528,7 @@ const VerificationScreen = ({ route }) => {
                     </Text>
                   </TouchableOpacity>
                 )}
-              </Text>
+              </View>
               {resendTimer > 0 && (
                 <View style={styles.timerContainer}>
                   <Icon name="time-outline" size={14} color="#FF8800" />
@@ -536,32 +539,29 @@ const VerificationScreen = ({ route }) => {
               )}
             </View>
           </View>
+        </TouchableWithoutFeedback>
+      </ScrollView>
 
-        
-
-
-<View style={styles.buttonContainer}>
-              <LinearGradient
-                colors={['#FF9800', '#FFB300']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.button}
-              >
-                <TouchableOpacity
-                  onPress={isEmailVerification ? handleVerifyEmailOTP : handleVerifyOTP}
-                  style={{ width: '100%', alignItems: 'center' }}
-                  disabled={isLoading}
-                >
-                  <Text style={styles.buttonText}>
-                    {isLoading ? 'Verifying...' : (isEmailVerification ? 'Verify Email OTP' : 'Verify OTP')}
-                  </Text>
-                </TouchableOpacity>
-              </LinearGradient>
-            </View>
-
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      {/* Fixed Button Container */}
+      <View style={styles.buttonContainer}>
+        <LinearGradient
+          colors={['#FF9800', '#FFB300']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.button}
+        >
+          <TouchableOpacity
+            onPress={isEmailVerification ? handleVerifyEmailOTP : handleVerifyOTP}
+            style={styles.buttonTouchable}
+            disabled={isLoading}
+          >
+            <Text style={styles.buttonText}>
+              {isLoading ? 'Verifying...' : (isEmailVerification ? 'Verify Email OTP' : 'Verify OTP')}
+            </Text>
+          </TouchableOpacity>
+        </LinearGradient>
+      </View>
+    </View>
   );
 };
 
@@ -574,10 +574,17 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 30,
+    top: Platform.OS === 'ios' ? 50 : 30,
     left: 20,
     zIndex: 10,
     padding: 10,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   content: {
     flex: 1,
@@ -643,26 +650,38 @@ const styles = StyleSheet.create({
   },
   resendContainer: {
     alignItems: 'center',
+    marginTop: 20,
   },
   resendText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  resendActionContainer: {
+    marginBottom: 12,
   },
   resendLink: {
     color: '#FF8800',
     fontWeight: '600',
+    fontSize: 14,
     textDecorationLine: 'underline',
   },
   resendLinkDisabled: {
     color: '#999',
     fontWeight: '600',
+    fontSize: 14,
     textDecorationLine: 'underline',
   },
   timerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
   },
   clockImage: {
     width: 14,
@@ -676,23 +695,26 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
- buttonContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  marginBottom:140,  
-  
+  buttonContainer: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 40 : 20,
+    left: 40,
+    right: 40,
+    zIndex: 10,
   },
   button: {
     width: '100%',
     borderRadius: 15,
     paddingVertical: 16,
   },
+  buttonTouchable: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
   },
-
-
-
 });

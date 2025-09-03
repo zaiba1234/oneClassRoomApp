@@ -76,7 +76,7 @@ const RegisterScreen = ({ route }) => {
         } else {
           console.log('❌ Firebase RegisterScreen: OTP send failed:', otpResult.data?.message);
           console.log('❌ Firebase RegisterScreen: Full error response:', otpResult);
-        }
+        }                                   
       } else {
         console.log('❌ Firebase RegisterScreen: Registration failed:', registerResult.data?.message);
         console.log('❌ Firebase RegisterScreen: Full error response:', registerResult);

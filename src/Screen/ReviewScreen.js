@@ -59,12 +59,12 @@ const ReviewScreen = ({ navigation, route }) => {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔍 ReviewScreen: Fetching ratings for subcourseId:', subcourseId);
+      console.log('ReviewScreen xxx', subcourseId);
       console.log('🔑 ReviewScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
       
       const result = await courseAPI.getSubcourseRatings(token, subcourseId);
       
-      console.log('📡 ReviewScreen: API result:', result);
+      console.log('📡 ReviewScreen: API result:', JSON.stringify(result, null, 2));
       
       // Handle different response structures
       if (result.success) {
@@ -107,6 +107,9 @@ const ReviewScreen = ({ navigation, route }) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
 
+    console.log('⭐ ReviewScreen: Rendering stars for rating:', rating);
+    console.log('⭐ ReviewScreen: Full stars:', fullStars, 'Has half star:', hasHalfStar);
+
     // Full stars
     for (let i = 0; i < fullStars; i++) {
       stars.push(
@@ -125,16 +128,18 @@ const ReviewScreen = ({ navigation, route }) => {
       );
     }
 
-    // Empty stars
+    // Empty stars - use empty star emoji
     const emptyStars = 5 - Math.ceil(rating);
+    console.log('⭐ ReviewScreen: Empty stars to show:', emptyStars);
     for (let i = 0; i < emptyStars; i++) {
       stars.push(
         <Text key={`empty-${i}`} style={styles.emptyStarIcon}>
-          ⭐
+          ☆
         </Text>
       );
     }
 
+    console.log('⭐ ReviewScreen: Total stars rendered:', stars.length);
     return stars;
   };
 
@@ -211,7 +216,7 @@ const ReviewScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       
       {/* Header */}
       <View style={styles.header}>
@@ -236,7 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: getVerticalSize(20),
-    paddingTop: Platform.OS === 'ios' ? getVerticalSize(10) : getVerticalSize(20),
+    paddingTop: Platform.OS === 'ios' ? getVerticalSize(50) : getVerticalSize(40),
     paddingBottom: getVerticalSize(15),
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
@@ -244,11 +249,12 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    marginTop:20,
     fontSize: getFontSize(18),
     fontWeight: 'bold',
     color: '#000000',
     textAlign: 'center',
+    flex: 1,
+    marginTop: getVerticalSize(5),
   },
   placeholder: {
     width: getFontSize(40),
