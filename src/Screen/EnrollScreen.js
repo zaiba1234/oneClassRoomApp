@@ -92,7 +92,7 @@ const EnrollScreen = ({ navigation, route }) => {
     lessons: 0,
     enrollments: '0',
     rating: '0',
-    price: '₹1.00',
+    price: 'Loading...',
     isBestSeller: false,
     isLive: false,
     liveTime: '00:00:00',
@@ -210,7 +210,7 @@ const EnrollScreen = ({ navigation, route }) => {
           lessons: apiCourse.totalLessons || 0,
           enrollments: apiCourse.totalStudentsEnrolled?.toString() || '0',
           rating: apiCourse.avgRating?.toString() || '0',
-          price: '₹1.00',
+          price: `₹${apiCourse.price || 1}.00`,
           isBestSeller: apiCourse.isBestSeller || false,
           isLive: false,
           liveTime: '00:00:00',
@@ -291,7 +291,7 @@ const EnrollScreen = ({ navigation, route }) => {
         // If lesson already started today, check for next occurrence (tomorrow)
         if (timeDiff <= 0) {
           timeDiff += 24 * 60; // Add 24 hours (1440 minutes)
-          console.log('⏰ Lesson already started today, next occurrence in:', timeDiff, 'minutes');
+          
         } else {
           console.log('⏰ Lesson starts today in:', timeDiff, 'minutes');
         }
@@ -304,11 +304,11 @@ const EnrollScreen = ({ navigation, route }) => {
     });
     
     if (!nextLesson || minTimeDiff === Infinity) {
-      console.log('❌ No next lesson found');
+    
       return null;
     }
     
-    console.log('🎯 Next lesson:', nextLesson.lessonName, 'in', minTimeDiff, 'minutes');
+  
     
     // Calculate hours and minutes
     const hours = Math.floor(minTimeDiff / 60);
@@ -367,7 +367,7 @@ const EnrollScreen = ({ navigation, route }) => {
 
   const handleEnrollNow = async () => {
     try {
-      console.log('🎯 EnrollScreen: Enroll Now clicked for courseId:', courseId);
+    
       
       // Check if user is already enrolled
       if (courseData.paymentStatus) {
@@ -386,10 +386,24 @@ const EnrollScreen = ({ navigation, route }) => {
         Alert.alert('Error', 'Missing required data. Please try again.');
         return;
       }
+     
       
-      // Step 1: Create course order
-      console.log('🚀 EnrollScreen: Creating course order...');
-      const orderResult = await courseAPI.createCourseOrder(token, courseId);
+      // Extract price from courseData.price (format: "₹99.00")
+      console.log('💰 EnrollScreen: Original courseData.price:', courseData.price);
+      console.log('💰 EnrollScreen: Type of courseData.price:', typeof courseData.price);
+      
+      const priceString = courseData.price.replace('₹', '').replace('.00', '');
+      const priceInRupees = parseFloat(priceString) || 1;
+      const priceInPaise = Math.round(priceInRupees * 100);
+      
+      console.log('💰 EnrollScreen: Price calculation:', {
+        originalPrice: courseData.price,
+        priceString: priceString,
+        priceInRupees: priceInRupees,
+        priceInPaise: priceInPaise
+      });
+      
+      const orderResult = await courseAPI.createCourseOrder(token, courseId, priceInPaise);
       
       if (!orderResult.success || !orderResult.data.success) {
         console.log('❌ EnrollScreen: Failed to create course order:', orderResult.data?.message);
@@ -400,6 +414,9 @@ const EnrollScreen = ({ navigation, route }) => {
       
       const orderData = orderResult.data.data;
       console.log('✅ EnrollScreen: Course order created successfully:', orderData);
+      console.log('💰 EnrollScreen: Order amount from backend:', orderData.amount);
+      console.log('💰 EnrollScreen: Expected amount (paise):', priceInPaise);
+      console.log('💰 EnrollScreen: Backend amount in rupees:', orderData.amount ? (orderData.amount / 100).toFixed(2) : 'N/A');
       
       // Validate order data (key will come from frontend config)
       if (!orderData.amount || !orderData.orderId) {
@@ -432,16 +449,7 @@ const EnrollScreen = ({ navigation, route }) => {
         Alert.alert('Error', 'Invalid payment data received. Please contact support.');
         return;
       }
-      
-      console.log('✅ EnrollScreen: Payment data validated successfully:');
-      console.log('  - Payment ID:', paymentId);
-      console.log('  - Signature:', signature);
-      console.log('  - Order ID:', orderId);
-      
-      // Step 3: Verify payment with backend using the new API endpoint
-      console.log('🔍 EnrollScreen: Verifying payment with new API...');
-      console.log('🔍 EnrollScreen: Using courseId as subcourseId:', courseId);
-      console.log('🔍 EnrollScreen: Using orderId:', orderData.orderId);
+    
       
       const verificationResult = await courseAPI.verifyPayment(
         token,
@@ -537,9 +545,19 @@ const EnrollScreen = ({ navigation, route }) => {
       }
       
       const userProfile = getUserProfileData();
+      // Use the calculated price instead of backend amount if backend returns default
+      const finalAmount = orderData.amount === 100 ? priceInPaise : orderData.amount;
+      
+      console.log('💰 EnrollScreen: Final amount decision:', {
+        backendAmount: orderData.amount,
+        calculatedAmount: priceInPaise,
+        finalAmount: finalAmount,
+        reason: orderData.amount === 100 ? 'Using calculated amount (backend returned default)' : 'Using backend amount'
+      });
+      
       const razorpayOptions = {
         key: RAZORPAY_KEY_ID, // Use Razorpay key from frontend config for security
-        amount: orderData.amount, // Amount in paise (100 = ₹1)
+        amount: finalAmount, // Use calculated amount if backend returns default
         currency: orderData.currency,
         name: 'Learning Saint',
         description: `Course: ${courseData.title}`,
@@ -559,6 +577,9 @@ const EnrollScreen = ({ navigation, route }) => {
           }
         }
       };
+      
+      console.log('💰 EnrollScreen: Razorpay options amount:', razorpayOptions.amount);
+      console.log('💰 EnrollScreen: Razorpay options amount in rupees:', (razorpayOptions.amount / 100).toFixed(2));
       
       console.log('🎨 EnrollScreen: Razorpay options configured:', razorpayOptions);
       
@@ -1087,7 +1108,7 @@ const EnrollScreen = ({ navigation, route }) => {
                 </View>
               ) : (
                 <Text style={styles.enrollButtonText}>
-                  Enroll - {courseData.price}
+                  Enroll  - {courseData.price}
                 </Text>
               )}
             </TouchableOpacity>

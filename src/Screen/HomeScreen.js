@@ -782,13 +782,11 @@ const HomeScreen = () => {
       >
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <Image 
-            source={require('../assests/images/Search.png')} 
-            style={[
-              styles.searchIcon,
-              searchKeyword.trim() && styles.searchIconActive
-            ]}
-            resizeMode="contain"
+          <Icon 
+            name="search" 
+            size={getResponsiveSize(20)} 
+            color="#FF8800"
+            style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
@@ -812,7 +810,7 @@ const HomeScreen = () => {
                 setIsSearching(false);
               }}
             >
-              <Icon name="close-circle" size={20} color="#999" />
+              <Icon name="close" size={18} color="#FF8800" />
             </TouchableOpacity>
           )}
         </View>
@@ -1101,12 +1099,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   searchIcon: {
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(20),
     marginRight: getResponsiveSize(12),
-  },
-  searchIconActive: {
-    tintColor: '#2285FA', // Change color when active
   },
   searchInput: {
     flex: 1,
@@ -1116,11 +1109,10 @@ const styles = StyleSheet.create({
     paddingVertical: getResponsiveSize(4),
   },
   clearSearchButton: {
-    backgroundColor: '#2285FA',
-    paddingVertical: getResponsiveSize(10),
-    paddingHorizontal: getResponsiveSize(20),
+    padding: getResponsiveSize(4),
+    marginLeft: getResponsiveSize(8),
     borderRadius: getResponsiveSize(12),
-    marginTop: getResponsiveSize(15),
+    backgroundColor: 'rgba(255, 136, 0, 0.1)',
   },
   clearSearchButtonText: {
     color: '#fff',

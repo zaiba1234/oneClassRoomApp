@@ -1180,9 +1180,10 @@ export const courseAPI = {
   },
 
   // New method to create course order for Razorpay payment
-  createCourseOrder: async (token, subcourseId) => {
+  createCourseOrder: async (token, subcourseId, priceInPaise = 100) => {
     try {
       console.log('🚀 courseAPI: Creating course order for subcourse:', subcourseId);
+      console.log('💰 courseAPI: Price in paise:', priceInPaise);
       console.log('🔑 courseAPI: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
 
       const url = getApiUrl('/api/user/buy/buy-course');
@@ -1192,7 +1193,8 @@ export const courseAPI = {
       };
 
       const requestBody = {
-        subcourseId: subcourseId
+        subcourseId: subcourseId,
+        amount: priceInPaise
       };
 
       console.log('🌐 courseAPI: Making POST request to:', url);

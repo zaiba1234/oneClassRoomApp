@@ -123,49 +123,7 @@ const SubCourseScreen = ({ navigation, route }) => {
     }
   };
 
-  // Fallback data if API fails or no data
-  const favouriteCourses = [
-    {
-      id: 1,
-      title: '3D Design Basic',
-      lessons: '24 lessons',
-      rating: '4.9',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame1.png'),
-    },
-    {
-      id: 2,
-      title: 'Characters Animation',
-      lessons: '22 lessons',
-      rating: '4.8',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame2.png'),
-    },
-    {
-      id: 3,
-      title: '3D Abstract Design',
-      lessons: '18 lessons',
-      rating: '4.7',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame3.png'),
-    },
-    {
-      id: 4,
-      title: 'Product Design',
-      lessons: '23 lessons',
-      rating: '4.8',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame4.png'),
-    },
-    {
-      id: 5,
-      title: 'Game Design',
-      lessons: '25 lessons',
-      rating: '4.9',
-      price: '₹1.00',
-      thumbnail: require('../assests/images/Frame.png'),
-    },
-  ];
+
 
   // Function to handle refresh
   const handleRefresh = () => {
@@ -240,11 +198,11 @@ const SubCourseScreen = ({ navigation, route }) => {
     }
   };
 
-  // Use API data if available, otherwise use fallback data
-  const displaySubcourses = subcourses.length > 0 ? subcourses : favouriteCourses;
-  const displayCourseName = courseData?.courseName || courseName || 'Cybersecurity';
+  // Use API data only
+  const displaySubcourses = subcourses;
+  const displayCourseName = courseData?.courseName || courseName || 'Course';
 
-  console.log('🔄 SubCourseScreen: Using subcourses:', subcourses.length > 0 ? 'API data' : 'fallback data');
+  console.log('🔄 SubCourseScreen: Using subcourses:', 'API data only');
   console.log('🔄 SubCourseScreen: Display course name:', displayCourseName);
   console.log('🔄 SubCourseScreen: Number of display subcourses:', displaySubcourses.length);
 
@@ -477,18 +435,7 @@ const styles = StyleSheet.create({
     minWidth: 60,
     flexShrink: 0,
   },
-  likeIcon: {
-    width: 20,
-    height: 20,
-    tintColor: '#666',
-    marginBottom: 4,
-  },
-  heartIcon: {
-    width: 20,
-    height: 20,
-    tintColor: '#FF8800',
-    marginBottom: 8,
-  },
+
   heartButton: {
     width: 30,
     height: 30,
@@ -505,29 +452,7 @@ const styles = StyleSheet.create({
     color: '#FF8800',
   },
 
-  certificateButton: {
-    backgroundColor: '#FF8800',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  certificateText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  downloadArrow: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  certificateButtonCompleted: {
-    backgroundColor: '#4CAF50', // A different color for completed course
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -601,12 +526,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1,
   },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-  },
+
   modalButtons: {
     flexDirection: 'column', // Changed from 'row' to 'column' for vertical stacking
     justifyContent: 'space-between',

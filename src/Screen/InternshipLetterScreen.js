@@ -93,13 +93,14 @@ const InternshipLetterScreen = () => {
   const courseId = route.params?.courseId;
   console.log('🔍 InternshipLetterScreen: courseId from route params:', courseId);
 
-  // Function to get user profile data (same as EnrollScreen)
+  // Function to get user profile data from Redux store
   const getUserProfileData = () => {
     console.log('👤 InternshipLetterScreen: getUserProfileData called');
+    const userState = useAppSelector((state) => state.user);
     return {
-      email: 'student@learningsaint.com',
-      contact: '9876543210',
-      name: 'Student Name'
+      email: userState.email || 'user@example.com',
+      contact: userState.phone || userState.contact || '0000000000',
+      name: userState.name || userState.fullName || 'User'
     };
   };
 
@@ -216,32 +217,7 @@ const InternshipLetterScreen = () => {
     }
   };
 
-  // Function to test different states (for debugging)
-  const testStates = () => {
-    console.log('🧪 InternshipLetterScreen: Testing different states');
-    
-    // Test state 1: isEnrolled=true, uploadStatus=upload (should show message and disabled button)
-    setRequestData({
-      internshipLetter: {
-        paymentStatus: true,
-        uploadStatus: 'upload',
-        _id: 'test-id-1',
-        downloadUrl: null
-      }
-    });
-    
-    setTimeout(() => {
-      // Test state 2: isEnrolled=true, uploadStatus=uploaded (should show enabled button with download URL)
-      setRequestData({
-        internshipLetter: {
-          paymentStatus: true,
-          uploadStatus: 'uploaded',
-          _id: 'test-id-2',
-          downloadUrl: 'https://yoraaecommerce.s3.amazonaws.com/courses/1756298704009_pexels-artempodrez-8087866.jpg'
-        }
-      });
-    }, 3000);
-  };
+
   // Function to check internship status before proceeding with payment
   const checkInternshipStatus = async () => {
     console.log('🔍 InternshipLetterScreen: checkInternshipStatus called');
@@ -614,11 +590,7 @@ const InternshipLetterScreen = () => {
     navigation.goBack();
   };
 
-  const handleDownload = () => {
-    console.log('📥 InternshipLetterScreen: Download button pressed');
-    console.log('📜 InternshipLetterScreen: This function is not implemented yet');
-    // Add your download logic here
-  };
+
 
   // Function to test downloads directory access
   const testDownloadsAccess = async () => {
@@ -893,10 +865,7 @@ const InternshipLetterScreen = () => {
       <View style={styles.header}>
         <BackButton onPress={handleBackPress} />
         <Text style={styles.headerTitle}>Internship Letter</Text>
-        <View style={styles.headerButtons}>
-        
-        
-        </View>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView 
@@ -942,7 +911,7 @@ const InternshipLetterScreen = () => {
             {/* Course Description */}
             <View style={styles.descriptionContainer}>
               <Text style={styles.descriptionText}>
-                In this course you will learn how to build a space to a 3-dimensional product. There are 24 premium learning videos for you.
+                {courseData.description || courseData.courseDescription || 'Complete this course to get your internship letter.'}
               </Text>
             </View>
           </>
@@ -1043,14 +1012,8 @@ const InternshipLetterScreen = () => {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.downloadButtonText}>
-                  Download
-                  {/* {isRequesting ? 'Processing...' : `Download ₹${requestData?.internshipLetter?.paymentAmount || 99}/-`} */}
+                  {isRequesting ? 'Processing...' : 'Get Internship Letter'}
                 </Text>
-                {requestData?.internshipLetter?.paymentAmount && (
-                  <Text style={styles.dynamicPriceText}>
-                    Dynamic Price: ₹{requestData.internshipLetter.paymentAmount} (from API)
-                  </Text>
-                )}
               </LinearGradient>
             </TouchableOpacity>
           );
@@ -1089,6 +1052,7 @@ const styles = StyleSheet.create({
   placeholder: {
     width: getResponsiveSize(40),
   },
+
  
   scrollContent: {
     flexGrow: 1,
@@ -1121,24 +1085,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: getResponsiveSize(5),
   },
-  courseNameLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: getResponsiveSize(10),
-  },
-  courseNameLoadingText: {
-    fontSize: getResponsiveSize(14),
-    color: '#666',
-    marginLeft: getResponsiveSize(8),
-  },
-  courseNameError: {
-    fontSize: getResponsiveSize(16),
-    color: '#FF0000',
-    textAlign: 'center',
-    marginTop: getResponsiveSize(10),
-    fontStyle: 'italic',
-  },
+
   mainLoadingContainer: {
     // flex: 1,
     justifyContent: 'center',
@@ -1150,10 +1097,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: getResponsiveSize(15),
   },
-  courseNameErrorContainer: {
-    alignItems: 'center',
-    marginTop: getResponsiveSize(10),
-  },
+
   retryButton: {
     backgroundColor: '#FF8800',
     paddingHorizontal: getResponsiveSize(20),
@@ -1209,42 +1153,15 @@ const styles = StyleSheet.create({
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',
   },
-  dynamicPriceText: {
-    color: '#FFFFFF',
-    fontSize: getResponsiveSize(12),
-    fontWeight: '400',
-    textAlign: 'center',
-    marginTop: getResponsiveSize(5),
-    opacity: 0.9,
-  },
+
   downloadButtonDisabled: {
     opacity: 0.7,
   },
   downloadButtonTextDisabled: {
     color: '#666666',
   },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  testButton: {
-    backgroundColor: '#FF8800',
-    paddingHorizontal: getResponsiveSize(12),
-    paddingVertical: getResponsiveSize(6),
-    borderRadius: getResponsiveSize(15),
-    marginRight: getResponsiveSize(8),
-  },
-  testButtonText: {
-    color: '#FFFFFF',
-    fontSize: getResponsiveSize(12),
-    fontWeight: '600',
-  },
-  refreshButton: {
-    padding: getResponsiveSize(8),
-    width: getResponsiveSize(40),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
+
   pageRefreshOverlay: {
     position: 'absolute',
     top: 0,

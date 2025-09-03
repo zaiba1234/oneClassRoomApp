@@ -1,71 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
-  Alert,
   Linking,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import BackButton from '../Component/BackButton';
 
 const ContactUsScreen = ({ navigation }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = () => {
-    if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (!email.includes('@') || !email.includes('.')) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      Alert.alert(
-        'Success',
-        'Your message has been sent successfully! We will get back to you soon.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setName('');
-              setEmail('');
-              setSubject('');
-              setMessage('');
-            }
-          }
-        ]
-      );
-    }, 2000);
-  };
 
   const handleCall = () => {
-    Linking.openURL('tel:+1234567890');
+    Linking.openURL('tel:+12092682813');
   };
 
   const handleEmail = () => {
-    Linking.openURL('mailto:support@learningsaint.com');
-  };
-
-  const handleWhatsApp = () => {
-    Linking.openURL('whatsapp://send?phone=+1234567890&text=Hello, I need help with...');
+    Linking.openURL('mailto:info@learningsaint.com');
   };
 
   return (
@@ -80,114 +34,86 @@ const ContactUsScreen = ({ navigation }) => {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Contact Info Cards */}
-        <View style={styles.contactInfoContainer}>
-          <TouchableOpacity style={styles.contactCard} onPress={handleCall}>
-            <View style={styles.contactIconContainer}>
-              <Icon name="call" size={24} color="#FF8800" />
+        {/* Decorative Background Pattern */}
+        <View style={styles.decorativePattern} />
+        
+                {/* Simple Contact Cards */}
+        <View style={styles.simpleCardsContainer}>
+          {/* Company Card */}
+          <View style={styles.simpleCard}>
+            <View style={styles.simpleIconContainer}>
+              <Icon name="business" size={24} color="#FFFFFF" />
             </View>
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>Call Us</Text>
-              <Text style={styles.contactSubtitle}>+1 (234) 567-8900</Text>
+            <View style={styles.simpleCardContent}>
+              <Text style={styles.simpleCardTitle}>Company Name</Text>
+              <Text style={styles.simpleCardSubtitle}>Learning Saint Pvt. Ltd.</Text>
+            </View>
+          </View>
+
+          {/* Email Card */}
+          <TouchableOpacity style={styles.simpleCard} onPress={handleEmail}>
+            <View style={styles.simpleIconContainer}>
+              <Icon name="mail" size={24} color="#FFFFFF" />
+            </View>
+            <View style={styles.simpleCardContent}>
+              <Text style={styles.simpleCardTitle}>Email Us</Text>
+              <Text style={styles.simpleCardSubtitle}>info@learningsaint.com</Text>
+              <Text style={styles.simpleCardSubtitle}>contact@learningsaint.com</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactCard} onPress={handleEmail}>
-            <View style={styles.contactIconContainer}>
-              <Icon name="mail" size={24} color="#FF8800" />
+          {/* Call Card */}
+          <TouchableOpacity style={styles.simpleCard} onPress={handleCall}>
+            <View style={styles.simpleIconContainer}>
+              <Icon name="call" size={24} color="#FFFFFF" />
             </View>
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>Email Us</Text>
-              <Text style={styles.contactSubtitle}>support@learningsaint.com</Text>
+            <View style={styles.simpleCardContent}>
+              <Text style={styles.simpleCardTitle}>Call Us</Text>
+              <Text style={styles.simpleCardSubtitle}>+1 (209) 268-2813</Text>
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactCard} onPress={handleWhatsApp}>
-            <View style={styles.contactIconContainer}>
-              <Icon name="logo-whatsapp" size={24} color="#25D366" />
+          {/* Location Card */}
+          <View style={styles.simpleCard}>
+            <View style={styles.simpleIconContainer}>
+              <Icon name="location" size={24} color="#FFFFFF" />
             </View>
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>WhatsApp</Text>
-              <Text style={styles.contactSubtitle}>Chat with us</Text>
+            <View style={styles.simpleCardContent}>
+              <Text style={styles.simpleCardTitle}>Head Office</Text>
+              <Text style={styles.simpleCardSubtitle}>Delaware, USA</Text>
             </View>
-          </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Contact Form */}
-        <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>Send us a Message</Text>
+        {/* Additional Office Locations */}
+        <View style={styles.officeLocationsContainer}>
+          <Text style={styles.sectionTitle}>Our Offices</Text>
           
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your full name"
-              placeholderTextColor="#999"
-            />
+          <View style={[styles.officeCard, styles.officeCardElevated]}>
+            <View style={styles.officeIconContainer}>
+              <Icon name="location" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.officeInfo}>
+              <Text style={styles.officeTitle}>UK Office</Text>
+              <Text style={styles.officeAddress}>13491, 182-184 High Street North, East Ham, London, E6 2JA, United Kingdom</Text>
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              placeholderTextColor="#999"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+          <View style={[styles.officeCard, styles.officeCardElevated]}>
+            <View style={styles.officeIconContainer}>
+              <Icon name="location" size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.officeInfo}>
+              <Text style={styles.officeTitle}>Registered Address</Text>
+              <Text style={styles.officeAddress}>124 City Road, London, ECIV 2NX</Text>
+            </View>
           </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Subject</Text>
-            <TextInput
-              style={styles.input}
-              value={subject}
-              onChangeText={setSubject}
-              placeholder="Enter subject"
-              placeholderTextColor="#999"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Message</Text>
-            <TextInput
-              style={[styles.input, styles.messageInput]}
-              value={message}
-              onChangeText={setMessage}
-              placeholder="Enter your message"
-              placeholderTextColor="#999"
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-            />
-          </View>
-
-          <TouchableOpacity 
-            style={[styles.submitButton, isLoading && styles.submitButtonDisabled]} 
-            onPress={handleSubmit}
-            disabled={isLoading}
-          >
-            <LinearGradient
-              colors={['#FF8800', '#FFB800']}
-              style={styles.submitButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Text style={styles.submitButtonText}>
-                {isLoading ? 'Sending...' : 'Send Message'}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
 
         {/* Office Hours */}
         <View style={styles.officeHoursContainer}>
-          <Text style={styles.officeHoursTitle}>Office Hours</Text>
-          <View style={styles.officeHoursContent}>
+          <Text style={styles.sectionTitle}>Office Hours</Text>
+          <View style={[styles.officeHoursContent, styles.officeHoursElevated]}>
             <View style={styles.officeHoursRow}>
               <Text style={styles.officeHoursDay}>Monday - Friday</Text>
               <Text style={styles.officeHoursTime}>9:00 AM - 6:00 PM</Text>
@@ -212,7 +138,7 @@ export default ContactUsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
@@ -222,13 +148,20 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 20,
     marginTop: 10,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: '#2C3E50',
+    letterSpacing: 0.5,
   },
   placeholder: {
     width: 40,
@@ -236,125 +169,155 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  contactInfoContainer: {
-    padding: 20,
+  decorativePattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    backgroundColor: 'transparent',
+    opacity: 0.1,
   },
-  contactCard: {
+  // Simple Cards Container
+  simpleCardsContainer: {
+    padding: 20,
+    paddingTop: 30,
+  },
+
+  // Simple Card
+  simpleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#FF8800',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
   },
-  contactIconContainer: {
+  simpleIconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#FFF8EF',
+    backgroundColor: '#FF8800',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
-  contactInfo: {
+  simpleCardContent: {
     flex: 1,
   },
-  contactTitle: {
+  simpleCardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#2C3E50',
     marginBottom: 4,
   },
-  contactSubtitle: {
+  simpleCardSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#7F8C8D',
+    lineHeight: 18,
   },
-  formContainer: {
+
+  officeLocationsContainer: {
     padding: 20,
-    paddingTop: 0,
+    paddingTop: 10,
   },
-  formTitle: {
-    fontSize: 18,
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    color: '#333',
+    color: '#2C3E50',
     marginBottom: 20,
+    letterSpacing: 0.5,
   },
-  inputContainer: {
+  officeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#333',
-    backgroundColor: '#fff',
+    borderColor: '#E8E8E8',
   },
-  messageInput: {
-    height: 120,
-    textAlignVertical: 'top',
+  officeCardElevated: {
+    shadowColor: '#FF8800',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  submitButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginTop: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonGradient: {
-    paddingVertical: 16,
+  officeIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FF8800',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#FF8800',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  submitButtonText: {
-    color: '#fff',
+  officeInfo: {
+    flex: 1,
+  },
+  officeTitle: {
     fontSize: 16,
     fontWeight: '700',
+    color: '#2C3E50',
+    marginBottom: 6,
+    letterSpacing: 0.3,
+  },
+  officeAddress: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    lineHeight: 20,
+    fontWeight: '500',
   },
   officeHoursContainer: {
     padding: 20,
-    paddingTop: 0,
-  },
-  officeHoursTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 16,
+    paddingTop: 10,
+    paddingBottom: 30,
   },
   officeHoursContent: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  officeHoursElevated: {
+    shadowColor: '#FF8800',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 6,
   },
   officeHoursRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   officeHoursDay: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+    letterSpacing: 0.2,
   },
   officeHoursTime: {
     fontSize: 14,
-    color: '#666',
+    color: '#7F8C8D',
+    fontWeight: '500',
   },
 });
