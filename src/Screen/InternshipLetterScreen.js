@@ -93,13 +93,16 @@ const InternshipLetterScreen = () => {
   const courseId = route.params?.courseId;
   console.log('🔍 InternshipLetterScreen: courseId from route params:', courseId);
 
-  // Function to get user profile data (same as EnrollScreen)
+  // Get user data from Redux store at component level
+  const userState = useAppSelector((state) => state.user);
+  
+  // Function to get user profile data (no hooks inside)
   const getUserProfileData = () => {
     console.log('👤 InternshipLetterScreen: getUserProfileData called');
     return {
-      email: 'student@learningsaint.com',
-      contact: '9876543210',
-      name: 'Student Name'
+      email: userState.email || 'user@example.com',
+      contact: userState.phone || userState.contact || '0000000000',
+      name: userState.name || userState.fullName || 'User'
     };
   };
 
@@ -173,7 +176,15 @@ const InternshipLetterScreen = () => {
         
         if (currentCourse) {
           console.log('✅ InternshipLetterScreen: Setting courseData:', JSON.stringify(currentCourse, null, 2));
-          setCourseData(currentCourse);
+          
+          // Ensure price is properly formatted
+          const courseWithPrice = {
+            ...currentCourse,
+            price: currentCourse.price ? `₹${currentCourse.price}.00` : '₹99.00'
+          };
+          
+          console.log('💰 InternshipLetterScreen: Course price formatted:', courseWithPrice.price);
+          setCourseData(courseWithPrice);
         } else {
           console.log('❌ InternshipLetterScreen: Course not found in API response');
         }
@@ -216,32 +227,7 @@ const InternshipLetterScreen = () => {
     }
   };
 
-  // Function to test different states (for debugging)
-  const testStates = () => {
-    console.log('🧪 InternshipLetterScreen: Testing different states');
-    
-    // Test state 1: isEnrolled=true, uploadStatus=upload (should show message and disabled button)
-    setRequestData({
-      internshipLetter: {
-        paymentStatus: true,
-        uploadStatus: 'upload',
-        _id: 'test-id-1',
-        downloadUrl: null
-      }
-    });
-    
-    setTimeout(() => {
-      // Test state 2: isEnrolled=true, uploadStatus=uploaded (should show enabled button with download URL)
-      setRequestData({
-        internshipLetter: {
-          paymentStatus: true,
-          uploadStatus: 'uploaded',
-          _id: 'test-id-2',
-          downloadUrl: 'https://yoraaecommerce.s3.amazonaws.com/courses/1756298704009_pexels-artempodrez-8087866.jpg'
-        }
-      });
-    }, 3000);
-  };
+
   // Function to check internship status before proceeding with payment
   const checkInternshipStatus = async () => {
     console.log('🔍 InternshipLetterScreen: checkInternshipStatus called');
@@ -376,11 +362,26 @@ const InternshipLetterScreen = () => {
       }
     } catch (error) {
       console.error('💥 InternshipLetterScreen: Error in requestInternshipLetter:', error);
-      Alert.alert(
-        'Error',
-        'Network error occurred while requesting internship letter',
-        [{ text: 'OK' }]
-      );
+      console.error('💥 InternshipLetterScreen: Error message:', error.message);
+      console.error('💥 InternshipLetterScreen: Error stack:', error.stack);
+      
+      // Handle specific Razorpay errors
+      if (error.message === 'PAYMENT_CANCELLED') {
+        console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+      } else if (error.message === 'PAYMENT_FAILED') {
+        console.log('💥 InternshipLetterScreen: Payment failed');
+        Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
+      } else if (error.message && error.message.includes('Invalid course price')) {
+        console.log('⚙️ InternshipLetterScreen: Invalid course price');
+        Alert.alert('Configuration Error', 'Course price configuration error. Please contact support.');
+      } else if (error.message && error.message.includes('Razorpay payment failed')) {
+        console.log('💳 InternshipLetterScreen: Razorpay payment error');
+        Alert.alert('Payment Error', error.message);
+      } else {
+        console.log('💥 InternshipLetterScreen: Generic error');
+        Alert.alert('Error', `Something went wrong: ${error.message || 'Unknown error'}. Please try again.`);
+      }
     } finally {
       console.log('🎯 InternshipLetterScreen: Setting isRequesting to false');
       setIsRequesting(false);
@@ -396,11 +397,38 @@ const InternshipLetterScreen = () => {
       if (requestData.internshipLetter && requestData.internshipLetter.razorpayOrderId) {
         console.log('✅ InternshipLetterScreen: Found internship letter data with order ID');
         
+        // Calculate price from course data (same logic as EnrollScreen)
+        const coursePrice = courseData?.price || '₹99.00';
+        
+        if (!coursePrice || typeof coursePrice !== 'string') {
+          console.log('❌ InternshipLetterScreen: Invalid course price:', coursePrice);
+          Alert.alert('Error', 'Invalid course price. Please refresh and try again.');
+          return;
+        }
+        
+        const priceString = coursePrice.replace('₹', '').replace('.00', '');
+        const priceInRupees = parseFloat(priceString);
+        
+        if (isNaN(priceInRupees) || priceInRupees <= 0) {
+          console.log('❌ InternshipLetterScreen: Invalid price calculation:', { priceString, priceInRupees });
+          Alert.alert('Error', 'Invalid course price. Please contact support.');
+          return;
+        }
+        
+        const priceInPaise = Math.round(priceInRupees * 100);
+        
+        console.log('💰 InternshipLetterScreen: Price calculation:', {
+          coursePrice: coursePrice,
+          priceString: priceString,
+          priceInRupees: priceInRupees,
+          priceInPaise: priceInPaise
+        });
+        
         // Use the EXACT SAME logic as EnrollScreen.js
         // The API should return the same structure as courseAPI.createCourseOrder
         const orderData = {
           key: RAZORPAY_KEY_ID, // Use the live Razorpay key from env config
-          amount: requestData.internshipLetter.paymentAmount * 100, // Convert to paise
+          amount: priceInPaise, // Use calculated price instead of API amount
           currency: requestData.internshipLetter.paymentCurrency || 'INR',
           orderId: requestData.internshipLetter.razorpayOrderId,
         };
@@ -467,12 +495,40 @@ const InternshipLetterScreen = () => {
       const userProfile = getUserProfileData();
       console.log('👤 InternshipLetterScreen: User profile data:', JSON.stringify(userProfile, null, 2));
       
+      // Calculate price from course data (same logic as EnrollScreen)
+      const coursePrice = courseData?.price || '₹99.00';
+      
+      if (!coursePrice || typeof coursePrice !== 'string') {
+        console.log('❌ InternshipLetterScreen: Invalid course price:', coursePrice);
+        throw new Error('Invalid course price. Please refresh and try again.');
+      }
+      
+      const priceString = coursePrice.replace('₹', '').replace('.00', '');
+      const priceInRupees = parseFloat(priceString);
+      
+      if (isNaN(priceInRupees) || priceInRupees <= 0) {
+        console.log('❌ InternshipLetterScreen: Invalid price calculation:', { priceString, priceInRupees });
+        throw new Error('Invalid course price. Please contact support.');
+      }
+      
+      const priceInPaise = Math.round(priceInRupees * 100);
+      
+      console.log('💰 InternshipLetterScreen: Price calculation in handlePaymentWithRazorpay:', {
+        coursePrice: coursePrice,
+        priceString: priceString,
+        priceInRupees: priceInRupees,
+        priceInPaise: priceInPaise
+      });
+      
+      // Always use the calculated price from frontend to ensure correct amount
+      const finalAmount = priceInPaise;
+      
       const razorpayOptions = {
         key: orderData.key,
-        amount: orderData.amount,
+        amount: finalAmount, // Use calculated amount
         currency: orderData.currency,
         name: 'Learning Saint',
-        description: 'Internship Letter Payment',
+        description: `Internship Letter Payment - ${courseData?.courseName || 'Course'}`,
         order_id: orderData.orderId,
         prefill: {
           email: userProfile.email,
@@ -496,14 +552,23 @@ const InternshipLetterScreen = () => {
       console.log('✅ InternshipLetterScreen: Payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
-      console.log('❌ InternshipLetterScreen: Razorpay error:', razorpayError);
+      console.log('❌ InternshipLetterScreen: Razorpay error caught:', razorpayError);
+      console.log('❌ InternshipLetterScreen: Error message:', razorpayError.message);
+      console.log('❌ InternshipLetterScreen: Error stack:', razorpayError.stack);
       
+      // More specific error handling
       if (razorpayError.message === 'PAYMENT_CANCELLED') {
+        console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
         throw new Error('PAYMENT_CANCELLED');
       } else if (razorpayError.message === 'PAYMENT_FAILED') {
+        console.log('💥 InternshipLetterScreen: Payment failed');
         throw new Error('PAYMENT_FAILED');
+      } else if (razorpayError.message && razorpayError.message.includes('Invalid course price')) {
+        console.log('⚙️ InternshipLetterScreen: Invalid course price');
+        throw new Error('Invalid course price. Please contact support.');
       } else {
-        throw new Error('Razorpay payment failed. Please try again.');
+        console.log('💥 InternshipLetterScreen: Generic Razorpay error:', razorpayError);
+        throw new Error(`Razorpay payment failed: ${razorpayError.message || 'Unknown error'}. Please try again.`);
       }
     }
   };
@@ -614,11 +679,7 @@ const InternshipLetterScreen = () => {
     navigation.goBack();
   };
 
-  const handleDownload = () => {
-    console.log('📥 InternshipLetterScreen: Download button pressed');
-    console.log('📜 InternshipLetterScreen: This function is not implemented yet');
-    // Add your download logic here
-  };
+
 
   // Function to test downloads directory access
   const testDownloadsAccess = async () => {
@@ -893,10 +954,7 @@ const InternshipLetterScreen = () => {
       <View style={styles.header}>
         <BackButton onPress={handleBackPress} />
         <Text style={styles.headerTitle}>Internship Letter</Text>
-        <View style={styles.headerButtons}>
-        
-        
-        </View>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView 
@@ -942,7 +1000,7 @@ const InternshipLetterScreen = () => {
             {/* Course Description */}
             <View style={styles.descriptionContainer}>
               <Text style={styles.descriptionText}>
-                In this course you will learn how to build a space to a 3-dimensional product. There are 24 premium learning videos for you.
+                {courseData.description || courseData.courseDescription || 'Complete this course to get your internship letter.'}
               </Text>
             </View>
           </>
@@ -1043,14 +1101,8 @@ const InternshipLetterScreen = () => {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.downloadButtonText}>
-                  Download
-                  {/* {isRequesting ? 'Processing...' : `Download ₹${requestData?.internshipLetter?.paymentAmount || 99}/-`} */}
+                  {isRequesting ? 'Processing...' : `Get Internship Letter - ${courseData?.price || '₹0.00'}`}
                 </Text>
-                {requestData?.internshipLetter?.paymentAmount && (
-                  <Text style={styles.dynamicPriceText}>
-                    Dynamic Price: ₹{requestData.internshipLetter.paymentAmount} (from API)
-                  </Text>
-                )}
               </LinearGradient>
             </TouchableOpacity>
           );
@@ -1089,6 +1141,7 @@ const styles = StyleSheet.create({
   placeholder: {
     width: getResponsiveSize(40),
   },
+
  
   scrollContent: {
     flexGrow: 1,
@@ -1121,24 +1174,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: getResponsiveSize(5),
   },
-  courseNameLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: getResponsiveSize(10),
-  },
-  courseNameLoadingText: {
-    fontSize: getResponsiveSize(14),
-    color: '#666',
-    marginLeft: getResponsiveSize(8),
-  },
-  courseNameError: {
-    fontSize: getResponsiveSize(16),
-    color: '#FF0000',
-    textAlign: 'center',
-    marginTop: getResponsiveSize(10),
-    fontStyle: 'italic',
-  },
+
   mainLoadingContainer: {
     // flex: 1,
     justifyContent: 'center',
@@ -1150,10 +1186,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: getResponsiveSize(15),
   },
-  courseNameErrorContainer: {
-    alignItems: 'center',
-    marginTop: getResponsiveSize(10),
-  },
+
   retryButton: {
     backgroundColor: '#FF8800',
     paddingHorizontal: getResponsiveSize(20),
@@ -1209,42 +1242,15 @@ const styles = StyleSheet.create({
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',
   },
-  dynamicPriceText: {
-    color: '#FFFFFF',
-    fontSize: getResponsiveSize(12),
-    fontWeight: '400',
-    textAlign: 'center',
-    marginTop: getResponsiveSize(5),
-    opacity: 0.9,
-  },
+
   downloadButtonDisabled: {
     opacity: 0.7,
   },
   downloadButtonTextDisabled: {
     color: '#666666',
   },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  testButton: {
-    backgroundColor: '#FF8800',
-    paddingHorizontal: getResponsiveSize(12),
-    paddingVertical: getResponsiveSize(6),
-    borderRadius: getResponsiveSize(15),
-    marginRight: getResponsiveSize(8),
-  },
-  testButtonText: {
-    color: '#FFFFFF',
-    fontSize: getResponsiveSize(12),
-    fontWeight: '600',
-  },
-  refreshButton: {
-    padding: getResponsiveSize(8),
-    width: getResponsiveSize(40),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
+
   pageRefreshOverlay: {
     position: 'absolute',
     top: 0,

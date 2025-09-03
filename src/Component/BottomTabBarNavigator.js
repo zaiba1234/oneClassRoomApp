@@ -47,6 +47,11 @@ const BottomTabNavigator = () => {
         tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
         headerShown: false,
+        tabBarItemStyle: {
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingVertical: 5,
+        },
         tabBarBackground: () => (
           <LinearGradient
             colors={['#FF8800', '#FFB800']}
@@ -81,6 +86,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
+    paddingTop: 10,
+    paddingBottom: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tabBarGradient: {
     flex: 1,
@@ -88,8 +97,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   tabIcon: {
-    marginTop: 10,
     width: 24,
     height: 24,
+    alignSelf: 'center',
   },
 });
