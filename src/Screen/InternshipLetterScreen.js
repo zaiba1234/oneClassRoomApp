@@ -12,7 +12,9 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
+import RNFS from 'react-native-fs';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -111,6 +113,9 @@ const InternshipLetterScreen = () => {
       console.log('✅ InternshipLetterScreen: Conditions met, calling fetchCourseDetails');
       fetchCourseDetails();
       
+      // Check internship status to get current enrollment and upload status
+      checkInternshipStatus();
+      
       // Check if we have uploadStatus from navigation params
       if (route.params?.uploadStatus) {
         console.log('🔄 InternshipLetterScreen: Found uploadStatus from navigation:', route.params.uploadStatus);
@@ -202,11 +207,40 @@ const InternshipLetterScreen = () => {
     setIsPageRefreshing(true);
     try {
       await fetchCourseDetails();
+      // Also check internship status on refresh
+      await checkInternshipStatus();
       setTimeout(() => setIsPageRefreshing(false), 1000);
     } catch (error) {
       console.error('💥 InternshipLetterScreen: Error during page refresh:', error);
       setIsPageRefreshing(false);
     }
+  };
+
+  // Function to test different states (for debugging)
+  const testStates = () => {
+    console.log('🧪 InternshipLetterScreen: Testing different states');
+    
+    // Test state 1: isEnrolled=true, uploadStatus=upload (should show message and disabled button)
+    setRequestData({
+      internshipLetter: {
+        paymentStatus: true,
+        uploadStatus: 'upload',
+        _id: 'test-id-1',
+        downloadUrl: null
+      }
+    });
+    
+    setTimeout(() => {
+      // Test state 2: isEnrolled=true, uploadStatus=uploaded (should show enabled button with download URL)
+      setRequestData({
+        internshipLetter: {
+          paymentStatus: true,
+          uploadStatus: 'uploaded',
+          _id: 'test-id-2',
+          downloadUrl: 'https://yoraaecommerce.s3.amazonaws.com/courses/1756298704009_pexels-artempodrez-8087866.jpg'
+        }
+      });
+    }, 3000);
   };
   // Function to check internship status before proceeding with payment
   const checkInternshipStatus = async () => {
@@ -219,7 +253,6 @@ const InternshipLetterScreen = () => {
       const checkStatusUrl = getApiUrl(`/api/user/internshipLetter/check-internshipStatus/${courseId}`);
       console.log('🌐 InternshipLetterScreen: Check status API URL:', checkStatusUrl);
       
-      console.log('🔍 InternshipLetterScreen: Making GET request to check internship status...');
       const response = await fetch(checkStatusUrl, {
         method: 'GET',
         headers: {
@@ -228,22 +261,26 @@ const InternshipLetterScreen = () => {
         },
       });
       
-      console.log('📡 InternshipLetterScreen: Check status response received - status:', response.status, response.statusText);
       
       const result = await response.json();
-      console.log('📄 InternshipLetterScreen: Check status response parsed:', JSON.stringify(result, null, 2));
+      console.log('InternshipLetterScreen xxx', JSON.stringify(result));
       
       if (response.ok && result.success) {
         console.log('✅ InternshipLetterScreen: Check status API call successful');
         console.log('🔍 InternshipLetterScreen: isEnrolled flag:', result.data?.isEnrolled);
         
         if (result.data?.isEnrolled === true) {
-          console.log('✅ InternshipLetterScreen: User is already enrolled, skipping Razorpay payment');
-          Alert.alert(
-            'Already Enrolled',
-            'You are already enrolled for this internship letter!',
-            [{ text: 'OK' }]
-          );
+          console.log('✅ InternshipLetterScreen: User is already enrolled, setting requestData');
+          // Set requestData with the API response to show proper UI state
+          setRequestData({
+            internshipLetter: {
+              paymentStatus: true, // User is enrolled, so payment is successful
+              uploadStatus: result.data?.uploadStatus || 'upload',
+              _id: 'enrolled-id',
+              downloadUrl: result.data?.internshipLetter, // Store the download URL
+              internshipLetter: result.data?.internshipLetter // Also store as internshipLetter for compatibility
+            }
+          });
           return { isEnrolled: true };
         } else {
           console.log('❌ InternshipLetterScreen: User is not enrolled, proceeding with Razorpay payment');
@@ -583,35 +620,249 @@ const InternshipLetterScreen = () => {
     // Add your download logic here
   };
 
-  // Function to handle downloading the internship letter
+  // Function to test downloads directory access
+  const testDownloadsAccess = async () => {
+    try {
+      console.log('🔍 Testing downloads directory access...');
+      const downloadsPath = RNFS.DownloadDirectoryPath;
+      console.log('📁 Downloads path:', downloadsPath);
+      console.log('📁 Downloads path type:', typeof downloadsPath);
+      
+      // Try to read the downloads directory
+      const dirExists = await RNFS.exists(downloadsPath);
+      console.log('📁 Downloads directory exists:', dirExists);
+      
+      if (dirExists) {
+        // Try to list files in downloads directory
+        const files = await RNFS.readDir(downloadsPath);
+        console.log('📁 Downloads directory accessible, files count:', files.length);
+        console.log('📁 Sample files:', files.slice(0, 3).map(f => ({ name: f.name, isFile: f.isFile() })));
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.log('❌ Downloads directory not accessible:', error.message);
+      console.log('❌ Error details:', error);
+      return false;
+    }
+  };
+
+  // Alternative download method using direct file download
+  const handleDownloadLetterAlternative = async (downloadUrl, fileName) => {
+    try {
+      console.log('🔄 InternshipLetterScreen: Trying alternative download method');
+      
+      // Use RNFS.downloadFile for direct download
+      const downloadResult = await RNFS.downloadFile({
+        fromUrl: downloadUrl,
+        toFile: `${RNFS.DownloadDirectoryPath}/${fileName}`,
+        headers: {
+          'Content-Type': 'application/pdf',
+        },
+        progress: (res) => {
+          const progress = (res.bytesWritten / res.contentLength) * 100;
+          console.log('📊 Download progress:', progress.toFixed(2) + '%');
+        }
+      }).promise;
+      
+      console.log('✅ Alternative download completed:', downloadResult);
+      
+      if (downloadResult.statusCode === 200) {
+        const filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+        const fileExists = await RNFS.exists(filePath);
+        
+        if (fileExists) {
+          const fileStats = await RNFS.stat(filePath);
+          console.log('📊 Alternative download file stats:', fileStats);
+          
+          Alert.alert(
+            'Download Complete! 🎉',
+            `Your internship letter has been downloaded to your Downloads folder.\n\nFile: ${fileName}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB`,
+            [{ text: 'OK' }]
+          );
+          return true;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('💥 Alternative download failed:', error);
+      return false;
+    }
+  };
+
+  // Function to handle downloading the internship letter to local storage
   const handleDownloadLetter = async () => {
     try {
       console.log('📥 InternshipLetterScreen: handleDownloadLetter called');
       console.log('📥 InternshipLetterScreen: requestData:', JSON.stringify(requestData, null, 2));
       
-      if (!requestData?.internshipLetter?._id) {
-        console.log('❌ InternshipLetterScreen: No internship letter ID found');
-        Alert.alert('Error', 'Internship letter ID not found. Please try again.');
+      // Get download URL from the API response structure
+      const downloadUrl = requestData?.internshipLetter?.downloadUrl || requestData?.internshipLetter?.internshipLetter;
+      
+      if (!downloadUrl) {
+        console.log('❌ InternshipLetterScreen: No download URL found');
+        Alert.alert('Error', 'Download URL not found. Please try again.');
         return;
       }
       
-      // Build download URL (you'll need to update this based on your actual download endpoint)
-      const downloadUrl = getApiUrl(`/api/user/internshipLetter/download/${requestData.internshipLetter._id}`);
       console.log('🌐 InternshipLetterScreen: Download URL:', downloadUrl);
       
-      // For now, show success message (you can implement actual download logic later)
+      // Show loading alert
       Alert.alert(
-        'Download Started! 📥',
-        'Your internship letter download has started. Please check your downloads folder.',
+        'Downloading... 📥',
+        'Please wait while we download your internship letter.',
         [{ text: 'OK' }]
       );
       
-      // TODO: Implement actual file download logic here
-      // This could involve using react-native-fs or similar library
+      const fileName = `internship_letter_${courseId}.pdf`;
+      
+      // Try alternative download method first (direct download)
+      console.log('🔄 InternshipLetterScreen: Trying alternative download method first...');
+      const alternativeSuccess = await handleDownloadLetterAlternative(downloadUrl, fileName);
+      
+      if (alternativeSuccess) {
+        console.log('✅ InternshipLetterScreen: Alternative download method succeeded');
+        return;
+      }
+      
+      console.log('⚠️ InternshipLetterScreen: Alternative download failed, trying manual method...');
+      
+      // Make the API call to get the PDF file
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/pdf',
+        },
+      });
+      
+      console.log('📡 InternshipLetterScreen: Download response status:', response.status, response.statusText);
+      console.log('📡 InternshipLetterScreen: Response headers:', JSON.stringify([...response.headers.entries()], null, 2));
+      
+      if (response.ok) {
+        console.log('✅ InternshipLetterScreen: Download successful, processing PDF...');
+        
+        // Get the response as blob (React Native compatible)
+        const blob = await response.blob();
+        console.log('📄 InternshipLetterScreen: Blob received, size:', blob.size, 'bytes');
+        
+        // Convert blob to base64 using FileReader (React Native compatible)
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result;
+            // Remove data URL prefix to get just the base64 string
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        console.log('🔢 InternshipLetterScreen: Base64 data prepared, length:', base64Data.length);
+        
+        try {
+          // First try downloads directory
+          let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+          
+          console.log('📁 InternshipLetterScreen: Trying downloads directory:', filePath);
+          console.log('📁 InternshipLetterScreen: RNFS.DownloadDirectoryPath:', RNFS.DownloadDirectoryPath);
+          console.log('📁 InternshipLetterScreen: RNFS.DocumentDirectoryPath:', RNFS.DocumentDirectoryPath);
+          
+          // Test if we can access downloads directory
+          const downloadsAccessible = await testDownloadsAccess();
+          
+          if (!downloadsAccessible) {
+            console.log('⚠️ InternshipLetterScreen: Downloads directory not accessible, using app documents directory');
+            filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+          }
+          
+          console.log('📁 InternshipLetterScreen: Final file path:', filePath);
+          
+          // Ensure directory exists
+          const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+          console.log('📁 InternshipLetterScreen: Directory path:', dirPath);
+          
+          const dirExists = await RNFS.exists(dirPath);
+          console.log('📁 InternshipLetterScreen: Directory exists:', dirExists);
+          
+          if (!dirExists) {
+            console.log('📁 InternshipLetterScreen: Creating directory...');
+            await RNFS.mkdir(dirPath);
+            console.log('📁 InternshipLetterScreen: Created directory:', dirPath);
+          }
+          
+          // Write the PDF file
+          console.log('📝 InternshipLetterScreen: Writing file with base64 data length:', base64Data.length);
+          await RNFS.writeFile(filePath, base64Data, 'base64');
+          console.log('✅ InternshipLetterScreen: PDF saved successfully to:', filePath);
+          
+          // Check if file exists
+          const fileExists = await RNFS.exists(filePath);
+          console.log('📋 InternshipLetterScreen: File exists check:', fileExists);
+          
+          if (fileExists) {
+            // Get file info
+            const fileStats = await RNFS.stat(filePath);
+            console.log('📊 InternshipLetterScreen: File stats:', {
+              size: fileStats.size,
+              isFile: fileStats.isFile(),
+              path: fileStats.path,
+              name: fileStats.name,
+              mtime: fileStats.mtime
+            });
+            
+            // Try to list files in the directory to verify
+            try {
+              const dirFiles = await RNFS.readDir(dirPath);
+              console.log('📁 InternshipLetterScreen: Files in directory after save:', dirFiles.map(f => f.name));
+            } catch (listError) {
+              console.log('⚠️ InternshipLetterScreen: Could not list directory files:', listError.message);
+            }
+            
+            // Show success message with file location
+            const locationMessage = downloadsAccessible 
+              ? 'Your internship letter has been downloaded to your Downloads folder.'
+              : 'Your internship letter has been saved to the app\'s documents folder.';
+            
+            Alert.alert(
+              'Download Complete! 🎉',
+              `${locationMessage}\n\nFile: ${fileName}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB\nPath: ${filePath}`,
+              [
+                { 
+                  text: 'OK',
+                  onPress: () => {
+                    console.log('✅ InternshipLetterScreen: Download completed successfully');
+                  }
+                }
+              ]
+            );
+          } else {
+            console.log('❌ InternshipLetterScreen: File was not created successfully');
+            console.log('❌ InternshipLetterScreen: Attempted path:', filePath);
+            Alert.alert('Error', 'Failed to save the file. Please try again.');
+          }
+          
+        } catch (fileError) {
+          console.error('💥 InternshipLetterScreen: File system error:', fileError);
+          console.error('💥 InternshipLetterScreen: Error details:', {
+            message: fileError.message,
+            code: fileError.code,
+            stack: fileError.stack
+          });
+          Alert.alert('Error', 'Failed to save the file to local storage. Please try again.');
+        }
+        
+      } else {
+        console.log('❌ InternshipLetterScreen: Download failed - response not ok');
+        const errorText = await response.text();
+        console.log('❌ InternshipLetterScreen: Error response:', errorText);
+        Alert.alert('Error', 'Failed to download the internship letter. Please try again.');
+      }
       
     } catch (error) {
       console.error('💥 InternshipLetterScreen: Error in handleDownloadLetter:', error);
-      Alert.alert('Error', 'Failed to download internship letter. Please try again.');
+      Alert.alert('Error', 'Network error occurred while downloading internship letter. Please try again.');
     }
   };
 
@@ -642,21 +893,14 @@ const InternshipLetterScreen = () => {
       <View style={styles.header}>
         <BackButton onPress={handleBackPress} />
         <Text style={styles.headerTitle}>Internship Letter</Text>
-        <TouchableOpacity 
-          style={styles.refreshButton}
-          onPress={handlePageRefresh}
-          disabled={isPageRefreshing}
-        >
-          <Icon 
-            name="refresh" 
-            size={getResponsiveSize(20)} 
-            color={isPageRefreshing ? "#999" : "#FF8800"} 
-          />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+        
+        
+        </View>
       </View>
 
       <ScrollView 
-        style={styles.scrollView}
+        
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -680,7 +924,7 @@ const InternshipLetterScreen = () => {
             {/* Congratulations Section */}
             <View style={styles.congratulationsContainer}>
               <Text style={styles.congratulationsText}>Congratulations</Text>
-              <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
+              <Text style={styles.congratulationsSubtext}>Download Intership letter</Text>
               
               {/* Dynamic Course Name */}
               <Text style={styles.courseNameText}>{courseData.courseName}</Text>
@@ -714,18 +958,28 @@ const InternshipLetterScreen = () => {
 
       {/* Status Message and Download Button */}
       <View style={styles.downloadButtonContainer}>
-        {/* Status Message */}
-        {requestData?.internshipLetter?.paymentStatus && requestData?.internshipLetter?.uploadStatus === 'upload' && (
-          <View style={styles.statusMessageContainer}>
-            <Text style={styles.statusMessageText}>
-              Internship Letter Underprocess you will be notified for download
-            </Text>
-          </View>
-        )}
+        {/* Status Message - Show when isEnrolled=true and uploadStatus=upload */}
+        {(() => {
+          const shouldShowMessage = requestData?.internshipLetter?.paymentStatus && requestData?.internshipLetter?.uploadStatus === 'upload';
+          console.log('🔍 InternshipLetterScreen: Status message logic - shouldShowMessage:', shouldShowMessage);
+          console.log('🔍 InternshipLetterScreen: paymentStatus:', requestData?.internshipLetter?.paymentStatus);
+          console.log('🔍 InternshipLetterScreen: uploadStatus:', requestData?.internshipLetter?.uploadStatus);
+          
+          return shouldShowMessage ? (
+            <View style={styles.statusMessageContainer}>
+              <Text style={styles.statusMessageText}>
+                Internship Letter Underprocess you will be notified for download
+              </Text>
+            </View>
+          ) : null;
+        })()}
         
         {(() => {
           const uploadStatus = requestData?.internshipLetter?.uploadStatus;
           const paymentStatus = requestData?.internshipLetter?.paymentStatus;
+          
+          console.log('🔍 InternshipLetterScreen: Button logic - uploadStatus:', uploadStatus, 'paymentStatus:', paymentStatus);
+          console.log('🔍 InternshipLetterScreen: requestData:', JSON.stringify(requestData, null, 2));
           
           // If payment is successful and letter is uploaded, show enabled download button
           if (paymentStatus && uploadStatus === 'uploaded') {
@@ -744,7 +998,7 @@ const InternshipLetterScreen = () => {
                   end={{ x: 1, y: 0 }}
                 >
                   <Text style={styles.downloadButtonText}>
-                    Internship
+                    Download
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -759,13 +1013,13 @@ const InternshipLetterScreen = () => {
                 disabled={true}
               >
                 <LinearGradient
-                  colors={['#FF8A00', '#FFB300']}
+                  colors={['#CCCCCC', '#999999']}
                   style={styles.gradientButton}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.downloadButtonText}>
-                    Internship
+                  <Text style={[styles.downloadButtonText, styles.downloadButtonTextDisabled]}>
+                    Download
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -835,9 +1089,7 @@ const styles = StyleSheet.create({
   placeholder: {
     width: getResponsiveSize(40),
   },
-  scrollView: {
-    // flex: 1,
-  },
+ 
   scrollContent: {
     flexGrow: 1,
     // paddingBottom: getResponsiveSize(20),
@@ -888,7 +1140,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   mainLoadingContainer: {
-    flex: 1,
+    // flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: getResponsiveSize(100),
@@ -967,6 +1219,25 @@ const styles = StyleSheet.create({
   },
   downloadButtonDisabled: {
     opacity: 0.7,
+  },
+  downloadButtonTextDisabled: {
+    color: '#666666',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  testButton: {
+    backgroundColor: '#FF8800',
+    paddingHorizontal: getResponsiveSize(12),
+    paddingVertical: getResponsiveSize(6),
+    borderRadius: getResponsiveSize(15),
+    marginRight: getResponsiveSize(8),
+  },
+  testButtonText: {
+    color: '#FFFFFF',
+    fontSize: getResponsiveSize(12),
+    fontWeight: '600',
   },
   refreshButton: {
     padding: getResponsiveSize(8),
