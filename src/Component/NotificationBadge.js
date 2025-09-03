@@ -1,27 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAppSelector } from '../Redux/hooks';
+import { useFocusEffect } from '@react-navigation/native';
 import notificationService from '../services/notificationService';
 
 const NotificationBadge = ({ size = 24, color = '#000000', showBadge = true }) => {
   const { token } = useAppSelector((state) => state.user);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Function to fetch unread count
+  const fetchUnreadCount = async () => {
+    if (token && showBadge) {
+      try {
+        const count = await notificationService.getUnreadCount(token);
+        setUnreadCount(count);
+      } catch (error) {
+        console.error('❌ NotificationBadge: Error fetching unread count:', error);
+      }
+    }
+  };
+
   // Fetch unread count when component mounts or token changes
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (token && showBadge) {
-        try {
-          const count = await notificationService.getUnreadCount(token);
-          setUnreadCount(count);
-        } catch (error) {
-          console.error('❌ NotificationBadge: Error fetching unread count:', error);
-        }
-      }
-    };
-
     fetchUnreadCount();
   }, [token, showBadge]);
+
+  // Refresh unread count when screen comes into focus (e.g., returning from NotificationScreen)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchUnreadCount();
+    }, [token, showBadge])
+  );
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
