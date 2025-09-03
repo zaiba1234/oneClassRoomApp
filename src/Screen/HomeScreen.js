@@ -24,7 +24,6 @@ import { setProfileData } from '../Redux/userSlice';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import { useFocusEffect } from '@react-navigation/native';
 import NotificationBadge from '../Component/NotificationBadge';
-import notificationTester from '../services/notificationTester';
 
 const { width, height } = Dimensions.get('window');
 
@@ -764,13 +763,7 @@ const HomeScreen = () => {
             <NotificationBadge size={24} color="#000000" showBadge={true} />
           </TouchableOpacity>
           
-          {/* Debug Test Button - Remove in production */}
-          <TouchableOpacity 
-            style={styles.debugButton} 
-            onPress={() => notificationTester.runCompleteTest()}
-          >
-            <Text style={styles.debugButtonText}>🧪</Text>
-          </TouchableOpacity>
+
          
         </View>
         {refreshing && (
@@ -786,15 +779,13 @@ const HomeScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Image 
-            source={require('../assests/images/Search.png')} 
-            style={[
-              styles.searchIcon,
-              searchKeyword.trim() && styles.searchIconActive
-            ]}
-            resizeMode="contain"
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+          <Icon 
+            name="search" 
+            size={getResponsiveSize(20)} 
+            color="#FF8800"
+            style={styles.searchIcon}
           />
           <TextInput
             style={styles.searchInput}
@@ -818,7 +809,7 @@ const HomeScreen = () => {
                 setIsSearching(false);
               }}
             >
-              <Icon name="close-circle" size={20} color="#999" />
+              <Icon name="close" size={18} color="#FF8800" />
             </TouchableOpacity>
           )}
         </View>
@@ -989,7 +980,7 @@ const HomeScreen = () => {
                 <Text style={styles.emptyText}>No courses found for "{searchKeyword}"</Text>
                 <Text style={styles.emptySubText}>Try a different keyword or check your spelling</Text>
                 <TouchableOpacity 
-                  style={styles.clearSearchButton}
+                  style={styles.clearSearchButtonLarge}
                   onPress={() => {
                     setSearchKeyword('');
                     setFilteredCourses([]);
@@ -1077,22 +1068,7 @@ const styles = StyleSheet.create({
     width: getResponsiveSize(30),
     height: getResponsiveSize(30),
   },
-  debugButton: {
-    position: 'absolute',
-    top: getResponsiveSize(10),
-    right: getResponsiveSize(10),
-    backgroundColor: '#FF6B35',
-    width: getResponsiveSize(30),
-    height: getResponsiveSize(30),
-    borderRadius: getResponsiveSize(15),
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  debugButtonText: {
-    fontSize: getResponsiveSize(16),
-    color: '#FFFFFF',
-  },
+
   refreshButton: {
     width: getResponsiveSize(40),
     height: getResponsiveSize(40),
@@ -1123,8 +1099,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   searchIcon: {
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(20),
+    
     marginRight: getResponsiveSize(12),
   },
   searchIconActive: {
@@ -1138,16 +1113,39 @@ const styles = StyleSheet.create({
     paddingVertical: getResponsiveSize(4),
   },
   clearSearchButton: {
-    backgroundColor: '#2285FA',
-    paddingVertical: getResponsiveSize(10),
-    paddingHorizontal: getResponsiveSize(20),
-    borderRadius: getResponsiveSize(12),
-    marginTop: getResponsiveSize(15),
+    width: getResponsiveSize(32),
+    height: getResponsiveSize(32),
+    borderRadius: getResponsiveSize(16),
+    backgroundColor: 'rgba(255, 136, 0, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: getResponsiveSize(8),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 136, 0, 0.2)',
+    shadowColor: '#FF8800',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   clearSearchButtonText: {
-    color: '#fff',
+    color: '#FF8800',
     fontSize: getResponsiveSize(14),
     fontWeight: '600',
+  },
+  clearSearchButtonLarge: {
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(24),
+    borderRadius: getResponsiveSize(25),
+    backgroundColor: 'rgba(255, 136, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 136, 0, 0.3)',
+    marginTop: getResponsiveSize(15),
+    shadowColor: '#FF8800',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   carouselSection: {
     marginBottom: getResponsiveSize(20),
