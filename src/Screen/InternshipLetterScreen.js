@@ -439,15 +439,12 @@ const InternshipLetterScreen = () => {
     }
   };
 
-  // Function to handle payment with Razorpay - Direct integration
+  // Function to handle payment with Razorpay - EXACT SAME AS ENROLLSCREEN
   const handlePaymentWithRazorpay = async (orderData) => {
-    console.log('🚀 InternshipLetterScreen: Starting handlePaymentWithRazorpay...');
-    console.log('🔍 InternshipLetterScreen: orderData received:', JSON.stringify(orderData, null, 2));
+   
     
     if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
       console.log('❌ InternshipLetterScreen: Razorpay not available');
-      console.log('❌ InternshipLetterScreen: RazorpayCheckout:', RazorpayCheckout);
-      console.log('❌ InternshipLetterScreen: typeof RazorpayCheckout.open:', typeof RazorpayCheckout?.open);
       Alert.alert('Error', 'Razorpay payment gateway is not available. Please try again later.');
       return null;
     }
@@ -466,7 +463,7 @@ const InternshipLetterScreen = () => {
       const userProfile = getUserProfileData();
       console.log('👤 InternshipLetterScreen: User profile data:', JSON.stringify(userProfile, null, 2));
       
-      // Calculate price from course data
+      // Calculate price from course data (same logic as EnrollScreen)
       const coursePrice = courseData?.price || '₹99.00';
       
       if (!coursePrice || typeof coursePrice !== 'string') {
