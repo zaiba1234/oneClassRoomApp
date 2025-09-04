@@ -1151,7 +1151,7 @@ const styles = StyleSheet.create({
     marginBottom: getResponsiveSize(20),
   },
   carousel: {
-    height: getResponsiveSize(200),
+    height: getResponsiveSize(160), // Reduce carousel height to match thinner cards
   },
   carouselContentContainer: {
     paddingHorizontal: getResponsiveSize(10),
@@ -1163,8 +1163,9 @@ const styles = StyleSheet.create({
   carouselCard: {
     flex: 1,
     borderRadius: getResponsiveSize(20),
-    padding: getResponsiveSize(20),
+    padding: getResponsiveSize(16),
     justifyContent: 'space-between',
+    height: getResponsiveSize(140), // Make card even thinner
     // shadowColor: '#000',
     // shadowOffset: { width: 0, height: 4 },
     // shadowOpacity: 0.15,
@@ -1182,9 +1183,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   carouselImage: {
-    width: getResponsiveSize(70),
-    height: getResponsiveSize(70),
-    borderRadius: getResponsiveSize(35), // Make it perfectly circular
+    width: getResponsiveSize(50),
+    height: getResponsiveSize(50),
+    borderRadius: getResponsiveSize(25), // Make it perfectly circular
     overflow: 'hidden', // Ensure circular shape is complete
   },
   carouselBannerImage: {
@@ -1204,14 +1205,14 @@ const styles = StyleSheet.create({
     fontSize: getResponsiveSize(16),
     fontWeight: '600',
     color: '#fff',
-    marginBottom: getResponsiveSize(4),
+    marginBottom: getResponsiveSize(2),
     flexWrap: 'wrap', // Allow text to wrap
     maxWidth: '100%', // Ensure text doesn't overflow
   },
   carouselLessons: {
     fontSize: getResponsiveSize(14),
     color: '#E0E0E0',
-    marginTop: getResponsiveSize(2),
+    marginTop: getResponsiveSize(0),
   },
   progressContainer: {
     position: 'absolute',
@@ -1247,14 +1248,16 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: '#fff',
-    paddingVertical: getResponsiveSize(10),
+    paddingVertical: getResponsiveSize(8),
     paddingHorizontal: getResponsiveSize(20),
-    borderRadius: getResponsiveSize(12),
+    borderRadius: getResponsiveSize(10),
     alignItems: 'center',
-    marginTop: getResponsiveSize(15),
+    marginTop: getResponsiveSize(8),
+    alignSelf: 'flex-end', // Shift button to right side
+    minWidth: getResponsiveSize(100), // Make button bigger
   },
   continueButtonText: {
-    fontSize: getResponsiveSize(14),
+    fontSize: getResponsiveSize(12),
     fontWeight: '600',
     color: '#2285FA',
   },
@@ -1408,7 +1411,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'center',
-    marginRight: getResponsiveSize(60), // Add right margin to prevent overlap with progress
+    marginRight: getResponsiveSize(40), // Add right margin to prevent overlap with progress
   },
   progressContainerAbsolute: {
     position: 'absolute',
