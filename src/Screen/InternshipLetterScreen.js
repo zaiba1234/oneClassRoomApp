@@ -649,77 +649,6 @@ const InternshipLetterScreen = () => {
 
 
 
-  // Function to test downloads directory access
-  const testDownloadsAccess = async () => {
-    try {
-      console.log('🔍 Testing downloads directory access...');
-      const downloadsPath = RNFS.DownloadDirectoryPath;
-      console.log('📁 Downloads path:', downloadsPath);
-      console.log('📁 Downloads path type:', typeof downloadsPath);
-      
-      // Try to read the downloads directory
-      const dirExists = await RNFS.exists(downloadsPath);
-      console.log('📁 Downloads directory exists:', dirExists);
-      
-      if (dirExists) {
-        // Try to list files in downloads directory
-        const files = await RNFS.readDir(downloadsPath);
-        console.log('📁 Downloads directory accessible, files count:', files.length);
-        console.log('📁 Sample files:', files.slice(0, 3).map(f => ({ name: f.name, isFile: f.isFile() })));
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.log('❌ Downloads directory not accessible:', error.message);
-      console.log('❌ Error details:', error);
-      return false;
-    }
-  };
-
-  // Alternative download method using direct file download
-  const handleDownloadLetterAlternative = async (downloadUrl, fileName) => {
-    try {
-      console.log('🔄 InternshipLetterScreen: Trying alternative download method');
-      
-      // Use RNFS.downloadFile for direct download
-      const downloadResult = await RNFS.downloadFile({
-        fromUrl: downloadUrl,
-        toFile: `${RNFS.DownloadDirectoryPath}/${fileName}`,
-        headers: {
-          'Content-Type': 'application/pdf',
-        },
-        progress: (res) => {
-          const progress = (res.bytesWritten / res.contentLength) * 100;
-          console.log('📊 Download progress:', progress.toFixed(2) + '%');
-        }
-      }).promise;
-      
-      console.log('✅ Alternative download completed:', downloadResult);
-      
-      if (downloadResult.statusCode === 200) {
-        const filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-        const fileExists = await RNFS.exists(filePath);
-        
-        if (fileExists) {
-          const fileStats = await RNFS.stat(filePath);
-          console.log('📊 Alternative download file stats:', fileStats);
-          
-          Alert.alert(
-            'Download Complete! 🎉',
-            `Your internship letter has been downloaded to your Downloads folder.\n\nFile: ${fileName}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB`,
-            [{ text: 'OK' }]
-          );
-          return true;
-        }
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('💥 Alternative download failed:', error);
-      return false;
-    }
-  };
 
   // Function to handle downloading the internship letter to local storage
   const handleDownloadLetter = async () => {
@@ -747,116 +676,38 @@ const InternshipLetterScreen = () => {
       
       const fileName = `internship_letter_${courseId}.pdf`;
       
-      // Try alternative download method first (direct download)
-      console.log('🔄 InternshipLetterScreen: Trying alternative download method first...');
-      const alternativeSuccess = await handleDownloadLetterAlternative(downloadUrl, fileName);
+      // Use RNFS.downloadFile for direct download - this is more reliable
+      console.log('🔄 InternshipLetterScreen: Using RNFS.downloadFile for direct download...');
       
-      if (alternativeSuccess) {
-        console.log('✅ InternshipLetterScreen: Alternative download method succeeded');
-        return;
-      }
-      
-      console.log('⚠️ InternshipLetterScreen: Alternative download failed, trying manual method...');
-      
-      // Make the API call to get the PDF file
-      const response = await fetch(downloadUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/pdf',
-        },
-      });
-      
-      console.log('📡 InternshipLetterScreen: Download response status:', response.status, response.statusText);
-      console.log('📡 InternshipLetterScreen: Response headers:', JSON.stringify([...response.headers.entries()], null, 2));
-      
-      if (response.ok) {
-        console.log('✅ InternshipLetterScreen: Download successful, processing PDF...');
+      try {
+        // Use app's documents directory which has proper permissions
+        const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+        console.log('📁 InternshipLetterScreen: Downloading to:', filePath);
         
-        // Get the response as blob (React Native compatible)
-        const blob = await response.blob();
-        console.log('📄 InternshipLetterScreen: Blob received, size:', blob.size, 'bytes');
-        
-        // Convert blob to base64 using FileReader (React Native compatible)
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result;
-            // Remove data URL prefix to get just the base64 string
-            const base64 = result.split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        console.log('🔢 InternshipLetterScreen: Base64 data prepared, length:', base64Data.length);
-        
-        try {
-          // First try downloads directory
-          let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-          
-          console.log('📁 InternshipLetterScreen: Trying downloads directory:', filePath);
-          console.log('📁 InternshipLetterScreen: RNFS.DownloadDirectoryPath:', RNFS.DownloadDirectoryPath);
-          console.log('📁 InternshipLetterScreen: RNFS.DocumentDirectoryPath:', RNFS.DocumentDirectoryPath);
-          
-          // Test if we can access downloads directory
-          const downloadsAccessible = await testDownloadsAccess();
-          
-          if (!downloadsAccessible) {
-            console.log('⚠️ InternshipLetterScreen: Downloads directory not accessible, using app documents directory');
-            filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+        const downloadResult = await RNFS.downloadFile({
+          fromUrl: downloadUrl,
+          toFile: filePath,
+          headers: {
+            'Content-Type': 'application/pdf',
+          },
+          progress: (res) => {
+            const progress = (res.bytesWritten / res.contentLength) * 100;
+            console.log('📊 Download progress:', progress.toFixed(2) + '%');
           }
-          
-          console.log('📁 InternshipLetterScreen: Final file path:', filePath);
-          
-          // Ensure directory exists
-          const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-          console.log('📁 InternshipLetterScreen: Directory path:', dirPath);
-          
-          const dirExists = await RNFS.exists(dirPath);
-          console.log('📁 InternshipLetterScreen: Directory exists:', dirExists);
-          
-          if (!dirExists) {
-            console.log('📁 InternshipLetterScreen: Creating directory...');
-            await RNFS.mkdir(dirPath);
-            console.log('📁 InternshipLetterScreen: Created directory:', dirPath);
-          }
-          
-          // Write the PDF file
-          console.log('📝 InternshipLetterScreen: Writing file with base64 data length:', base64Data.length);
-          await RNFS.writeFile(filePath, base64Data, 'base64');
-          console.log('✅ InternshipLetterScreen: PDF saved successfully to:', filePath);
-          
-          // Check if file exists
+        }).promise;
+        
+        console.log('✅ InternshipLetterScreen: Download completed:', downloadResult);
+        
+        if (downloadResult.statusCode === 200) {
           const fileExists = await RNFS.exists(filePath);
-          console.log('📋 InternshipLetterScreen: File exists check:', fileExists);
           
           if (fileExists) {
-            // Get file info
             const fileStats = await RNFS.stat(filePath);
-            console.log('📊 InternshipLetterScreen: File stats:', {
-              size: fileStats.size,
-              isFile: fileStats.isFile(),
-              path: fileStats.path,
-              name: fileStats.name,
-              mtime: fileStats.mtime
-            });
-            
-            // Try to list files in the directory to verify
-            try {
-              const dirFiles = await RNFS.readDir(dirPath);
-              console.log('📁 InternshipLetterScreen: Files in directory after save:', dirFiles.map(f => f.name));
-            } catch (listError) {
-              console.log('⚠️ InternshipLetterScreen: Could not list directory files:', listError.message);
-            }
-            
-            // Show success message with file location
-            const locationMessage = downloadsAccessible 
-              ? 'Your internship letter has been downloaded to your Downloads folder.'
-              : 'Your internship letter has been saved to the app\'s documents folder.';
+            console.log('📊 InternshipLetterScreen: File stats:', fileStats);
             
             Alert.alert(
               'Download Complete! 🎉',
-              `${locationMessage}\n\nFile: ${fileName}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB\nPath: ${filePath}`,
+              `Your internship letter has been downloaded successfully!\n\nFile: ${fileName}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB\n\nYou can find it in your app's documents folder.`,
               [
                 { 
                   text: 'OK',
@@ -868,25 +719,34 @@ const InternshipLetterScreen = () => {
             );
           } else {
             console.log('❌ InternshipLetterScreen: File was not created successfully');
-            console.log('❌ InternshipLetterScreen: Attempted path:', filePath);
             Alert.alert('Error', 'Failed to save the file. Please try again.');
           }
-          
-        } catch (fileError) {
-          console.error('💥 InternshipLetterScreen: File system error:', fileError);
-          console.error('💥 InternshipLetterScreen: Error details:', {
-            message: fileError.message,
-            code: fileError.code,
-            stack: fileError.stack
-          });
-          Alert.alert('Error', 'Failed to save the file to local storage. Please try again.');
+        } else {
+          console.log('❌ InternshipLetterScreen: Download failed with status:', downloadResult.statusCode);
+          Alert.alert('Error', 'Failed to download the internship letter. Please try again.');
         }
         
-      } else {
-        console.log('❌ InternshipLetterScreen: Download failed - response not ok');
-        const errorText = await response.text();
-        console.log('❌ InternshipLetterScreen: Error response:', errorText);
-        Alert.alert('Error', 'Failed to download the internship letter. Please try again.');
+      } catch (downloadError) {
+        console.error('💥 InternshipLetterScreen: Download error:', downloadError);
+        
+        // Fallback: Try to open the URL in browser
+        console.log('🔄 InternshipLetterScreen: Trying fallback - opening URL in browser...');
+        try {
+          const supported = await Linking.canOpenURL(downloadUrl);
+          if (supported) {
+            await Linking.openURL(downloadUrl);
+            Alert.alert(
+              'Opening in Browser',
+              'The internship letter will open in your browser. You can download it from there.',
+              [{ text: 'OK' }]
+            );
+          } else {
+            Alert.alert('Error', 'Unable to download the file. Please try again later.');
+          }
+        } catch (linkingError) {
+          console.error('💥 InternshipLetterScreen: Linking error:', linkingError);
+          Alert.alert('Error', 'Unable to download the file. Please try again later.');
+        }
       }
       
     } catch (error) {
