@@ -642,71 +642,25 @@ const EnrollScreen = ({ navigation, route }) => {
   };
 
   const handleDownloadCertificate = async () => {
-    // Check if course is completed first
-    if (!courseData.isCompleted) {
-      console.log(' Course not completed, showing popup message');
-      setShowDownloadModal(true);
-      return;
-    }
-
     try {
-      console.log(' Download certificate clicked for courseId:', courseId);
+      console.log('🚀 Download certificate clicked for courseId:', courseId);
       
-      // API endpoint using config file
-      const apiUrl = getApiUrl('/api/user/certificate/download-certificate');
+      // Check payment status from existing courseData
+      console.log('🔍 Checking payment status from courseData:', courseData.paymentStatus);
       
-      // Request body for POST method
-      const requestBody = {
-        subcourseId: courseId
-      };
-      
-      console.log('🌐 API URL:', apiUrl);
-      console.log('📦 Request Body:', requestBody);
-      
-      // Make the API call with POST method and JSON body
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      if (response.ok) {
-        console.log('✅ Certificate download successful');
-        console.log('🎉 SUCCESS: Certificate downloaded successfully! 🎉');
-        
-        // For React Native, we'll handle the response based on content type
-        const contentType = response.headers.get('content-type');
-        console.log('📄 Content Type:', contentType);
-        
-        if (contentType && contentType.includes('application/pdf')) {
-          // Handle PDF download
-          const blob = await response.blob();
-          console.log('📥 PDF certificate received, size:', blob.size);
-          
-          // Success message for PDF
-          console.log('🎯 PDF Certificate Downloaded Successfully!');
-          console.log('📊 File Size:', blob.size, 'bytes');
-          console.log('📱 Ready for React Native file handling');
-        } else {
-          // Handle other content types
-          const text = await response.text();
-          console.log('📄 Response text:', text.substring(0, 100) + '...');
-          console.log('📋 Non-PDF Certificate Downloaded Successfully!');
-        }
-        
-        // Final success message
-        console.log('🏆 CERTIFICATE DOWNLOAD COMPLETED SUCCESSFULLY! 🏆');
-        console.log('🎓 User can now access their course completion certificate');
-        
+      if (courseData.paymentStatus === true) {
+        console.log('✅ Payment status is true, navigating to DownloadCertificateScreen');
+        navigation.navigate('DownloadCertificate', { courseId: courseId });
+        return;
       } else {
-        console.log('❌ Certificate download failed:', response.status, response.statusText);
-        console.log('💥 ERROR: Failed to download certificate');
+        console.log('❌ Payment status is false, showing popup message');
+        setShowDownloadModal(true);
+        return;
       }
     } catch (error) {
-      console.error('💥 Error downloading certificate:', error);
+      console.error('💥 Error checking payment status:', error);
+      // On error, show the popup to be safe
+      setShowDownloadModal(true);
     }
   };
 
@@ -989,22 +943,13 @@ const EnrollScreen = ({ navigation, route }) => {
       <View style={styles.enabledDownloadsContainer}>
         <TouchableOpacity 
           style={styles.downloadCertificateCard}
-          onPress={() => {
-            console.log('🚀 Navigating to DownloadCertificateScreen with courseId:', courseId);
-            navigation.navigate('DownloadCertificate', { courseId: courseId });
-          }}
+          onPress={handleDownloadCertificate}
         >
           <View style={styles.downloadCertificateLeft}>
             <Text style={styles.downloadCertificateTitle}>Download Module Certificate</Text>
           </View>
           <View style={styles.downloadCertificateRight}>
-            <TouchableOpacity 
-              style={styles.downloadButton} 
-              onPress={handleDownloadCertificate}
-              onPressIn={(e) => e.stopPropagation()} // Prevent parent TouchableOpacity from triggering
-            >
-              <Icon name="download-outline" size={24} color="#FF6B35" />
-            </TouchableOpacity>
+            <Icon name="download-outline" size={24} color="#FF6B35" />
           </View>
         </TouchableOpacity>
         <Text style={styles.certificateText}>Certificate</Text>
