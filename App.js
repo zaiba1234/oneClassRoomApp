@@ -64,7 +64,13 @@ const AppContent = () => {
     const initWebSocket = async () => {
       try {
         console.log('🔌 App: Initializing WebSocket connection...');
-        await websocketService.connect();
+        
+        // Get user ID from Redux store if available
+        const state = store.getState();
+        const userId = state.user?.user?._id || state.user?.user?.id;
+        console.log('👤 App: User ID for WebSocket:', userId);
+        
+        await websocketService.connect(userId);
         console.log('✅ App: WebSocket connection established successfully!');
         
         // Initialize WebSocket notification handler

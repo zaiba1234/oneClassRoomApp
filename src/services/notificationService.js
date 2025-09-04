@@ -220,12 +220,7 @@ class NotificationService {
     console.log('📜 NotificationService: Internship request notification:', data);
     // Navigate to internship letter screen
   }
-
-  // Handle internship upload notification
-  handleInternshipUploadNotification(data) {
-    console.log('📄 NotificationService: Internship upload notification:', data);
-    // Navigate to internship letter screen
-  }
+z
 
   // Store notification locally
   async storeNotification(notification) {

@@ -40,8 +40,11 @@ class WebSocketService {
           // Join user room if userId provided
           if (userId) {
             console.log('👤 WebSocket: Joining user room:', userId);
-            this.socket.emit('join', { userId });
+            this.socket.emit('join', userId);
           }
+          
+          // Setup existing event listeners
+          this.setupExistingListeners();
           
           resolve();
         });
@@ -108,17 +111,35 @@ class WebSocketService {
     // For example, switch to polling or show offline mode
   }
 
+  // Setup existing event listeners after connection
+  setupExistingListeners() {
+    console.log('🔧 WebSocket: Setting up existing event listeners...');
+    this.listeners.forEach((callbacks, eventName) => {
+      console.log(`🔧 WebSocket: Setting up listener for "${eventName}" with ${callbacks.length} callbacks`);
+      this.socket.on(eventName, (...args) => {
+        console.log(`📨 WebSocket: Event "${eventName}" received:`, args);
+        this.handleIncomingEvent(eventName, args);
+      });
+    });
+    console.log('✅ WebSocket: Existing event listeners set up successfully');
+  }
+
   // Handle incoming events
   handleIncomingEvent(eventName, args) {
+    console.log(`📨 WebSocket: Handling incoming event "${eventName}" with ${args.length} arguments`);
     const listeners = this.listeners.get(eventName);
     if (listeners) {
-      listeners.forEach(callback => {
+      console.log(`📨 WebSocket: Found ${listeners.length} listeners for event "${eventName}"`);
+      listeners.forEach((callback, index) => {
         try {
+          console.log(`📨 WebSocket: Calling listener ${index + 1} for event "${eventName}"`);
           callback(...args);
         } catch (error) {
           console.error(`💥 WebSocket: Error in event listener for "${eventName}":`, error);
         }
       });
+    } else {
+      console.log(`⚠️ WebSocket: No listeners found for event "${eventName}"`);
     }
   }
 
@@ -140,6 +161,35 @@ class WebSocketService {
     this.listeners.get(eventName).push(callback);
     
     console.log(`👂 WebSocket: Added listener for event "${eventName}"`);
+    
+    // Set up socket listener if connected
+    if (this.socket && this.isConnected) {
+      this.socket.on(eventName, (...args) => {
+        console.log(`📨 WebSocket: Event "${eventName}" received:`, args);
+        this.handleIncomingEvent(eventName, args);
+      });
+    }
+  }
+
+  // Specific event handlers for better organization
+  onLiveLesson(callback) {
+    this.on('live_lesson', callback);
+  }
+
+  onLessonStarted(callback) {
+    this.on('lesson_started', callback);
+  }
+
+  onBuyCourse(callback) {
+    this.on('buy_course', callback);
+  }
+
+  onRequestInternshipLetter(callback) {
+    this.on('request_internship_letter', callback);
+  }
+
+  onUploadInternshipLetter(callback) {
+    this.on('upload_internship_letter', callback);
   }
 
   // Remove event listener
