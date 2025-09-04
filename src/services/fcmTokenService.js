@@ -1,5 +1,6 @@
 import { getFCMToken, getStoredFCMToken, sendFCMTokenToBackend } from './firebaseConfig';
 import { getApiUrl } from '../API/config';
+import notificationService from './notificationService';
 
 // FCM Token Service for managing tokens with Redux
 export class FCMTokenService {
@@ -32,8 +33,8 @@ export class FCMTokenService {
         return false;
       }
 
-      // Send to backend
-      const success = await sendFCMTokenToBackend(fcmToken, userToken);
+      // Use notification service to send token
+      const success = await notificationService.sendFCMTokenToBackend(fcmToken, userToken);
       if (success) {
         console.log('✅ FCM Service: FCM token sent to backend successfully');
         return true;
@@ -66,8 +67,8 @@ export class FCMTokenService {
         return false;
       }
 
-      // Send to backend
-      const success = await sendFCMTokenToBackend(fcmToken, userToken);
+      // Use notification service to send token
+      const success = await notificationService.sendFCMTokenToBackend(fcmToken, userToken);
       if (success) {
         console.log('✅ FCM Service: Stored FCM token sent to backend successfully');
         return true;

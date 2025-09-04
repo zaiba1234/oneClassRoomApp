@@ -683,11 +683,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFE0B2',
   },
-  clockImage: {
-    width: 14,
-    height: 14,
-    tintColor: '#FF8800',
-  },
   timerText: {
     fontSize: 12,
     color: '#FF8800',
@@ -717,7 +712,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-
-
-
 });

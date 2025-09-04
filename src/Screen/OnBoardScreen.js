@@ -93,8 +93,14 @@ const OnBoardScreen = () => {
   const currentSlide = slides[currentIndex];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+    <LinearGradient
+      colors={['#FFE0B2', '#FFFFFF', '#FFE4B5']}
+      start={{ x: 1, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent />
       
       {/* Skip Button - Only show on first screen */}
       {currentIndex === 0 && (
@@ -165,14 +171,17 @@ const OnBoardScreen = () => {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  safeArea: {
+    flex: 1,
   },
   skipButton: {
     position: 'absolute',

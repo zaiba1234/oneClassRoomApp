@@ -435,19 +435,10 @@ const DownloadCertificateScreen = () => {
         
         try {
           // First try downloads directory
+          const fileName = `certificate_${courseId}.pdf`;
           let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
           
-          console.log('📁 Trying downloads directory:', filePath);
-          
-          // Test if we can access downloads directory
-          const downloadsAccessible = await testDownloadsAccess();
-          
-          if (!downloadsAccessible) {
-            console.log('⚠️ Downloads directory not accessible, using app documents directory');
-            filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-          }
-          
-          console.log('📁 Final file path:', filePath);
+          console.log('📁 Using app documents directory:', filePath);
           
           // Ensure directory exists
           const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
@@ -470,8 +461,49 @@ const DownloadCertificateScreen = () => {
             const fileStats = await RNFS.stat(filePath);
             console.log('📊 File stats:', fileStats);
             
-            // Show download completed notification
-            firebaseNotificationService.showDownloadCompleted(fileName, filePath);
+            // Determine location message
+            const locationMessage = filePath.includes('Download') ? 'Downloads folder' : 'App Documents folder';
+            
+            // Show success message with file location
+            Alert.alert(
+              'Download Complete! 🎉',
+              `Certificate saved as ${fileName}\nLocation: ${locationMessage}`,
+              [
+                { text: 'OK' },
+                { 
+                  text: 'Open PDF', 
+                  onPress: async () => {
+                    try {
+                      // Try to open the PDF with a PDF viewer app
+                      await Linking.openURL(`file://${filePath}`);
+                      console.log('🔗 PDF opened successfully');
+                    } catch (openError) {
+                      console.log('📱 Could not open PDF directly, showing file path');
+                      Alert.alert(
+                        'PDF Location',
+                        `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`
+                      );
+                    }
+                  }
+                },
+                {
+                  text: 'Share File',
+                  onPress: async () => {
+                    try {
+                      // Try to share the file
+                      await Linking.openURL(`file://${filePath}`);
+                      console.log('📤 File shared successfully');
+                    } catch (shareError) {
+                      console.log('📤 Could not share file directly');
+                      Alert.alert(
+                        'File Location',
+                        `File saved to:\n${filePath}\n\nYou can find it in your file manager.`
+                      );
+                    }
+                  }
+                }
+              ]
+            );
           } else {
             throw new Error('File was not created successfully');
           }

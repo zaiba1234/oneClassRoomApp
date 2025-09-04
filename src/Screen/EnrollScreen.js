@@ -1047,6 +1047,12 @@ const EnrollScreen = ({ navigation, route }) => {
         <TouchableOpacity 
           style={styles.downloadCertificateCard}
           onPress={() => {
+            // Check payment status before navigation
+            if (!courseData.paymentStatus) {
+              console.log('🚫 Payment not completed, cannot navigate to DownloadCertificateScreen');
+              Alert.alert('Payment Required', 'Please complete the payment first to access certificate download.');
+              return;
+            }
             console.log('🚀 Navigating to DownloadCertificateScreen with courseId:', courseId);
             navigation.navigate('DownloadCertificate', { courseId: courseId });
           }}

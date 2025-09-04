@@ -15,11 +15,11 @@ class WebSocketService {
   connect(userId = null) {
     return new Promise((resolve, reject) => {
       try {
-        console.log('🔌 WebSocket: Starting connection...');
+        console.log(' WebSocket: Starting connection...');
         
         // Get server URL from config
         const serverUrl = getApiUrl('').replace('/api', ''); // Remove /api from base URL
-        console.log('🔌 WebSocket: Connecting to server:', serverUrl);
+        console.log(' WebSocket: Connecting to server:', serverUrl);
         
         this.socket = io(serverUrl, {
           transports: ['websocket'],
@@ -32,8 +32,8 @@ class WebSocketService {
 
         // Connection successful
         this.socket.on('connect', () => {
-          console.log('✅ WebSocket: Connection established successfully!');
-          console.log('✅ WebSocket: Socket ID:', this.socket.id);
+          console.log(' WebSocket: Connection established successfully!');
+          console.log(' WebSocket: Socket ID:', this.socket.id);
           this.isConnected = true;
           this.reconnectAttempts = 0;
           
@@ -48,7 +48,7 @@ class WebSocketService {
 
         // Connection error
         this.socket.on('connect_error', (error) => {
-          console.error('❌ WebSocket: Connection error:', error);
+          console.error(' WebSocket: Connection error:', error);
           this.isConnected = false;
           reject(error);
         });

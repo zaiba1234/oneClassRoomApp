@@ -378,21 +378,11 @@ const CourseCertificateDownload = () => {
         console.log('🔢 Base64 data prepared, length:', base64Data.length);
         
         try {
-          // First try downloads directory
+          // Use app documents directory directly to avoid permission issues
           const fileName = `course_certificate_${courseId}.pdf`;
-          let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+          const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
           
-          console.log('📁 Trying downloads directory:', filePath);
-          
-          // Test if we can access downloads directory
-          const downloadsAccessible = await testDownloadsAccess();
-          
-          if (!downloadsAccessible) {
-            console.log('⚠️ Downloads directory not accessible, using app documents directory');
-            filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-          }
-          
-          console.log('📁 Final file path:', filePath);
+          console.log('📁 Using app documents directory:', filePath);
           
           // Ensure directory exists
           const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
@@ -415,13 +405,13 @@ const CourseCertificateDownload = () => {
             const fileStats = await RNFS.stat(filePath);
             console.log('📊 File stats:', fileStats);
             
-            // Determine location message
-            const locationMessage = filePath.includes('Download') ? 'Downloads folder' : 'App Documents folder';
+            // Location message
+            const locationMessage = 'App Documents folder';
             
             // Show success message with file location
             Alert.alert(
               'Download Complete! 🎉',
-              `Certificate saved as ${fileName}\nLocation: ${locationMessage}`,
+              `Certificate saved as ${fileName}\nLocation: ${locationMessage}\n\nYou can access it through your file manager.`,
               [
                 { text: 'OK' },
                 { 
