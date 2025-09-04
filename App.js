@@ -45,7 +45,7 @@ import PrivacyPolicyScreen from './src/Screen/PrivacyPolicyScreen';
 import TermsConditionScreen from './src/Screen/TermsConditionScreen';
 import ContactUsScreen from './src/Screen/ContactUsScreen';
 import SubCourseScreen from './src/Screen/SubCourseScreen';
-import RazorpayPaymentScreen from './src/Screen/RazorpayPaymentScreen';
+
 import CourseCertificateDownload from './src/Screen/CourseCertificateDownload';
 import InternshipLetterScreen from './src/Screen/InternshipLetterScreen';
 
@@ -282,7 +282,7 @@ const AppContent = () => {
         <Stack.Screen name="TermsCondition" component={TermsConditionScreen} />
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />
         <Stack.Screen name="SubCourse" component={SubCourseScreen} />
-        <Stack.Screen name="RazorpayPayment" component={RazorpayPaymentScreen} />
+      
         <Stack.Screen name="CourseCertificate" component={CourseCertificateDownload} />
         <Stack.Screen name="Internship" component={InternshipLetterScreen} />
       </Stack.Navigator>

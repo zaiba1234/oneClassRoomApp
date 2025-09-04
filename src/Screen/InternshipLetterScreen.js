@@ -23,35 +23,9 @@ import { useAppSelector } from '../Redux/hooks';
 import { getApiUrl, API_CONFIG } from '../API/config';
 import { courseAPI } from '../API/courseAPI';
 import { RAZORPAY_KEY_ID } from '../config/env';
+import RazorpayCheckout from 'react-native-razorpay';
 
-// Custom Razorpay implementation using WebView - EXACT SAME AS ENROLLSCREEN
-let RazorpayCheckout = null;
-let RazorpayImportError = null;
-
-// Create a custom RazorpayCheckout class that uses WebView - EXACT SAME AS ENROLLSCREEN
-class CustomRazorpayCheckout {
-  constructor(navigation) {
-    console.log('🔧 CustomRazorpayCheckout: Constructor called with navigation:', !!navigation);
-    this.navigation = navigation;
-  }
-  
-  open(options) {
-    console.log('🔧 CustomRazorpayCheckout.open: Called with options:', JSON.stringify(options, null, 2));
-    return new Promise((resolve, reject) => {
-      console.log('🔧 CustomRazorpayCheckout.open: Promise created, storing callbacks globally');
-      // Store the options and callbacks globally so WebView can access them
-      global.razorpayOptions = options;
-      global.razorpayResolve = resolve;
-      global.razorpayReject = reject;
-      
-      console.log('🔧 CustomRazorpayCheckout.open: Navigating to RazorpayPayment screen');
-      // Navigate to Razorpay payment screen
-      this.navigation.navigate('RazorpayPayment', { options });
-    });
-  }
-}
-
-console.log('✅ InternshipLetterScreen: Custom RazorpayCheckout class created successfully');
+console.log('✅ InternshipLetterScreen: Direct Razorpay import successful');
 
 const { width, height } = Dimensions.get('window');
 
@@ -81,13 +55,7 @@ const InternshipLetterScreen = () => {
     courseId: route.params?.courseId
   });
   
-  // Create RazorpayCheckout instance with navigation - EXACT SAME AS ENROLLSCREEN
-  const [razorpayCheckout] = useState(() => {
-    console.log('🔧 InternshipLetterScreen: Creating RazorpayCheckout instance');
-    const instance = new CustomRazorpayCheckout(navigation);
-    console.log('🔧 InternshipLetterScreen: RazorpayCheckout instance created:', !!instance);
-    return instance;
-  });
+  // Direct Razorpay integration - no custom class needed
 
   // Get courseId from route params
   const courseId = route.params?.courseId;
@@ -471,12 +439,15 @@ const InternshipLetterScreen = () => {
     }
   };
 
-  // Function to handle payment with Razorpay - EXACT SAME AS ENROLLSCREEN
+  // Function to handle payment with Razorpay - Direct integration
   const handlePaymentWithRazorpay = async (orderData) => {
-   
+    console.log('🚀 InternshipLetterScreen: Starting handlePaymentWithRazorpay...');
+    console.log('🔍 InternshipLetterScreen: orderData received:', JSON.stringify(orderData, null, 2));
     
-    if (!razorpayCheckout || typeof razorpayCheckout.open !== 'function') {
+    if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
       console.log('❌ InternshipLetterScreen: Razorpay not available');
+      console.log('❌ InternshipLetterScreen: RazorpayCheckout:', RazorpayCheckout);
+      console.log('❌ InternshipLetterScreen: typeof RazorpayCheckout.open:', typeof RazorpayCheckout?.open);
       Alert.alert('Error', 'Razorpay payment gateway is not available. Please try again later.');
       return null;
     }
@@ -495,7 +466,7 @@ const InternshipLetterScreen = () => {
       const userProfile = getUserProfileData();
       console.log('👤 InternshipLetterScreen: User profile data:', JSON.stringify(userProfile, null, 2));
       
-      // Calculate price from course data (same logic as EnrollScreen)
+      // Calculate price from course data
       const coursePrice = courseData?.price || '₹99.00';
       
       if (!coursePrice || typeof coursePrice !== 'string') {
@@ -546,9 +517,9 @@ const InternshipLetterScreen = () => {
       };
       
       console.log('🎨 InternshipLetterScreen: Razorpay options configured:', JSON.stringify(razorpayOptions, null, 2));
-      console.log('🔍 InternshipLetterScreen: About to call razorpayCheckout.open with options:', JSON.stringify(razorpayOptions, null, 2));
+      console.log('🔍 InternshipLetterScreen: About to call RazorpayCheckout.open with options:', JSON.stringify(razorpayOptions, null, 2));
       
-      const paymentData = await razorpayCheckout.open(razorpayOptions);
+      const paymentData = await RazorpayCheckout.open(razorpayOptions);
       console.log('✅ InternshipLetterScreen: Payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
