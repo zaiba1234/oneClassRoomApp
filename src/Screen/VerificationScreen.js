@@ -545,7 +545,7 @@ const VerificationScreen = ({ route }) => {
       {/* Fixed Button Container */}
       <View style={styles.buttonContainer}>
         <LinearGradient
-          colors={['#FF9800', '#FFB300']}
+          colors={['#FFB300','#FF9800']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.button}
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
 
   buttonContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 40 : 20,
+    bottom: Platform.OS === 'ios' ? 80 : 60,
     left: 40,
     right: 40,
     zIndex: 10,

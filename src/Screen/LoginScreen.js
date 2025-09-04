@@ -19,8 +19,6 @@ import {
   Keyboard,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Icon from 'react-native-vector-icons/Ionicons';
-
 const logo = require('../assests/images/Learningsaintlogo.png');
 const graduationCap = require('../assests/images/Degree.png');
                                                                        
@@ -186,7 +184,7 @@ const styles = StyleSheet.create({
   },
   logoSection: {
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: 80,
     paddingBottom: 40,
   },
   logo: {
@@ -213,7 +211,7 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   label: {
-    marginBottom: 15,
+    marginBottom: 10,
     color: '#000',
     fontSize: 16,
     fontWeight: '500',

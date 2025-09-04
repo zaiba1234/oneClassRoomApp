@@ -224,6 +224,12 @@ const EnrollScreen = ({ navigation, route }) => {
           isCompleted: Boolean(apiCourse.isCompleted), // Ensure boolean conversion
         };
         
+        console.log('💰 EnrollScreen: Course price transformation:', {
+          apiPrice: apiCourse.price,
+          transformedPrice: transformedCourse.price,
+          type: typeof apiCourse.price
+        });
+        
        
        
         // Set isCompleted from API response
@@ -396,7 +402,7 @@ const EnrollScreen = ({ navigation, route }) => {
       const priceInRupees = parseFloat(priceString) || 1;
       const priceInPaise = Math.round(priceInRupees * 100);
       
-      console.log('💰 EnrollScreen: Price calculation:', {
+      console.log('💰 EnrollScreen: Price calculation in handleEnrollNow:', {
         originalPrice: courseData.price,
         priceString: priceString,
         priceInRupees: priceInRupees,
@@ -492,15 +498,26 @@ const EnrollScreen = ({ navigation, route }) => {
       
     } catch (error) {
       console.error('💥 EnrollScreen: Error during enrollment:', error);
+      console.error('💥 EnrollScreen: Error message:', error.message);
+      console.error('💥 EnrollScreen: Error stack:', error.stack);
       setPaymentStatus('failed');
       
       // Handle specific Razorpay errors
       if (error.message === 'PAYMENT_CANCELLED') {
+        console.log('🚫 EnrollScreen: Payment was cancelled by user');
         Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
       } else if (error.message === 'PAYMENT_FAILED') {
+        console.log('💥 EnrollScreen: Payment failed');
         Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
+      } else if (error.message && error.message.includes('Invalid Razorpay configuration')) {
+        console.log('⚙️ EnrollScreen: Invalid Razorpay configuration');
+        Alert.alert('Configuration Error', 'Payment gateway configuration error. Please contact support.');
+      } else if (error.message && error.message.includes('Razorpay payment failed')) {
+        console.log('💳 EnrollScreen: Razorpay payment error');
+        Alert.alert('Payment Error', error.message);
       } else {
-        Alert.alert('Error', 'Something went wrong during enrollment. Please try again.');
+        console.log('💥 EnrollScreen: Generic enrollment error');
+        Alert.alert('Error', `Something went wrong during enrollment: ${error.message || 'Unknown error'}. Please try again.`);
       }
     } finally {
       setIsEnrolling(false);
@@ -525,8 +542,13 @@ const EnrollScreen = ({ navigation, route }) => {
 
   // Function to handle payment with Razorpay
   const handlePaymentWithRazorpay = async (orderData) => {
+    console.log('🚀 EnrollScreen: Starting handlePaymentWithRazorpay...');
+    console.log('🔍 EnrollScreen: orderData received:', JSON.stringify(orderData, null, 2));
+    
     if (!razorpayCheckout || typeof razorpayCheckout.open !== 'function') {
       console.log('❌ EnrollScreen: Razorpay not available');
+      console.log('❌ EnrollScreen: razorpayCheckout:', razorpayCheckout);
+      console.log('❌ EnrollScreen: typeof razorpayCheckout.open:', typeof razorpayCheckout?.open);
       Alert.alert('Error', 'Razorpay payment gateway is not available. Please try again later.');
       setPaymentStatus('failed');
       return null;
@@ -545,20 +567,48 @@ const EnrollScreen = ({ navigation, route }) => {
       }
       
       const userProfile = getUserProfileData();
-      // Use the calculated price instead of backend amount if backend returns default
-      const finalAmount = orderData.amount === 100 ? priceInPaise : orderData.amount;
+      console.log('👤 EnrollScreen: User profile data:', userProfile);
+      
+      // Calculate priceInPaise from courseData.price
+      console.log('💰 EnrollScreen: Raw courseData.price:', courseData.price);
+      
+      if (!courseData.price || typeof courseData.price !== 'string') {
+        console.log('❌ EnrollScreen: Invalid course price:', courseData.price);
+        throw new Error('Invalid course price. Please refresh and try again.');
+      }
+      
+      const priceString = courseData.price.replace('₹', '').replace('.00', '');
+      const priceInRupees = parseFloat(priceString);
+      
+      if (isNaN(priceInRupees) || priceInRupees <= 0) {
+        console.log('❌ EnrollScreen: Invalid price calculation:', { priceString, priceInRupees });
+        throw new Error('Invalid course price. Please contact support.');
+      }
+      
+      const priceInPaise = Math.round(priceInRupees * 100);
+      
+      console.log('💰 EnrollScreen: Price calculation in handlePaymentWithRazorpay:', {
+        originalPrice: courseData.price,
+        priceString: priceString,
+        priceInRupees: priceInRupees,
+        priceInPaise: priceInPaise
+      });
+      
+      // Always use the calculated price from frontend to ensure correct amount
+      // The backend might return default amounts, so we use our calculated price
+      const finalAmount = priceInPaise;
       
       console.log('💰 EnrollScreen: Final amount decision:', {
         backendAmount: orderData.amount,
         calculatedAmount: priceInPaise,
         finalAmount: finalAmount,
-        reason: orderData.amount === 100 ? 'Using calculated amount (backend returned default)' : 'Using backend amount'
+        reason: 'Using calculated amount from frontend to ensure correct pricing'
       });
       
       const razorpayOptions = {
         key: RAZORPAY_KEY_ID, // Use Razorpay key from frontend config for security
         amount: finalAmount, // Use calculated amount if backend returns default
-        currency: orderData.currency,
+        currency: orderData.currency || 'INR',
         name: 'Learning Saint',
         description: `Course: ${courseData.title}`,
         order_id: orderData.orderId,
@@ -580,26 +630,49 @@ const EnrollScreen = ({ navigation, route }) => {
       
       console.log('💰 EnrollScreen: Razorpay options amount:', razorpayOptions.amount);
       console.log('💰 EnrollScreen: Razorpay options amount in rupees:', (razorpayOptions.amount / 100).toFixed(2));
+      console.log('💰 EnrollScreen: Final amount being sent to Razorpay:', {
+        amountInPaise: razorpayOptions.amount,
+        amountInRupees: (razorpayOptions.amount / 100).toFixed(2),
+        currency: razorpayOptions.currency
+      });
       
-      console.log('🎨 EnrollScreen: Razorpay options configured:', razorpayOptions);
+      console.log('🎨 EnrollScreen: Razorpay options configured:', JSON.stringify(razorpayOptions, null, 2));
       
       // Validate Razorpay options
       if (!razorpayOptions.key || !razorpayOptions.amount || !razorpayOptions.order_id) {
+        console.log('❌ EnrollScreen: Invalid Razorpay options:', {
+          hasKey: !!razorpayOptions.key,
+          hasAmount: !!razorpayOptions.amount,
+          hasOrderId: !!razorpayOptions.order_id,
+          key: razorpayOptions.key ? 'present' : 'missing',
+          amount: razorpayOptions.amount,
+          order_id: razorpayOptions.order_id
+        });
         throw new Error('Invalid Razorpay options: missing key, amount, or order_id');
       }
       
+      console.log('🔧 EnrollScreen: Calling razorpayCheckout.open()...');
       const paymentData = await razorpayCheckout.open(razorpayOptions);
-      console.log('✅ EnrollScreen: Payment successful:', paymentData);
+      console.log('✅ EnrollScreen: Payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
-      console.log('❌ EnrollScreen: Razorpay error:', razorpayError);
+      console.log('❌ EnrollScreen: Razorpay error caught:', razorpayError);
+      console.log('❌ EnrollScreen: Error message:', razorpayError.message);
+      console.log('❌ EnrollScreen: Error stack:', razorpayError.stack);
       
+      // More specific error handling
       if (razorpayError.message === 'PAYMENT_CANCELLED') {
+        console.log('🚫 EnrollScreen: Payment was cancelled by user');
         throw new Error('PAYMENT_CANCELLED');
       } else if (razorpayError.message === 'PAYMENT_FAILED') {
+        console.log('💥 EnrollScreen: Payment failed');
         throw new Error('PAYMENT_FAILED');
+      } else if (razorpayError.message && razorpayError.message.includes('Invalid Razorpay options')) {
+        console.log('⚙️ EnrollScreen: Invalid Razorpay configuration');
+        throw new Error('Invalid Razorpay configuration. Please contact support.');
       } else {
-        throw new Error('Razorpay payment failed. Please try again.');
+        console.log('💥 EnrollScreen: Generic Razorpay error:', razorpayError);
+        throw new Error(`Razorpay payment failed: ${razorpayError.message || 'Unknown error'}. Please try again.`);
       }
     }
   };
@@ -979,7 +1052,7 @@ const EnrollScreen = ({ navigation, route }) => {
           }}
         >
           <View style={styles.downloadCertificateLeft}>
-            <Text style={styles.downloadCertificateTitle}>Download Module Certificate</Text>
+            <Text style={styles.downloadCertificateTitle}>Download Module Certificate </Text>
           </View>
           <View style={styles.downloadCertificateRight}>
             <TouchableOpacity 

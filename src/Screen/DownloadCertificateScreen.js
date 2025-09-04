@@ -17,12 +17,13 @@ import {
 
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
+
 import { useAppSelector } from '../Redux/hooks';
 import { getApiUrl } from '../API/config';
 import RNFS from 'react-native-fs'; // Ensure this is imported at the top
 import { Buffer } from 'buffer'; // Add Buffer polyfill for React Native
 import BackButton from '../Component/BackButton';
+import firebaseNotificationService from '../services/firebaseNotificationService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ const DownloadCertificateScreen = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [certificateData, setCertificateData] = useState(null);
   const [isLoadingCertificate, setIsLoadingCertificate] = useState(true);
+  const [isEligibleForCertificate, setIsEligibleForCertificate] = useState(true);
 
   // Get courseId from route params (coming from EnrollScreen)
   const courseId = route.params?.courseId;
@@ -267,13 +269,41 @@ const DownloadCertificateScreen = () => {
         
         if (result.success && result.data) {
           setCertificateData(result.data);
+          setIsEligibleForCertificate(true);
         } else {
           console.log('❌ API response not successful:', result);
-          Alert.alert('Error', 'Failed to fetch certificate details');
+          // Check if it's a completion/enrollment issue
+          if (result.message && result.message.includes('not completed or not enrolled')) {
+            setIsEligibleForCertificate(false);
+            Alert.alert(
+              'Certificate Not Available',
+              'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
+              [
+                { text: 'OK' },
+                { 
+                  text: 'Go to Course', 
+                  onPress: () => {
+                    navigation.navigate('Enroll', { courseId: courseId });
+                  }
+                }
+              ]
+            );
+          } else {
+            setIsEligibleForCertificate(false);
+            Alert.alert('Error', result.message || 'Failed to fetch certificate details');
+          }
         }
       } else {
         console.log('❌ API call failed with status:', response.status);
-        Alert.alert('Error', 'Failed to fetch certificate details');
+        const errorResult = await response.json().catch(() => ({}));
+        
+        if (response.status === 401) {
+          Alert.alert('Authentication Error', 'Please login again to access certificate details');
+        } else if (response.status === 404) {
+          Alert.alert('Certificate Not Found', 'Certificate for this course is not available yet');
+        } else {
+          Alert.alert('Error', errorResult.message || 'Failed to fetch certificate details');
+        }
       }
     } catch (error) {
       console.error('❌ Fetch certificate description error:', error);
@@ -287,6 +317,23 @@ const DownloadCertificateScreen = () => {
     try {
       if (!courseId) {
         Alert.alert('Error', 'Course ID not found');
+        return;
+      }
+
+      if (!isEligibleForCertificate) {
+        Alert.alert(
+          'Certificate Not Available',
+          'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
+          [
+            { text: 'OK' },
+            { 
+              text: 'Go to Course', 
+              onPress: () => {
+                navigation.navigate('Enroll', { courseId: courseId });
+              }
+            }
+          ]
+        );
         return;
       }
 
@@ -355,6 +402,10 @@ const DownloadCertificateScreen = () => {
       console.log('🔍 Starting certificate download for courseId:', courseId);
       console.log('🔑 Token available:', !!token);
 
+      // Show download started notification
+      const fileName = `certificate_${courseId}.pdf`;
+      firebaseNotificationService.showDownloadStarted(fileName);
+
       // API endpoint using config file with subcourseId in URL
       const apiUrl = getApiUrl(`/api/user/certificate/download-certificate/${courseId}`);
       console.log('🌐 API URL:', apiUrl);
@@ -384,7 +435,6 @@ const DownloadCertificateScreen = () => {
         
         try {
           // First try downloads directory
-          const fileName = `certificate_${courseId}.pdf`;
           let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
           
           console.log('📁 Trying downloads directory:', filePath);
@@ -420,49 +470,8 @@ const DownloadCertificateScreen = () => {
             const fileStats = await RNFS.stat(filePath);
             console.log('📊 File stats:', fileStats);
             
-            // Determine location message
-            const locationMessage = filePath.includes('Download') ? 'Downloads folder' : 'App Documents folder';
-            
-            // Show success message with file location
-            Alert.alert(
-              'Download Complete! 🎉',
-              `Certificate saved as ${fileName}\nLocation: ${locationMessage}`,
-              [
-                { text: 'OK' },
-                { 
-                  text: 'Open PDF', 
-                  onPress: async () => {
-                    try {
-                      // Try to open the PDF with a PDF viewer app
-                      await Linking.openURL(`file://${filePath}`);
-                      console.log('🔗 PDF opened successfully');
-                    } catch (openError) {
-                      console.log('📱 Could not open PDF directly, showing file path');
-                      Alert.alert(
-                        'PDF Location',
-                        `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`
-                      );
-                    }
-                  }
-                },
-                {
-                  text: 'Share File',
-                  onPress: async () => {
-                    try {
-                      // Try to share the file
-                      await Linking.openURL(`file://${filePath}`);
-                      console.log('📤 File shared successfully');
-                    } catch (shareError) {
-                      console.log('📤 Could not share file directly');
-                      Alert.alert(
-                        'File Location',
-                        `File saved to:\n${filePath}\n\nYou can find it in your file manager.`
-                      );
-                    }
-                  }
-                }
-              ]
-            );
+            // Show download completed notification
+            firebaseNotificationService.showDownloadCompleted(fileName, filePath);
           } else {
             throw new Error('File was not created successfully');
           }
@@ -477,13 +486,14 @@ const DownloadCertificateScreen = () => {
             console.log('🔄 Final fallback: trying cache directory:', fallbackFilePath);
             await RNFS.writeFile(fallbackFilePath, base64Data, 'base64');
             
-            Alert.alert(
-              'Download Complete! 🎉',
-              `Certificate saved as ${fallbackFileName}\nLocation: App Cache folder\n\nNote: This file may be temporary.`,
-              [{ text: 'OK' }]
-            );
+            // Show download completed notification for fallback
+            firebaseNotificationService.showDownloadCompleted(fallbackFileName, fallbackFilePath);
           } catch (finalFallbackError) {
             console.error('❌ All fallback methods failed:', finalFallbackError);
+            
+            // Show download failed notification
+            firebaseNotificationService.showDownloadFailed(fileName, finalFallbackError.message);
+            
             Alert.alert(
               'Download Failed',
               'Could not save PDF to phone. Please check your storage permissions and try again.',
@@ -506,17 +516,44 @@ const DownloadCertificateScreen = () => {
         const errorText = await response.text();
         console.error('❌ Error response:', errorText);
         
+        // Try to parse error response as JSON
+        let errorResult = {};
+        try {
+          errorResult = JSON.parse(errorText);
+        } catch (parseError) {
+          console.log('Could not parse error response as JSON');
+        }
+        
         if (response.status === 401) {
           Alert.alert('Authentication Error', 'Please login again to download certificate');
         } else if (response.status === 404) {
           Alert.alert('Certificate Not Found', 'Certificate for this course is not available yet');
+        } else if (errorResult.message && errorResult.message.includes('not completed or not enrolled')) {
+          Alert.alert(
+            'Certificate Not Available',
+            'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
+            [
+              { text: 'OK' },
+              { 
+                text: 'Go to Course', 
+                onPress: () => {
+                  navigation.navigate('Enroll', { courseId: courseId });
+                }
+              }
+            ]
+          );
         } else {
-          Alert.alert('Download Failed', `Error: ${response.status} - ${response.statusText}`);
+          // Show download failed notification
+                      firebaseNotificationService.showDownloadFailed(fileName, errorResult.message || `Error: ${response.status} - ${response.statusText}`);
+          Alert.alert('Download Failed', errorResult.message || `Error: ${response.status} - ${response.statusText}`);
         }
       }
     } catch (error) {
       console.error('💥 Download error:', error);
       console.error('💥 Error message:', error.message);
+      
+      // Show download failed notification
+      firebaseNotificationService.showDownloadFailed(fileName, error.message);
       Alert.alert('Error', 'Something went wrong while downloading. Please try again.');
     } finally {
       setIsDownloading(false);
@@ -533,11 +570,7 @@ const DownloadCertificateScreen = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackPress}>
-          <Icon name="chevron-back" size={getResponsiveSize(24)} color="#333" />
-        </TouchableOpacity>
+        <BackButton onPress={handleBackPress} />
         <Text style={styles.headerTitle}>Download Certificate</Text>
         <View style={styles.placeholder} />
       </View>
@@ -581,9 +614,12 @@ const DownloadCertificateScreen = () => {
       {/* Download Button */}
       <View style={styles.downloadButtonContainer}>
         <TouchableOpacity 
-          style={[styles.downloadButton, isDownloading && styles.downloadButtonDisabled]}
+          style={[
+            styles.downloadButton, 
+            (isDownloading || !isEligibleForCertificate) && styles.downloadButtonDisabled
+          ]}
           onPress={handleDownload}
-          disabled={isDownloading}
+          disabled={isDownloading || !isEligibleForCertificate}
         >
           <LinearGradient
             colors={['#FF8A00', '#FFB300']}
@@ -592,13 +628,20 @@ const DownloadCertificateScreen = () => {
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.downloadButtonText}>
-              {isDownloading ? 'Downloading...' : 'Download Certificate '}
+              {isDownloading ? 'Downloading...' : 
+               !isEligibleForCertificate ? 'Complete Course First' : 
+               'Download Certificate'}
             </Text>
           </LinearGradient>
-        </TouchableOpacity>
-        
+                </TouchableOpacity>
 
-        
+        {/* Download Status Button */}
+        <TouchableOpacity 
+          style={styles.downloadStatusButton}
+          onPress={() => firebaseNotificationService.showDownloadStatus()}
+        >
+          <Text style={styles.downloadStatusButtonText}>View Download History</Text>
+        </TouchableOpacity>
 
       </View>
     </SafeAreaView>
@@ -713,5 +756,20 @@ const styles = StyleSheet.create({
   },
   downloadButtonDisabled: {
     opacity: 0.7,
+  },
+  downloadStatusButton: {
+    marginTop: getResponsiveSize(15),
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(20),
+    borderRadius: getResponsiveSize(8),
+    borderWidth: 1,
+    borderColor: '#FF8A00',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+  },
+  downloadStatusButtonText: {
+    color: '#FF8A00',
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600',
   },
 });``

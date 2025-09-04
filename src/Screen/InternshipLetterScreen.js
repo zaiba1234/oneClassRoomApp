@@ -93,10 +93,12 @@ const InternshipLetterScreen = () => {
   const courseId = route.params?.courseId;
   console.log('🔍 InternshipLetterScreen: courseId from route params:', courseId);
 
-  // Function to get user profile data from Redux store
+  // Get user data from Redux store at component level
+  const userState = useAppSelector((state) => state.user);
+  
+  // Function to get user profile data (no hooks inside)
   const getUserProfileData = () => {
     console.log('👤 InternshipLetterScreen: getUserProfileData called');
-    const userState = useAppSelector((state) => state.user);
     return {
       email: userState.email || 'user@example.com',
       contact: userState.phone || userState.contact || '0000000000',
@@ -174,7 +176,15 @@ const InternshipLetterScreen = () => {
         
         if (currentCourse) {
           console.log('✅ InternshipLetterScreen: Setting courseData:', JSON.stringify(currentCourse, null, 2));
-          setCourseData(currentCourse);
+          
+          // Ensure price is properly formatted
+          const courseWithPrice = {
+            ...currentCourse,
+            price: currentCourse.price ? `₹${currentCourse.price}.00` : '₹99.00'
+          };
+          
+          console.log('💰 InternshipLetterScreen: Course price formatted:', courseWithPrice.price);
+          setCourseData(courseWithPrice);
         } else {
           console.log('❌ InternshipLetterScreen: Course not found in API response');
         }
@@ -352,11 +362,26 @@ const InternshipLetterScreen = () => {
       }
     } catch (error) {
       console.error('💥 InternshipLetterScreen: Error in requestInternshipLetter:', error);
-      Alert.alert(
-        'Error',
-        'Network error occurred while requesting internship letter',
-        [{ text: 'OK' }]
-      );
+      console.error('💥 InternshipLetterScreen: Error message:', error.message);
+      console.error('💥 InternshipLetterScreen: Error stack:', error.stack);
+      
+      // Handle specific Razorpay errors
+      if (error.message === 'PAYMENT_CANCELLED') {
+        console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+      } else if (error.message === 'PAYMENT_FAILED') {
+        console.log('💥 InternshipLetterScreen: Payment failed');
+        Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
+      } else if (error.message && error.message.includes('Invalid course price')) {
+        console.log('⚙️ InternshipLetterScreen: Invalid course price');
+        Alert.alert('Configuration Error', 'Course price configuration error. Please contact support.');
+      } else if (error.message && error.message.includes('Razorpay payment failed')) {
+        console.log('💳 InternshipLetterScreen: Razorpay payment error');
+        Alert.alert('Payment Error', error.message);
+      } else {
+        console.log('💥 InternshipLetterScreen: Generic error');
+        Alert.alert('Error', `Something went wrong: ${error.message || 'Unknown error'}. Please try again.`);
+      }
     } finally {
       console.log('🎯 InternshipLetterScreen: Setting isRequesting to false');
       setIsRequesting(false);
@@ -372,11 +397,38 @@ const InternshipLetterScreen = () => {
       if (requestData.internshipLetter && requestData.internshipLetter.razorpayOrderId) {
         console.log('✅ InternshipLetterScreen: Found internship letter data with order ID');
         
+        // Calculate price from course data (same logic as EnrollScreen)
+        const coursePrice = courseData?.price || '₹99.00';
+        
+        if (!coursePrice || typeof coursePrice !== 'string') {
+          console.log('❌ InternshipLetterScreen: Invalid course price:', coursePrice);
+          Alert.alert('Error', 'Invalid course price. Please refresh and try again.');
+          return;
+        }
+        
+        const priceString = coursePrice.replace('₹', '').replace('.00', '');
+        const priceInRupees = parseFloat(priceString);
+        
+        if (isNaN(priceInRupees) || priceInRupees <= 0) {
+          console.log('❌ InternshipLetterScreen: Invalid price calculation:', { priceString, priceInRupees });
+          Alert.alert('Error', 'Invalid course price. Please contact support.');
+          return;
+        }
+        
+        const priceInPaise = Math.round(priceInRupees * 100);
+        
+        console.log('💰 InternshipLetterScreen: Price calculation:', {
+          coursePrice: coursePrice,
+          priceString: priceString,
+          priceInRupees: priceInRupees,
+          priceInPaise: priceInPaise
+        });
+        
         // Use the EXACT SAME logic as EnrollScreen.js
         // The API should return the same structure as courseAPI.createCourseOrder
         const orderData = {
           key: RAZORPAY_KEY_ID, // Use the live Razorpay key from env config
-          amount: requestData.internshipLetter.paymentAmount * 100, // Convert to paise
+          amount: priceInPaise, // Use calculated price instead of API amount
           currency: requestData.internshipLetter.paymentCurrency || 'INR',
           orderId: requestData.internshipLetter.razorpayOrderId,
         };
@@ -443,12 +495,40 @@ const InternshipLetterScreen = () => {
       const userProfile = getUserProfileData();
       console.log('👤 InternshipLetterScreen: User profile data:', JSON.stringify(userProfile, null, 2));
       
+      // Calculate price from course data (same logic as EnrollScreen)
+      const coursePrice = courseData?.price || '₹99.00';
+      
+      if (!coursePrice || typeof coursePrice !== 'string') {
+        console.log('❌ InternshipLetterScreen: Invalid course price:', coursePrice);
+        throw new Error('Invalid course price. Please refresh and try again.');
+      }
+      
+      const priceString = coursePrice.replace('₹', '').replace('.00', '');
+      const priceInRupees = parseFloat(priceString);
+      
+      if (isNaN(priceInRupees) || priceInRupees <= 0) {
+        console.log('❌ InternshipLetterScreen: Invalid price calculation:', { priceString, priceInRupees });
+        throw new Error('Invalid course price. Please contact support.');
+      }
+      
+      const priceInPaise = Math.round(priceInRupees * 100);
+      
+      console.log('💰 InternshipLetterScreen: Price calculation in handlePaymentWithRazorpay:', {
+        coursePrice: coursePrice,
+        priceString: priceString,
+        priceInRupees: priceInRupees,
+        priceInPaise: priceInPaise
+      });
+      
+      // Always use the calculated price from frontend to ensure correct amount
+      const finalAmount = priceInPaise;
+      
       const razorpayOptions = {
         key: orderData.key,
-        amount: orderData.amount,
+        amount: finalAmount, // Use calculated amount
         currency: orderData.currency,
         name: 'Learning Saint',
-        description: 'Internship Letter Payment',
+        description: `Internship Letter Payment - ${courseData?.courseName || 'Course'}`,
         order_id: orderData.orderId,
         prefill: {
           email: userProfile.email,
@@ -472,14 +552,23 @@ const InternshipLetterScreen = () => {
       console.log('✅ InternshipLetterScreen: Payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
-      console.log('❌ InternshipLetterScreen: Razorpay error:', razorpayError);
+      console.log('❌ InternshipLetterScreen: Razorpay error caught:', razorpayError);
+      console.log('❌ InternshipLetterScreen: Error message:', razorpayError.message);
+      console.log('❌ InternshipLetterScreen: Error stack:', razorpayError.stack);
       
+      // More specific error handling
       if (razorpayError.message === 'PAYMENT_CANCELLED') {
+        console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
         throw new Error('PAYMENT_CANCELLED');
       } else if (razorpayError.message === 'PAYMENT_FAILED') {
+        console.log('💥 InternshipLetterScreen: Payment failed');
         throw new Error('PAYMENT_FAILED');
+      } else if (razorpayError.message && razorpayError.message.includes('Invalid course price')) {
+        console.log('⚙️ InternshipLetterScreen: Invalid course price');
+        throw new Error('Invalid course price. Please contact support.');
       } else {
-        throw new Error('Razorpay payment failed. Please try again.');
+        console.log('💥 InternshipLetterScreen: Generic Razorpay error:', razorpayError);
+        throw new Error(`Razorpay payment failed: ${razorpayError.message || 'Unknown error'}. Please try again.`);
       }
     }
   };
@@ -1012,7 +1101,7 @@ const InternshipLetterScreen = () => {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.downloadButtonText}>
-                  {isRequesting ? 'Processing...' : 'Get Internship Letter'}
+                  {isRequesting ? 'Processing...' : `Get Internship Letter - ${courseData?.price || '₹0.00'}`}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>

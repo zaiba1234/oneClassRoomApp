@@ -20,6 +20,7 @@ const RazorpayPaymentScreen = () => {
   const webViewRef = useRef(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('processing');
+  const [loadTimeout, setLoadTimeout] = useState(null);
 
   const options = route.params?.options;
   console.log('🔍 RazorpayPaymentScreen: Received options:', JSON.stringify(options, null, 2));
@@ -52,6 +53,16 @@ const RazorpayPaymentScreen = () => {
     
     console.log('✅ RazorpayPaymentScreen: Options validated successfully');
   }, [options, navigation]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (loadTimeout) {
+        console.log('🧹 RazorpayPaymentScreen: Cleaning up timeout on unmount');
+        clearTimeout(loadTimeout);
+      }
+    };
+  }, [loadTimeout]);
 
   const generateRazorpayHTML = (options) => {
     console.log('🔧 RazorpayPaymentScreen: Generating HTML with options:', JSON.stringify(options, null, 2));
@@ -135,6 +146,9 @@ const RazorpayPaymentScreen = () => {
         <div class="container">
           <div class="logo">Learning Saint</div>
           <div class="amount">₹${(options.amount / 100).toFixed(2)}</div>
+          <div style="font-size: 12px; color: #999; margin-bottom: 10px;">
+            Amount in paise: ${options.amount}
+          </div>
           <div class="currency">${options.currency}</div>
           <div class="description">${options.description}</div>
           <button class="pay-button" onclick="initiatePayment()">Pay Now</button>
@@ -145,6 +159,11 @@ const RazorpayPaymentScreen = () => {
         <script>
           console.log('🔧 RazorpayPaymentScreen: HTML loaded, setting up payment...');
           console.log('🔧 RazorpayPaymentScreen: Options in HTML:', ${JSON.stringify(options)});
+          console.log('💰 RazorpayPaymentScreen: Amount details:', {
+            amountInPaise: ${options.amount},
+            amountInRupees: ${(options.amount / 100).toFixed(2)},
+            currency: '${options.currency}'
+          });
           
           function initiatePayment() {
             console.log('🔘 RazorpayPaymentScreen: Pay Now button clicked!');
@@ -201,13 +220,28 @@ const RazorpayPaymentScreen = () => {
               // Add error handling for Razorpay
               rzp.on('payment.failed', function (response) {
                 console.log('❌ RazorpayPaymentScreen: Payment failed in HTML:', response);
-                document.getElementById('error').textContent = 'Payment failed: ' + response.error.description;
+                console.log('❌ RazorpayPaymentScreen: Error details:', response.error);
+                document.getElementById('error').textContent = 'Payment failed: ' + (response.error?.description || 'Unknown error');
                 document.getElementById('error').style.display = 'block';
                 document.getElementById('loading').style.display = 'none';
                 
                 // Send failure to React Native
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'PAYMENT_FAILED',
+                  data: response
+                }));
+              });
+              
+              // Add additional error handling
+              rzp.on('payment.error', function (response) {
+                console.log('💥 RazorpayPaymentScreen: Payment error in HTML:', response);
+                document.getElementById('error').textContent = 'Payment error: ' + (response.error?.description || 'Unknown error');
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+                
+                // Send error to React Native
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'PAYMENT_ERROR',
                   data: response
                 }));
               });
@@ -347,6 +381,8 @@ const RazorpayPaymentScreen = () => {
             }
           ]
         );
+      } else {
+        console.log('⚠️ RazorpayPaymentScreen: Unknown message type received:', data.type);
       }
     } catch (error) {
       console.error('❌ RazorpayPaymentScreen: Error parsing message:', error);
@@ -390,11 +426,48 @@ const RazorpayPaymentScreen = () => {
   const handleLoadEnd = () => {
     console.log('✅ RazorpayPaymentScreen: WebView load completed');
     setIsLoading(false);
+    
+    // Clear the timeout since the page loaded successfully
+    if (loadTimeout) {
+      clearTimeout(loadTimeout);
+      setLoadTimeout(null);
+    }
   };
 
   const handleLoadStart = () => {
     console.log('🔄 RazorpayPaymentScreen: WebView starting to load...');
     setIsLoading(true);
+    
+    // Set a timeout to handle cases where the page doesn't load
+    const timeout = setTimeout(() => {
+      console.log('⏰ RazorpayPaymentScreen: Load timeout reached');
+      if (isLoading) {
+        console.log('❌ RazorpayPaymentScreen: Page load timeout, showing error');
+        Alert.alert(
+          'Loading Timeout',
+          'The payment page is taking too long to load. Please check your internet connection and try again.',
+          [
+            {
+              text: 'Retry',
+              onPress: () => {
+                console.log('🔄 RazorpayPaymentScreen: Retrying after timeout...');
+                webViewRef.current?.reload();
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
+                console.log('❌ RazorpayPaymentScreen: User cancelled due to timeout');
+                navigation.goBack();
+              }
+            }
+          ]
+        );
+      }
+    }, 30000); // 30 second timeout
+    
+    setLoadTimeout(timeout);
   };
 
   console.log('🎨 RazorpayPaymentScreen: Rendering component with status:', paymentStatus);
