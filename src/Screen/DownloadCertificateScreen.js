@@ -50,7 +50,7 @@ const DownloadCertificateScreen = () => {
     if (Platform.OS === 'android') {
       try {
         console.log('🔍 Checking current permission status...');
-        
+
         if (Platform.Version >= 33) {
           const readMediaImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
           const readMediaVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
@@ -74,28 +74,28 @@ const DownloadCertificateScreen = () => {
   const testDownloadsAccess = async () => {
     try {
       console.log('🔍 Testing downloads directory access...');
-      
+
       // Try to create a test file
       const testFileName = `test_${Date.now()}.txt`;
       const testFilePath = `${RNFS.DownloadDirectoryPath}/${testFileName}`;
-      
+
       console.log('📁 Test file path:', testFilePath);
-      
+
       // Write a test file
       await RNFS.writeFile(testFilePath, 'test content', 'utf8');
       console.log('✅ Test file written successfully');
-      
+
       // Check if file exists
       const fileExists = await RNFS.exists(testFilePath);
       console.log('📋 Test file exists:', fileExists);
-      
+
       if (fileExists) {
         // Delete test file
         await RNFS.unlink(testFilePath);
         console.log('🗑️ Test file deleted successfully');
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('❌ Downloads access test failed:', error);
@@ -111,21 +111,15 @@ const DownloadCertificateScreen = () => {
         let granted = false;
 
         if (Platform.Version >= 33) {
-          // Android 13+ requires READ_MEDIA_IMAGES and READ_MEDIA_VIDEO
-          console.log('📱 Android 13+ detected, requesting media permissions...');
-          
+       
           // First check if permissions are already granted
           const hasImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
           const hasVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
-          
-          console.log('📱 Current permissions - Images:', hasImages, 'Video:', hasVideo);
-          
           if (hasImages && hasVideo) {
             console.log('✅ Media permissions already granted');
             return true;
           }
-          
-          // Request READ_MEDIA_IMAGES permission
+
           const readMediaImages = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
             {
@@ -136,10 +130,7 @@ const DownloadCertificateScreen = () => {
               buttonPositive: 'Grant',
             }
           );
-          
-          console.log('📱 READ_MEDIA_IMAGES result:', readMediaImages);
-          
-          // Request READ_MEDIA_VIDEO permission
+
           const readMediaVideo = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
             {
@@ -149,15 +140,9 @@ const DownloadCertificateScreen = () => {
               buttonNegative: 'Cancel',
               buttonPositive: 'Grant',
             }
-          );
-          
-          console.log('📱 READ_MEDIA_VIDEO result:', readMediaVideo);
-          
-          granted = (readMediaImages === PermissionsAndroid.RESULTS.GRANTED && 
-                    readMediaVideo === PermissionsAndroid.RESULTS.GRANTED);
-          
-          console.log('📱 Final Media Permissions Result - Images:', readMediaImages, 'Video:', readMediaVideo, 'Granted:', granted);
-          
+          );  
+          granted = (readMediaImages === PermissionsAndroid.RESULTS.GRANTED &&
+            readMediaVideo === PermissionsAndroid.RESULTS.GRANTED);
           if (!granted) {
             // Show detailed explanation for Android 13+
             Alert.alert(
@@ -165,8 +150,8 @@ const DownloadCertificateScreen = () => {
               'This app needs media access permissions to download certificates. Please:\n\n1. Go to Settings > Apps > LearningSaint > Permissions\n2. Enable "Photos and videos" permission\n3. Try downloading again',
               [
                 { text: 'OK' },
-                { 
-                  text: 'Open Settings', 
+                {
+                  text: 'Open Settings',
                   onPress: () => {
                     console.log('🔧 Opening app settings...');
                     Linking.openSettings();
@@ -175,11 +160,11 @@ const DownloadCertificateScreen = () => {
               ]
             );
           }
-          
+
         } else if (Platform.Version >= 29) {
           // Android 10-12
           console.log('📱 Android 10-12 detected, requesting storage permissions...');
-          
+
           const writePermission = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
             {
@@ -190,7 +175,7 @@ const DownloadCertificateScreen = () => {
               buttonPositive: 'OK',
             }
           );
-          
+
           const readPermission = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
             {
@@ -201,16 +186,16 @@ const DownloadCertificateScreen = () => {
               buttonPositive: 'OK',
             }
           );
-          
-          granted = (writePermission === PermissionsAndroid.RESULTS.GRANTED && 
-                    readPermission === PermissionsAndroid.RESULTS.GRANTED);
-          
+
+          granted = (writePermission === PermissionsAndroid.RESULTS.GRANTED &&
+            readPermission === PermissionsAndroid.RESULTS.GRANTED);
+
           console.log('📱 Storage Permissions Result - Write:', writePermission, 'Read:', readPermission);
-          
+
         } else {
           // Android 9 and below
           console.log('📱 Android 9 or below detected, requesting legacy storage permissions...');
-          
+
           const writePermission = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
             {
@@ -221,7 +206,7 @@ const DownloadCertificateScreen = () => {
               buttonPositive: 'OK',
             }
           );
-          
+
           granted = writePermission === PermissionsAndroid.RESULTS.GRANTED;
           console.log('📱 Legacy Storage Permission Result:', writePermission);
         }
@@ -254,19 +239,19 @@ const DownloadCertificateScreen = () => {
   const fetchCertificateDescription = async () => {
     try {
       setIsLoadingCertificate(true);
-      
+
       const apiUrl = getApiUrl(`/api/user/course/get-certificateDesc/${courseId}`);
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      
+
       if (response.ok) {
         const result = await response.json();
-        
+
         if (result.success && result.data) {
           setCertificateData(result.data);
           setIsEligibleForCertificate(true);
@@ -280,8 +265,8 @@ const DownloadCertificateScreen = () => {
               'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
               [
                 { text: 'OK' },
-                { 
-                  text: 'Go to Course', 
+                {
+                  text: 'Go to Course',
                   onPress: () => {
                     navigation.navigate('Enroll', { courseId: courseId });
                   }
@@ -296,7 +281,7 @@ const DownloadCertificateScreen = () => {
       } else {
         console.log('❌ API call failed with status:', response.status);
         const errorResult = await response.json().catch(() => ({}));
-        
+
         if (response.status === 401) {
           Alert.alert('Authentication Error', 'Please login again to access certificate details');
         } else if (response.status === 404) {
@@ -326,8 +311,8 @@ const DownloadCertificateScreen = () => {
           'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
           [
             { text: 'OK' },
-            { 
-              text: 'Go to Course', 
+            {
+              text: 'Go to Course',
               onPress: () => {
                 navigation.navigate('Enroll', { courseId: courseId });
               }
@@ -347,8 +332,8 @@ const DownloadCertificateScreen = () => {
             'This app needs media access permissions to download certificates. Please follow these steps:\n\n1. Go to Settings > Apps > LearningSaint > Permissions\n2. Enable "Photos and videos" permission\n3. Also enable "Storage" permission if available\n4. Return to app and try again',
             [
               { text: 'OK' },
-              { 
-                text: 'Open Settings', 
+              {
+                text: 'Open Settings',
                 onPress: () => {
                   console.log('🔧 Opening app settings...');
                   Linking.openSettings();
@@ -374,8 +359,8 @@ const DownloadCertificateScreen = () => {
             'Storage permission is required to download certificates. Please grant permission and try again.',
             [
               { text: 'OK' },
-              { 
-                text: 'Open Settings', 
+              {
+                text: 'Open Settings',
                 onPress: () => {
                   console.log('🔧 Opening app settings...');
                   Linking.openSettings();
@@ -409,7 +394,7 @@ const DownloadCertificateScreen = () => {
       // API endpoint using config file with subcourseId in URL
       const apiUrl = getApiUrl(`/api/user/certificate/download-certificate/${courseId}`);
       console.log('🌐 API URL:', apiUrl);
-      
+
       // Make direct API call with proper headers
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -418,28 +403,28 @@ const DownloadCertificateScreen = () => {
           'Accept': 'application/pdf',
         },
       });
-      
+
       console.log('📡 API Response Status:', response.status);
       console.log('📡 API Response Headers:', JSON.stringify([...response.headers.entries()], null, 2));
-      
+
       if (response.ok) {
         console.log('✅ API call successful, processing PDF...');
-        
+
         // Get the response as array buffer (works better in React Native)
         const arrayBuffer = await response.arrayBuffer();
         console.log('📄 ArrayBuffer received, size:', arrayBuffer.byteLength, 'bytes');
-        
+
         // Convert array buffer to base64
         const base64Data = Buffer.from(arrayBuffer).toString('base64');
         console.log('🔢 Base64 data prepared, length:', base64Data.length);
-        
+
         try {
           // First try downloads directory
           const fileName = `certificate_${courseId}.pdf`;
           let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
-          
+
           console.log('📁 Using app documents directory:', filePath);
-          
+
           // Ensure directory exists
           const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
           const dirExists = await RNFS.exists(dirPath);
@@ -447,31 +432,31 @@ const DownloadCertificateScreen = () => {
             await RNFS.mkdir(dirPath);
             console.log('📁 Created directory:', dirPath);
           }
-          
+
           // Write the PDF file
           await RNFS.writeFile(filePath, base64Data, 'base64');
           console.log('✅ PDF saved successfully to:', filePath);
-          
+
           // Check if file exists
           const fileExists = await RNFS.exists(filePath);
           console.log('📋 File exists check:', fileExists);
-          
+
           if (fileExists) {
             // Get file info
             const fileStats = await RNFS.stat(filePath);
             console.log('📊 File stats:', fileStats);
-            
+
             // Determine location message
             const locationMessage = filePath.includes('Download') ? 'Downloads folder' : 'App Documents folder';
-            
+
             // Show success message with file location
             Alert.alert(
               'Download Complete! 🎉',
               `Certificate saved as ${fileName}\nLocation: ${locationMessage}`,
               [
                 { text: 'OK' },
-                { 
-                  text: 'Open PDF', 
+                {
+                  text: 'Open PDF',
                   onPress: async () => {
                     try {
                       // Try to open the PDF with a PDF viewer app
@@ -510,22 +495,22 @@ const DownloadCertificateScreen = () => {
         } catch (writeError) {
           console.error('❌ Error writing file:', writeError);
           console.error('❌ Error details:', writeError.message);
-          
+
           // Final fallback: try to save to app's cache directory
           try {
             const fallbackFileName = `certificate_${courseId}.pdf`;
             const fallbackFilePath = `${RNFS.CachesDirectoryPath}/${fallbackFileName}`;
             console.log('🔄 Final fallback: trying cache directory:', fallbackFilePath);
             await RNFS.writeFile(fallbackFilePath, base64Data, 'base64');
-            
+
             // Show download completed notification for fallback
             firebaseNotificationService.showDownloadCompleted(fallbackFileName, fallbackFilePath);
           } catch (finalFallbackError) {
             console.error('❌ All fallback methods failed:', finalFallbackError);
-            
+
             // Show download failed notification
             firebaseNotificationService.showDownloadFailed(fileName, finalFallbackError.message);
-            
+
             Alert.alert(
               'Download Failed',
               'Could not save PDF to phone. Please check your storage permissions and try again.',
@@ -542,12 +527,12 @@ const DownloadCertificateScreen = () => {
             );
           }
         }
-        
+
       } else {
         console.error('❌ API call failed:', response.status, response.statusText);
         const errorText = await response.text();
         console.error('❌ Error response:', errorText);
-        
+
         // Try to parse error response as JSON
         let errorResult = {};
         try {
@@ -555,7 +540,7 @@ const DownloadCertificateScreen = () => {
         } catch (parseError) {
           console.log('Could not parse error response as JSON');
         }
-        
+
         if (response.status === 401) {
           Alert.alert('Authentication Error', 'Please login again to download certificate');
         } else if (response.status === 404) {
@@ -566,8 +551,8 @@ const DownloadCertificateScreen = () => {
             'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
             [
               { text: 'OK' },
-              { 
-                text: 'Go to Course', 
+              {
+                text: 'Go to Course',
                 onPress: () => {
                   navigation.navigate('Enroll', { courseId: courseId });
                 }
@@ -576,14 +561,14 @@ const DownloadCertificateScreen = () => {
           );
         } else {
           // Show download failed notification
-                      firebaseNotificationService.showDownloadFailed(fileName, errorResult.message || `Error: ${response.status} - ${response.statusText}`);
+          firebaseNotificationService.showDownloadFailed(fileName, errorResult.message || `Error: ${response.status} - ${response.statusText}`);
           Alert.alert('Download Failed', errorResult.message || `Error: ${response.status} - ${response.statusText}`);
         }
       }
     } catch (error) {
       console.error('💥 Download error:', error);
       console.error('💥 Error message:', error.message);
-      
+
       // Show download failed notification
       firebaseNotificationService.showDownloadFailed(fileName, error.message);
       Alert.alert('Error', 'Something went wrong while downloading. Please try again.');
@@ -599,82 +584,68 @@ const DownloadCertificateScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <BackButton onPress={handleBackPress} />
-        <Text style={styles.headerTitle}>Download Certificate</Text>
-        <View style={styles.placeholder} />
+       
+       
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
         {/* Congratulations Section */}
         <View style={styles.congratulationsContainer}>
-          <Text style={styles.congratulationsText}>Congratulations</Text>
-          <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
-          
-          {/* Dynamic Subcourse Name */}
-          {certificateData?.subcourseName && (
-            <Text style={styles.subcourseNameText}>
-              {certificateData.subcourseName}
-            </Text>
-          )}
+          <Image
+            source={require('../assests/images/conge.png')}
+            style={styles.congratulationsImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.congratulationsSubtext}>For Completing Module</Text>
+         
         </View>
-
         {/* Certificate Image */}
         <View style={styles.certificateContainer}>
-          <Image 
-            source={require('../assests/images/DownloadCertificate.png')} 
+          <Image
+            source={require('../assests/images/DownloadCertificate.png')}
             style={styles.certificateImage}
             resizeMode="contain"
           />
         </View>
-
         {/* Course Description */}
         <View style={styles.descriptionContainer}>
           <Text style={styles.descriptionText}>
-            {isLoadingCertificate ? 'Loading certificate details...' : 
-             certificateData?.certificateDescription || 
-             'In this course you will learn how to build a space to a 3-dimensional product. There are 24 premium learning videos for you.'}
+            {isLoadingCertificate ? 'Loading certificate details...' :
+              certificateData?.certificateDescription ||
+              'In this course you will learn how to build a space to a 3-dimensional product. There are 24 premium learning videos for you.'}
           </Text>
         </View>
       </ScrollView>
-
       {/* Download Button */}
       <View style={styles.downloadButtonContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.downloadButton, 
+            styles.downloadButton,
             (isDownloading || !isEligibleForCertificate) && styles.downloadButtonDisabled
           ]}
           onPress={handleDownload}
           disabled={isDownloading || !isEligibleForCertificate}
         >
           <LinearGradient
-            colors={['#FF8A00', '#FFB300']}
+            colors={['#FFB300','#FF8A00']}
             style={styles.gradientButton}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.downloadButtonText}>
-              {isDownloading ? 'Downloading...' : 
-               !isEligibleForCertificate ? 'Complete Course First' : 
-               'Download Certificate'}
+              {isDownloading ? 'Downloading...' :
+                !isEligibleForCertificate ? 'Complete Course First' :
+                  'Download Certificate'}
             </Text>
           </LinearGradient>
-                </TouchableOpacity>
-
-        {/* Download Status Button */}
-        <TouchableOpacity 
-          style={styles.downloadStatusButton}
-          onPress={() => firebaseNotificationService.showDownloadStatus()}
-        >
-          <Text style={styles.downloadStatusButtonText}>View Download History</Text>
         </TouchableOpacity>
-
       </View>
     </SafeAreaView>
   );
@@ -699,8 +670,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-
-
   headerTitle: {
     fontSize: getResponsiveSize(18),
     fontWeight: 'bold',
@@ -710,9 +679,7 @@ const styles = StyleSheet.create({
   placeholder: {
     width: getResponsiveSize(40),
   },
-  scrollView: {
-    // flex: 1,
-  },
+
   scrollContent: {
     flexGrow: 1,
     // paddingBottom: getResponsiveSize(20),
@@ -722,19 +689,17 @@ const styles = StyleSheet.create({
     // paddingTop: getResponsiveSize(40),
     // paddingBottom: getResponsiveSize(10), // Reduced from 30 to 10
   },
-  congratulationsText: {
-    fontSize: getResponsiveSize(36),
-    fontWeight: 'bold',
-    color: '#2285FA',
-    fontStyle: 'italic',
-    // marginBottom: getResponsiveSize(8),
-    textAlign: 'center',
+  congratulationsImage: {
+    width: getResponsiveSize(280),
+    height: getResponsiveSize(120),
+    marginBottom: getResponsiveSize(10),
   },
   congratulationsSubtext: {
     fontSize: getResponsiveSize(16),
     color: '#333',
     fontWeight: '500',
     textAlign: 'center',
+    marginTop: getResponsiveSize(-20),
   },
   subcourseNameText: {
     fontSize: getResponsiveSize(20),
@@ -745,11 +710,14 @@ const styles = StyleSheet.create({
   },
   certificateContainer: {
     alignItems: 'center',
-    // marginVertical: getResponsiveSize(10), // Added small margin to control gap
+    paddingHorizontal: getResponsiveSize(20),
+    marginTop: getResponsiveSize(-50),
+    marginBottom: getResponsiveSize(5),
   },
   certificateImage: {
-    width: width - getResponsiveSize(-10),
-    height: getResponsiveSize(450),
+    width: '100%',
+    height: getResponsiveSize(400),
+    borderRadius: getResponsiveSize(50),
   },
   descriptionContainer: {
     paddingHorizontal: getResponsiveSize(20),
@@ -764,7 +732,8 @@ const styles = StyleSheet.create({
   },
   downloadButtonContainer: {
     paddingHorizontal: getResponsiveSize(20),
-    paddingBottom: getResponsiveSize(30),
+    // paddingTop: getResponsiveSize(-40),
+    paddingBottom: getResponsiveSize(60),
     backgroundColor: '#fff',
   },
   downloadButton: {
@@ -804,4 +773,4 @@ const styles = StyleSheet.create({
     fontSize: getResponsiveSize(16),
     fontWeight: '600',
   },
-});``
+}); 

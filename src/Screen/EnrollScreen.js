@@ -16,6 +16,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -276,9 +277,8 @@ const EnrollScreen = ({ navigation, route }) => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute; // Convert to minutes
-    
-    console.log('🕐 Current time:', currentHour + ':' + currentMinute, '(', currentTime, 'minutes)');
+    const currentSecond = now.getSeconds();
+    const currentTimeInSeconds = currentHour * 3600 + currentMinute * 60 + currentSecond;
     
     // Find the next lesson based on start time
     let nextLesson = null;
@@ -287,19 +287,14 @@ const EnrollScreen = ({ navigation, route }) => {
     courseData.lessons.forEach(lesson => {
       if (lesson.startTime) {
         const [startHour, startMinute] = lesson.startTime.split(':').map(Number);
-        const lessonStartMinutes = startHour * 60 + startMinute;
+        const lessonStartSeconds = startHour * 3600 + startMinute * 60; // Convert to seconds
         
-        console.log('📚 Lesson:', lesson.lessonName, 'Start time:', lesson.startTime, '(', lessonStartMinutes, 'minutes)');
-        
-        // Calculate time difference
-        let timeDiff = lessonStartMinutes - currentTime;
+        // Calculate time difference in seconds
+        let timeDiff = lessonStartSeconds - currentTimeInSeconds;
         
         // If lesson already started today, check for next occurrence (tomorrow)
         if (timeDiff <= 0) {
-          timeDiff += 24 * 60; // Add 24 hours (1440 minutes)
-          
-        } else {
-          console.log('⏰ Lesson starts today in:', timeDiff, 'minutes');
+          timeDiff += 24 * 3600; // Add 24 hours (86400 seconds)
         }
         
         if (timeDiff < minTimeDiff) {
@@ -310,25 +305,17 @@ const EnrollScreen = ({ navigation, route }) => {
     });
     
     if (!nextLesson || minTimeDiff === Infinity) {
-    
       return null;
     }
     
-  
+    // Calculate hours, minutes, and seconds
+    const hours = Math.floor(minTimeDiff / 3600);
+    const minutes = Math.floor((minTimeDiff % 3600) / 60);
+    const seconds = minTimeDiff % 60;
     
-    // Calculate hours and minutes
-    const hours = Math.floor(minTimeDiff / 60);
-    const minutes = minTimeDiff % 60;
+    // Format the time string as HH:MM:SS
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
-    // Format the time string
-    let timeString = '';
-    if (hours > 0) {
-      timeString = `${hours}h ${minutes}m`;
-    } else {
-      timeString = `${minutes}m`;
-    }
-    
-    console.log('⏱️ Live timer display:', timeString);
     return timeString;
   };
 
@@ -483,9 +470,9 @@ const EnrollScreen = ({ navigation, route }) => {
             {
               text: 'Continue',
               onPress: () => {
-                // Navigate to MyCourses page after successful enrollment
-                console.log('🚀 EnrollScreen: Navigating to MyCourses page...');
-                navigation.navigate('MyCourses');
+                // Navigate to Courses tab after successful enrollment
+                console.log('🚀 EnrollScreen: Navigating to Courses tab...');
+                navigation.navigate('Home', { screen: 'Courses' });
               }
             }
           ]
@@ -776,21 +763,224 @@ const EnrollScreen = ({ navigation, route }) => {
 
   const injectedJavaScript = `
     (function() {
-      const video = document.querySelector('video');
-      if (video) {
-        video.addEventListener('webkitfullscreenchange', () => {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            event: 'fullscreen',
-            value: document.webkitIsFullScreen
-          }));
-        });
-        video.addEventListener('fullscreenchange', () => {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            event: 'fullscreen',
-            value: document.fullscreenElement !== null
-          }));
-        });
+      // Add CSS styles to hide native progress bar and create custom one
+      const style = document.createElement('style');
+      style.textContent = \`
+        /* Hide native video progress bar */
+        video::-webkit-media-controls-timeline {
+          display: none !important;
+        }
+        video::-moz-range-track {
+          display: none !important;
+        }
+        video::-ms-fill-lower,
+        video::-ms-fill-upper {
+          display: none !important;
+        }
+        
+        /* Custom progress bar container */
+        .custom-progress-container {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 20px;
+          z-index: 1000;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          padding: 8px 0;
+        }
+        
+        /* Custom progress bar track */
+        .custom-progress-track {
+          position: relative;
+          width: 100%;
+          height: 4px;
+          background: #E0E0E0;
+          border-radius: 2px;
+          overflow: hidden;
+          box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        /* Custom progress bar fill */
+        .custom-progress-fill {
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: 100%;
+          background: linear-gradient(to right, #F6B800, #FF8800);
+          border-radius: 2px;
+          transition: width 0.1s ease;
+        }
+        
+        /* Custom progress bar thumb */
+        .custom-progress-thumb {
+          position: absolute;
+          top: 50%;
+          right: -8px;
+          width: 16px;
+          height: 16px;
+          background: #FF8800;
+          border: 2px solid #FFFFFF;
+          border-radius: 50%;
+          transform: translateY(-50%);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          transition: all 0.1s ease;
+        }
+        
+        /* Hover effect for thumb */
+        .custom-progress-container:hover .custom-progress-thumb {
+          transform: translateY(-50%) scale(1.2);
+        }
+        
+        /* Additional control styling */
+        video::-webkit-media-controls-panel {
+          background: rgba(0,0,0,0.8) !important;
+        }
+        video::-webkit-media-controls-current-time-display,
+        video::-webkit-media-controls-time-remaining-display {
+          color: #FFFFFF !important;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+        }
+        video::-webkit-media-controls-play-button,
+        video::-webkit-media-controls-seek-back-button,
+        video::-webkit-media-controls-seek-forward-button {
+          background-color: #FF8800 !important;
+          border-radius: 50% !important;
+        }
+        video::-webkit-media-controls-volume-slider {
+          background: linear-gradient(to right, #F6B800, #FF8800) !important;
+        }
+        video::-webkit-media-controls-volume-slider::-webkit-slider-thumb {
+          background: #FF8800 !important;
+          border: 2px solid #FFFFFF !important;
+        }
+      \`;
+      document.head.appendChild(style);
+      
+      // Wait for video to load and apply custom progress bar
+      const applyVideoStyling = () => {
+        const video = document.querySelector('video');
+        if (video) {
+          // Create custom progress bar container
+          const progressContainer = document.createElement('div');
+          progressContainer.className = 'custom-progress-container';
+          
+          // Create progress track
+          const progressTrack = document.createElement('div');
+          progressTrack.className = 'custom-progress-track';
+          
+          // Create progress fill
+          const progressFill = document.createElement('div');
+          progressFill.className = 'custom-progress-fill';
+          
+          // Create progress thumb
+          const progressThumb = document.createElement('div');
+          progressThumb.className = 'custom-progress-thumb';
+          
+          // Assemble the progress bar
+          progressTrack.appendChild(progressFill);
+          progressTrack.appendChild(progressThumb);
+          progressContainer.appendChild(progressTrack);
+          video.parentNode.appendChild(progressContainer);
+          
+          let isDragging = false;
+          
+          // Update progress based on video progress
+          const updateProgress = () => {
+            if (video.duration && !isNaN(video.duration) && !isDragging) {
+              const progress = (video.currentTime / video.duration) * 100;
+              progressFill.style.width = progress + '%';
+            }
+          };
+          
+          // Seek to position based on click/drag
+          const seekToPosition = (event) => {
+            if (!video.duration || isNaN(video.duration)) return;
+            
+            const rect = progressTrack.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const percentage = Math.max(0, Math.min(100, (clickX / rect.width) * 100));
+            const newTime = (percentage / 100) * video.duration;
+            
+            video.currentTime = newTime;
+            progressFill.style.width = percentage + '%';
+          };
+          
+          // Mouse events for seeking
+          progressContainer.addEventListener('click', seekToPosition);
+          
+          // Touch events for mobile
+          progressContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isDragging = true;
+            seekToPosition(e.touches[0]);
+          });
+          
+          progressContainer.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isDragging) {
+              seekToPosition(e.touches[0]);
+            }
+          });
+          
+          progressContainer.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isDragging = false;
+          });
+          
+          // Mouse drag events
+          progressContainer.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            isDragging = true;
+            seekToPosition(e);
+            
+            const handleMouseMove = (e) => {
+              if (isDragging) {
+                seekToPosition(e);
+              }
+            };
+            
+            const handleMouseUp = () => {
+              isDragging = false;
+              document.removeEventListener('mousemove', handleMouseMove);
+              document.removeEventListener('mouseup', handleMouseUp);
+            };
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+          });
+          
+          // Video event listeners
+          video.addEventListener('timeupdate', updateProgress);
+          video.addEventListener('loadedmetadata', updateProgress);
+          
+          // Add fullscreen event listeners
+          video.addEventListener('webkitfullscreenchange', () => {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              event: 'fullscreen',
+              value: document.webkitIsFullScreen
+            }));
+          });
+          video.addEventListener('fullscreenchange', () => {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              event: 'fullscreen',
+              value: document.fullscreenElement !== null
+            }));
+          });
+        }
+      };
+      
+      // Apply styling when DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', applyVideoStyling);
+      } else {
+        applyVideoStyling();
       }
+      
+      // Also try to apply styling after a short delay to catch dynamically loaded videos
+      setTimeout(applyVideoStyling, 1000);
     })();
     true;
   `;
@@ -868,15 +1058,20 @@ const EnrollScreen = ({ navigation, route }) => {
           </Text>
         </TouchableOpacity>
         {courseData.isBestSeller && (
-          <View style={styles.bestSellerBadge}>
+          <LinearGradient
+            colors={['#FF8800', '#FF6B00']}
+            style={styles.bestSellerBadge}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
             <Text style={styles.bestSellerText}>Best Seller</Text>
-          </View>
+          </LinearGradient>
         )}
         
         {liveTime && (
           <TouchableOpacity style={styles.liveBadge} onPress={handleLiveClick}>
             <Text style={styles.liveText}>
-              Live In {liveTime}
+              Live In <Text style={styles.liveTimeText}>{liveTime}</Text>
             </Text>
           </TouchableOpacity>
         )}
@@ -1064,7 +1259,7 @@ const EnrollScreen = ({ navigation, route }) => {
             <TouchableOpacity 
               style={styles.downloadButton} 
               onPress={handleDownloadCertificate}
-              onPressIn={(e) => e.stopPropagation()} // Prevent parent TouchableOpacity from triggering
+              onPressIn={(e) => e.stopPropagation()} 
             >
               <Icon name="download-outline" size={24} color="#FF6B35" />
             </TouchableOpacity>
@@ -1104,10 +1299,9 @@ const EnrollScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={[styles.container, isFullScreen && styles.fullScreenContainer]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" hidden={isFullScreen} />
-      
       {!isFullScreen && (
         <View style={styles.header}>
-          <BackButton onPress={() => navigation.navigate('MyCourses')} />
+          <BackButton onPress={() => navigation.navigate('Home', { screen: 'Courses' })} />
           <Text style={styles.headerTitle}>
             {(() => {
               const title = typeof courseData.title === 'string' ? courseData.title : 'Course Title';
@@ -1116,9 +1310,14 @@ const EnrollScreen = ({ navigation, route }) => {
             })()}
           </Text>
           {courseData.isCompleted && (
-            <View style={styles.headerCompletedBadge}>
+            <LinearGradient
+              colors={['#FF8800', '#FF6B00']}
+              style={styles.headerCompletedBadge}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
               <Text style={styles.headerCompletedText}>Completed</Text>
-            </View>
+            </LinearGradient>
           )}
         </View>
       )}
@@ -1236,7 +1435,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: getVerticalSize(250),
     position: 'relative',
-    backgroundColor: '#000000',
+   
+   
   },
   fullScreenVideoContainer: {
     width: Dimensions.get('window').width,
@@ -1247,6 +1447,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1000,
+    
   },
   webView: {
     width: '100%',
@@ -1330,7 +1531,7 @@ const styles = StyleSheet.create({
   },
   courseDescription: {
     fontSize: getFontSize(16),
-    color: '#666666',
+    color: 'black',
     lineHeight: getFontSize(24),
     marginBottom: getVerticalSize(15),
   },
@@ -1375,12 +1576,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: getVerticalSize(15),
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
   },
   metricItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: getVerticalSize(15),
+    marginRight: getVerticalSize(8),
+    backgroundColor: '#006C990D',
+    paddingHorizontal: getVerticalSize(8),
+    paddingVertical: getVerticalSize(6),
+    borderRadius: getVerticalSize(6),
   },
   metricIcon: {
     width: getFontSize(16),
@@ -1393,16 +1598,24 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   bestSellerBadge: {
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: getVerticalSize(8),
-    paddingVertical: getVerticalSize(4),
-    borderRadius: getFontSize(12),
-    marginRight: getVerticalSize(10),
+    paddingHorizontal: getVerticalSize(10),
+    paddingVertical: getVerticalSize(5),
+    borderRadius: getFontSize(14),
+    marginRight: getVerticalSize(8),
+    shadowColor: '#FF8800',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   bestSellerText: {
     color: '#FFFFFF',
     fontSize: getFontSize(12),
     fontWeight: '600',
+    textAlign: 'center',
   },
   completedCourseBadge: {
     backgroundColor: '#4CAF50',
@@ -1417,15 +1630,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   liveBadge: {
-    backgroundColor: '#FF4444',
-    paddingHorizontal: getVerticalSize(8),
-    paddingVertical: getVerticalSize(4),
-    borderRadius: getFontSize(12),
-    marginRight: getVerticalSize(10),
+    backgroundColor: 'transparent',
+    paddingHorizontal: getVerticalSize(6),
+    paddingVertical: getVerticalSize(5),
+    marginRight: getVerticalSize(8),
   },
   liveText: {
-    color: '#FFFFFF',
-    fontSize: getFontSize(12),
+    color: '#333333',
+    fontSize: getFontSize(14),
+    fontWeight: '500',
+  },
+  liveTimeText: {
+    color: '#FF8800',
+    fontSize: getFontSize(14),
     fontWeight: '600',
   },
   tabsContainer: {
@@ -1732,10 +1949,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   headerCompletedBadge: {
-    backgroundColor: '#FF8800',
     paddingHorizontal: getVerticalSize(16),
     paddingVertical: getVerticalSize(8),
-    borderRadius: getFontSize(12),
+    borderRadius: getFontSize(10),
     shadowColor: '#FF8800',
     shadowOffset: {
       width: 0,

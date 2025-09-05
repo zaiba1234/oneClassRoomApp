@@ -72,6 +72,21 @@ const RazorpayPaymentScreen = () => {
       <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script>
+          // Fix cookie access BEFORE loading Razorpay script
+          (function() {
+            try {
+              if (typeof document.cookie === 'undefined') {
+                Object.defineProperty(document, 'cookie', {
+                  get: function() { return ''; },
+                  set: function() { return true; }
+                });
+              }
+            } catch (e) {
+              console.log('Cookie access fix applied early');
+            }
+          })();
+        </script>
         <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
         <style>
           body { 
@@ -164,6 +179,41 @@ const RazorpayPaymentScreen = () => {
             amountInRupees: ${(options.amount / 100).toFixed(2)},
             currency: '${options.currency}'
           });
+          
+          // Comprehensive cookie access fix for WebView
+          (function() {
+            try {
+              // Override document.cookie to prevent access errors
+              var originalCookie = document.cookie;
+              Object.defineProperty(document, 'cookie', {
+                get: function() { 
+                  try {
+                    return originalCookie || '';
+                  } catch (e) {
+                    return '';
+                  }
+                },
+                set: function(value) { 
+                  try {
+                    originalCookie = value;
+                    return true;
+                  } catch (e) {
+                    return true;
+                  }
+                },
+                configurable: true
+              });
+              
+              // Also fix any existing cookie access issues
+              if (typeof document.cookie === 'undefined') {
+                document.cookie = '';
+              }
+              
+              console.log('Cookie access fix applied successfully');
+            } catch (e) {
+              console.log('Cookie access fix error:', e);
+            }
+          })();
           
           function initiatePayment() {
             console.log('🔘 RazorpayPaymentScreen: Pay Now button clicked!');
@@ -503,6 +553,10 @@ const RazorpayPaymentScreen = () => {
         startInLoadingState={true}
         allowsInlineMediaPlayback={true}
         mediaPlaybackRequiresUserAction={false}
+        thirdPartyCookiesEnabled={true}
+        sharedCookiesEnabled={true}
+        allowsBackForwardNavigationGestures={false}
+        mixedContentMode="compatibility"
         onNavigationStateChange={(navState) => {
           console.log('🔍 RazorpayPaymentScreen: Navigation state changed:', navState.url);
         }}
@@ -513,6 +567,45 @@ const RazorpayPaymentScreen = () => {
           const { nativeEvent } = syntheticEvent;
           console.log('❌ RazorpayPaymentScreen: HTTP error:', nativeEvent);
         }}
+        injectedJavaScript={`
+          // Comprehensive cookie access fix
+          (function() {
+            try {
+              // Store original cookie if it exists
+              var originalCookie = '';
+              try {
+                originalCookie = document.cookie;
+              } catch (e) {
+                originalCookie = '';
+              }
+              
+              // Override document.cookie with safe access
+              Object.defineProperty(document, 'cookie', {
+                get: function() { 
+                  try {
+                    return originalCookie || '';
+                  } catch (e) {
+                    return '';
+                  }
+                },
+                set: function(value) { 
+                  try {
+                    originalCookie = value;
+                    return true;
+                  } catch (e) {
+                    return true;
+                  }
+                },
+                configurable: true
+              });
+              
+              console.log('WebView cookie access fix applied');
+            } catch (e) {
+              console.log('WebView cookie fix error:', e);
+            }
+          })();
+          true;
+        `}
       />
     </SafeAreaView>
   );

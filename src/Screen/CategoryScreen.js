@@ -13,11 +13,35 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { useAppDispatch, useAppSelector } from '../Redux/hooks';
+import { setUserData, saveUserToStorage } from '../Redux/userSlice';
 
 const { width, height } = Dimensions.get('window');
 
 const CategoryScreen = () => {
   const navigation = useNavigation();
+  const dispatch = useAppDispatch();
+  const userData = useAppSelector((state) => state.user);
+
+  // Function to mark user as no longer new and navigate to Home
+  const handleNavigateToHome = () => {
+    console.log('🏠 CategoryScreen: User interacting with categories, marking as no longer new');
+    
+    // Update user data to mark as no longer new
+    const updatedUserData = {
+      ...userData,
+      isNewUser: false
+    };
+    
+    // Update Redux state
+    dispatch(setUserData(updatedUserData));
+    
+    // Save to storage
+    dispatch(saveUserToStorage(updatedUserData));
+    
+    console.log('✅ CategoryScreen: User marked as existing user, navigating to Home');
+    navigation.navigate('Home');
+  };
 
   // Function to get different colors for each card
   const getComingSoonColor = (index) => {
@@ -79,6 +103,14 @@ const CategoryScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
       <View style={styles.container}>
+        {/* Back Button */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Icon name="chevron-back" size={24} color="#FF8800" />
+        </TouchableOpacity>
+
         <ScrollView 
           style={styles.scrollView} 
           showsVerticalScrollIndicator={false}
@@ -87,7 +119,7 @@ const CategoryScreen = () => {
           {/* Featured Banner */}
           <TouchableOpacity 
             style={styles.bannerContainer}
-            onPress={() => navigation.navigate('Home')}
+            onPress={handleNavigateToHome}
           >
             <View style={styles.bannerContent}>
               <Image 
@@ -145,6 +177,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     // backgroundColor: '#fff',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+    padding: 10,
   },
   scrollView: {
     flex: 1,

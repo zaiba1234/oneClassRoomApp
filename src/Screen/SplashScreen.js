@@ -8,7 +8,7 @@ const { width, height } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, isLoading } = useAppSelector((state) => state.user);
+  const { isAuthenticated, isLoading, isNewUser } = useAppSelector((state) => state.user);
   
   const logoAnimation = useRef(new Animated.Value(-200)).current;
   const opacityAnimation = useRef(new Animated.Value(0)).current;
@@ -52,8 +52,13 @@ const SplashScreen = ({ navigation }) => {
       }
       
       if (isAuthenticated) {
-        console.log('✅ SplashScreen: User is authenticated, navigating to Home');
-        navigation.replace('Home');
+        if (isNewUser) {
+          console.log('✅ SplashScreen: User is authenticated and new, navigating to Category');
+          navigation.replace('Category');
+        } else {
+          console.log('✅ SplashScreen: User is authenticated and existing, navigating to Home');
+          navigation.replace('Home');
+        }
       } else {
         console.log('❌ SplashScreen: User is not authenticated, navigating to OnBoard');
         navigation.replace('OnBoard');
@@ -61,15 +66,20 @@ const SplashScreen = ({ navigation }) => {
     }, 3000); // 3 seconds total
 
     return () => clearTimeout(timer);
-  }, [navigation, logoAnimation, opacityAnimation, isAuthenticated, isLoading]);
+  }, [navigation, logoAnimation, opacityAnimation, isAuthenticated, isLoading, isNewUser]);
 
   // Additional effect to handle navigation when authentication status changes
   useEffect(() => {
     if (!isLoading && isAuthenticated !== undefined) {
       const timer = setTimeout(() => {
         if (isAuthenticated) {
-          console.log('✅ SplashScreen: User authenticated, navigating to Home');
-          navigation.replace('Home');
+          if (isNewUser) {
+            console.log('✅ SplashScreen: User authenticated and new, navigating to Category');
+            navigation.replace('Category');
+          } else {
+            console.log('✅ SplashScreen: User authenticated and existing, navigating to Home');
+            navigation.replace('Home');
+          }
         } else {
           console.log('❌ SplashScreen: User not authenticated, navigating to OnBoard');
           navigation.replace('OnBoard');
@@ -78,7 +88,7 @@ const SplashScreen = ({ navigation }) => {
       
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading, navigation]);
+  }, [isAuthenticated, isLoading, isNewUser, navigation]);
 
   // Show loading message if still initializing
   const showLoadingMessage = isLoading || isAuthenticated === undefined;

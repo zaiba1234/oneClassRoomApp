@@ -25,8 +25,8 @@ const styles = StyleSheet.create({
   backButtonContainer: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: '#FFE4D6',
+    borderRadius: 8,
+    backgroundColor: '#FFF8EF',
     alignItems: 'center',
     justifyContent: 'center',
   },

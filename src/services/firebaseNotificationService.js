@@ -1,6 +1,7 @@
 import { Alert, Linking, Platform, PermissionsAndroid } from 'react-native';
 import RNFS from 'react-native-fs';
-import messaging from '@react-native-firebase/messaging';
+import messaging, { getMessaging, getToken } from '@react-native-firebase/messaging';
+import { getApp } from '@react-native-firebase/app';
 
 class FirebaseNotificationService {
   constructor() {
@@ -12,7 +13,7 @@ class FirebaseNotificationService {
   // Initialize notification system
   initializeNotifications = async () => {
     try {
-      // Request permission for notifications
+      // Request permission for notifications using the new modular API
       const authStatus = await messaging().requestPermission();
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -21,8 +22,10 @@ class FirebaseNotificationService {
       if (enabled) {
         console.log('📱 Notification permission granted');
         
-        // Get FCM token
-        const token = await messaging().getToken();
+        // Get FCM token using the new modular API
+        const app = getApp();
+        const messagingInstance = getMessaging(app);
+        const token = await getToken(messagingInstance);
         console.log('🔑 FCM Token:', token);
         
         // Create notification channel for Android
@@ -97,7 +100,9 @@ class FirebaseNotificationService {
     
     // Show notification using Firebase messaging
     try {
-      await messaging().displayNotification({
+      const app = getApp();
+      const messagingInstance = getMessaging(app);
+      await messagingInstance.displayNotification({
         notification: {
           title: 'Download Started',
           body: `Downloading ${fileName}...`,
@@ -136,7 +141,9 @@ class FirebaseNotificationService {
     
     // Update the existing notification with progress
     try {
-      await messaging().displayNotification({
+      const app = getApp();
+      const messagingInstance = getMessaging(app);
+      await messagingInstance.displayNotification({
         notification: {
           title: 'Downloading...',
           body: `${fileName} - ${progress}%`,
@@ -175,7 +182,9 @@ class FirebaseNotificationService {
     
     // Show completion notification
     try {
-      await messaging().displayNotification({
+      const app = getApp();
+      const messagingInstance = getMessaging(app);
+      await messagingInstance.displayNotification({
         notification: {
           title: 'Download Complete! 🎉',
           body: `${fileName} downloaded successfully`,
@@ -259,7 +268,9 @@ class FirebaseNotificationService {
     
     // Show failure notification
     try {
-      await messaging().displayNotification({
+      const app = getApp();
+      const messagingInstance = getMessaging(app);
+      await messagingInstance.displayNotification({
         notification: {
           title: 'Download Failed',
           body: `Failed to download ${fileName}`,

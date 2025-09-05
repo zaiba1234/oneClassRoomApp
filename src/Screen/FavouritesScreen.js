@@ -74,7 +74,7 @@ const FavouritesScreen = ({ navigation }) => {
         setError(result.data?.message || 'Failed to fetch favorite courses');
       }
     } catch (error) {
-      console.error('💥 FavouritesScreen: Error fetching favorite courses:', error);
+    
       setError('Failed to load favorite courses');
     } finally {
       setIsLoading(false);
@@ -181,10 +181,9 @@ const FavouritesScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Favourites</Text>
+        <Text style={styles.headerTitle}>Favourites  </Text>
         {refreshing && (
           <View style={styles.refreshIndicator}>
             <ActivityIndicator size="small" color="#FF8800" />

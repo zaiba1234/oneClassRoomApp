@@ -4,6 +4,7 @@ import { authAPI } from '../API/authAPI';
 import { profileAPI } from '../API/profileAPI';
 import { useAppDispatch } from '../Redux/hooks';
 import { setUserData, saveUserToStorage } from '../Redux/userSlice';
+import store from '../Redux/store';
 import { getApiUrl } from '../API/config';
 import {
   Alert,
@@ -14,7 +15,7 @@ import {
   StyleSheet,
   Dimensions,                                      
   Platform,
-  KeyboardAvoidingView,
+  
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
@@ -324,6 +325,14 @@ const VerificationScreen = ({ route }) => {
               
               // Store complete user data in Redux and save to storage
               console.log('🔄 VerificationScreen: About to dispatch setUserData with complete profile...');
+              
+              // Check if this is a new user (first-time login after registration)
+              const isNewUser = isFromRegister || !userData.address || !userData.email;
+              console.log('🆕 VerificationScreen: isNewUser detected:', isNewUser);
+              console.log('🆕 VerificationScreen: isFromRegister:', isFromRegister);
+              console.log('🆕 VerificationScreen: hasAddress:', !!userData.address);
+              console.log('🆕 VerificationScreen: hasEmail:', !!userData.email);
+              
               const completeUserData = {
                 _id: userData._id,
                 userId: userData.userId,
@@ -332,7 +341,8 @@ const VerificationScreen = ({ route }) => {
                 profileImageUrl: userData.profileImageUrl,
                 address: userData.address,
                 email: userData.email,
-                token: token
+                token: token,
+                isNewUser: isNewUser
               };
               
               dispatch(setUserData(completeUserData));
@@ -349,7 +359,8 @@ const VerificationScreen = ({ route }) => {
               // Fallback to route params if profile fetch fails
               const fallbackUserData = {
                 mobileNumber: mobileNumber,
-                token: token
+                token: token,
+                isNewUser: isFromRegister // New users from registration flow
               };
               
               if (fullName) {
@@ -368,7 +379,8 @@ const VerificationScreen = ({ route }) => {
             // Fallback to route params if profile fetch fails
             const fallbackUserData = {
               mobileNumber: mobileNumber,
-              token: token
+              token: token,
+              isNewUser: isFromRegister // New users from registration flow
             };
             
             if (fullName) {
@@ -385,7 +397,9 @@ const VerificationScreen = ({ route }) => {
           console.log('⚠️ VerificationScreen: API response data:', result.data);
           
           // No token, use route params only
-          const fallbackUserData = {};
+          const fallbackUserData = {
+            isNewUser: isFromRegister // New users from registration flow
+          };
           
           if (fullName) {
             console.log('📝 VerificationScreen: Storing fullName from route params:', fullName);
@@ -403,25 +417,27 @@ const VerificationScreen = ({ route }) => {
           }
         }
         
-        // OTP verified successfully, navigate to Home
-        console.log('🏠 VerificationScreen: Navigating to Home screen...');
-        navigation.navigate('Home');
-      } else {
-        console.log('❌ VerificationScreen: OTP verification failed:', result.message);
-        console.log('❌ VerificationScreen: Full error response:', result);
+        // OTP verified successfully, navigate based on user status
+        const userState = store.getState().user;
+        const isNewUser = userState.isNewUser;
         
-        // Check if user needs to register
-        console.log('🔍 VerificationScreen: Checking error message:', result.message);
-        console.log('🔍 VerificationScreen: Message includes "not registered":', result.message?.includes('not registered'));
-        console.log('🔍 VerificationScreen: Message includes "Mobile number not registered":', result.message?.includes('Mobile number not registered'));
-        console.log('🔍 VerificationScreen: Message includes "not verified":', result.message?.includes('not verified'));
+        console.log('🆕 VerificationScreen: User isNewUser status:', isNewUser);
+        
+        if (isNewUser) {
+          console.log('🏠 VerificationScreen: New user detected, navigating to Category screen...');
+          navigation.navigate('Category');
+        } else {
+          console.log('🏠 VerificationScreen: Existing user, navigating to Home screen...');
+          navigation.navigate('Home');
+        }
+      } else {
+       
         
         if (result.message?.includes('not registered') || 
             result.message?.includes('Mobile number not registered') ||
             result.message?.includes('not verified') ||
             result.message?.includes('User not found')) {
-          console.log('🔄 VerificationScreen: User not registered, showing alert...');
-          console.log('🔄 VerificationScreen: Mobile number for navigation:', mobileNumber);
+        
           
           Alert.alert(
             'Mobile Number Not Registered',
@@ -430,18 +446,16 @@ const VerificationScreen = ({ route }) => {
               {
                 text: 'OK',
                 onPress: () => {
-                  console.log('🔄 VerificationScreen: OK button pressed!');
-                  console.log('🔄 VerificationScreen: About to navigate to Register screen...');
-                  console.log('🔄 VerificationScreen: Mobile number being passed:', mobileNumber);
+                 
                   
                   // Navigate to Register screen with mobile number
                   navigation.navigate('Register', { mobileNumber: mobileNumber });
-                  console.log('✅ VerificationScreen: Navigation to Register screen initiated!');
+                 
                 }
               }
             ]
           );
-          console.log('🔄 VerificationScreen: Alert.alert called successfully!');
+         
         } else {
           console.log('❌ VerificationScreen: Error message does not match registration check');
           // Show error message for other failures
@@ -466,7 +480,7 @@ const VerificationScreen = ({ route }) => {
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
-        <Icon name="chevron-back" size={20} color="#FF8800" />
+        <Icon name="chevron-back" size={24} color="#FF8800" />
       </TouchableOpacity>
 
       <ScrollView 
@@ -515,10 +529,10 @@ const VerificationScreen = ({ route }) => {
 
             {/* Resend OTP Section */}
             <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>
-                Didn't you receive the OTP?
-              </Text>
-              <View style={styles.resendActionContainer}>
+              <View style={styles.resendTextContainer}>
+                <Text style={styles.resendText}>
+                  Didn't you receive the OTP?
+                </Text>
                 {resendTimer > 0 ? (
                   <Text style={styles.resendLinkDisabled}>Resend OTP</Text>
                 ) : (
@@ -574,7 +588,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
+    top: Platform.OS === 'ios' ? 60 : 40,
     left: 20,
     zIndex: 10,
     padding: 10,
@@ -650,16 +664,20 @@ const styles = StyleSheet.create({
   },
   resendContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 20,
+  },
+  resendTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
   },
   resendText: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    marginBottom: 12,
-  },
-  resendActionContainer: {
-    marginBottom: 12,
   },
   resendLink: {
     color: '#FF8800',
@@ -676,12 +694,6 @@ const styles = StyleSheet.create({
   timerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#FFE0B2',
   },
   timerText: {
     fontSize: 12,

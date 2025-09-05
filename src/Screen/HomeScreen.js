@@ -27,6 +27,7 @@ import NotificationBadge from '../Component/NotificationBadge';
 
 const { width, height } = Dimensions.get('window');
 
+
 // Responsive dimensions
 const getResponsiveSize = (size) => {
   const scale = Math.min(width, height) / 375; // Base width
@@ -41,7 +42,6 @@ const HomeScreen = () => {
 
   // Get user data from Redux
   const { fullName, mobileNumber, token, isAuthenticated, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
-
   // State for course data
   const [courseCards, setCourseCards] = useState([]); // Start with empty array instead of hardcoded data
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
@@ -58,6 +58,8 @@ const HomeScreen = () => {
     recentPurchasedSubcourse: null,
     promos: []
   });
+
+  
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
   const [bannerError, setBannerError] = useState(null);
 
@@ -104,11 +106,33 @@ const HomeScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       if (token) {
-        fetchUserFavoriteCourses();
+        // Refresh favorites and update course states when screen comes into focus
+        const refreshFavoritesAndUpdateCourses = async () => {
+          try {
+            await fetchUserFavoriteCourses();
+            // Update course cards with fresh favorite status
+            setCourseCards(prevCourses => 
+              prevCourses.map(course => ({
+                ...course,
+                isFavorite: userFavoriteCourses.has(String(course.id))
+              }))
+            );
+            // Update featured courses with fresh favorite status
+            setFeaturedCourses(prevFeatured => 
+              prevFeatured.map(course => ({
+                ...course,
+                isFavorite: userFavoriteCourses.has(String(course.id))
+              }))
+            );
+          } catch (error) {
+            console.error('Error refreshing favorites:', error);
+          }
+        };
+        
+        refreshFavoritesAndUpdateCourses();
       }
-    }, [token])
+    }, [token, userFavoriteCourses])
   );
-
   // Auto-rotate carousel items
   useEffect(() => {
     const totalItems = featuredCourses.length + (bannerData.promos && bannerData.promos.length > 1 ? bannerData.promos.length - 1 : 0);
@@ -465,6 +489,17 @@ const HomeScreen = () => {
         // Get the new favorite status from the API response
         const newFavoriteStatus = result.data.data.isLike;
         
+        // Update the userFavoriteCourses set
+        setUserFavoriteCourses(prevFavorites => {
+          const newFavorites = new Set(prevFavorites);
+          if (newFavoriteStatus) {
+            newFavorites.add(String(courseId));
+          } else {
+            newFavorites.delete(String(courseId));
+          }
+          return newFavorites;
+        });
+        
         // Update the course in the local state
         setCourseCards(prevCourses => {
           const updatedCourses = prevCourses.map(course => {
@@ -506,10 +541,31 @@ const HomeScreen = () => {
     // Redux state changed
   }, [fullName, mobileNumber, token, isAuthenticated]);
 
-  // Track courseCards state changes
+  // Update course cards when userFavoriteCourses changes
   useEffect(() => {
-    // Course cards state changed
-  }, [courseCards]);
+    if (userFavoriteCourses.size > 0 || courseCards.length > 0) {
+      // Update course cards with fresh favorite status
+      setCourseCards(prevCourses => 
+        prevCourses.map(course => ({
+          ...course,
+          isFavorite: userFavoriteCourses.has(String(course.id))
+        }))
+      );
+    }
+  }, [userFavoriteCourses]);
+
+  // Update featured courses when userFavoriteCourses changes
+  useEffect(() => {
+    if (userFavoriteCourses.size > 0 || featuredCourses.length > 0) {
+      // Update featured courses with fresh favorite status
+      setFeaturedCourses(prevFeatured => 
+        prevFeatured.map(course => ({
+          ...course,
+          isFavorite: userFavoriteCourses.has(String(course.id))
+        }))
+      );
+    }
+  }, [userFavoriteCourses]);
 
   // Filter courses when search keyword or courseCards change
   useEffect(() => {
@@ -642,7 +698,7 @@ const HomeScreen = () => {
         ) : (
           // First and second items: Regular course cards with gradient
           <LinearGradient
-            colors={['#2285FA', '#0029B9']}
+            colors={index === 0 ? ['#003E54', '#0090B2'] : ['#2285FA', '#0029B9']}
             style={styles.carouselCard}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -805,7 +861,7 @@ const HomeScreen = () => {
               }}
             >
               <Icon name="close" size={18} color="#FF8800" />
-              <Icon name="close" size={18} color="#FF8800" />
+          
             </TouchableOpacity>
           )}
         </View>
@@ -1029,6 +1085,8 @@ const styles = StyleSheet.create({
     height: getResponsiveSize(40),
     borderRadius: getResponsiveSize(20),
     marginRight: getResponsiveSize(10),
+    borderWidth: 1,
+    borderColor: '#F6B800',
   },
   greetingContainer: {
     flexDirection: 'column',
@@ -1278,18 +1336,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: getResponsiveSize(15),
     borderRadius: getResponsiveSize(25),
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#006C99',
     marginHorizontal: getResponsiveSize(5),
     backgroundColor: '#fff',
   },
   filterButtonActive: {
-    backgroundColor: '#2285FA',
-    borderColor: '#2285FA',
+    backgroundColor: '#006C99',
+    borderColor: '#006C99',
   },
   filterButtonText: {
     fontSize: getResponsiveSize(14),
     fontWeight: '500',
-    color: '#666',
+    color: '#006C99',
     textAlign: 'center',
   },
   filterButtonTextActive: {

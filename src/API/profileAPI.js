@@ -11,8 +11,7 @@ export const profileAPI = {
         'Authorization': `Bearer ${token}`,
       };
       
-      console.log('profileAPI.getUserProfile - URL:', url);
-      console.log('profileAPI.getUserProfile - Headers:', headers);
+   
       
       // Create AbortController for timeout
       const controller = new AbortController();

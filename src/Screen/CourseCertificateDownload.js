@@ -521,7 +521,7 @@ const CourseCertificateDownload = () => {
       {/* Header */}
       <View style={styles.header}>
         <BackButton onPress={handleBackPress} />
-        <Text style={styles.headerTitle}>Download Certificate</Text>
+        <Text style={styles.headerTitle}>Download Certificate </Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -533,8 +533,8 @@ const CourseCertificateDownload = () => {
         <View style={styles.congratulationsContainer}>
           <Text style={styles.congratulationsText}>Congratulations</Text>
           <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
-          
           {/* Dynamic Subcourse Name */}
+      
           {certificateData?.subcourseName && (
             <Text style={styles.subcourseNameText}>
               {certificateData.subcourseName}
@@ -560,20 +560,17 @@ const CourseCertificateDownload = () => {
           </Text>
         </View>
       </ScrollView>
-
       {/* Download Button */}
       <View style={styles.downloadButtonContainer}>
         <TouchableOpacity 
           style={[styles.downloadButton, isDownloading && styles.downloadButtonDisabled]}
           onPress={handleDownload}
-          disabled={isDownloading}
-        >
+          disabled={isDownloading}>
           <LinearGradient
             colors={['#FF8A00', '#FFB300']}
             style={styles.gradientButton}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
+            end={{ x: 1, y: 0 }}>
             <Text style={styles.downloadButtonText}>
               {isDownloading ? 'Downloading...' : 'Download Certificate'}
             </Text>

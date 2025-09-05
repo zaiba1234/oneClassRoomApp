@@ -65,8 +65,8 @@ export const getApiUrl = (endpoint) => {
   }
   
   const fullUrl = `${API_CONFIG.BASE_URL}${endpoint}`;
-  console.log('🌐 API Config: Full URL:', fullUrl);
-  console.log('🌐 API Config: Platform:', Platform.OS);
+  // console.log('🌐 API Config: Full URL:', fullUrl);
+  // console.log('🌐 API Config: Platform:', Platform.OS);
   return fullUrl;
 };
 

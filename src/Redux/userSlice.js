@@ -120,6 +120,7 @@ const initialState = {
   token: '',
   isAuthenticated: false,
   isLoading: false,
+  isNewUser: false,
 };
 
 const userSlice = createSlice({
@@ -127,7 +128,7 @@ const userSlice = createSlice({
   initialState,
   reducers: {
     setUserData: (state, action) => {
-      const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, token } = action.payload;
+      const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, token, isNewUser } = action.payload;
       state._id = _id || '';
       state.userId = userId || '';
       state.fullName = fullName || '';
@@ -137,6 +138,7 @@ const userSlice = createSlice({
       state.email = email || '';
       state.token = token || '';
       state.isAuthenticated = !!token;
+      state.isNewUser = isNewUser || false;
       
       // Save to storage automatically if we have a token
       if (token) {
@@ -174,6 +176,7 @@ const userSlice = createSlice({
       state.email = '';
       state.token = '';
       state.isAuthenticated = false;
+      state.isNewUser = false;
     },
     logout: (state) => {
       state._id = '';
@@ -185,6 +188,7 @@ const userSlice = createSlice({
       state.email = '';
       state.token = '';
       state.isAuthenticated = false;
+      state.isNewUser = false;
       
       // Clear from storage automatically
       console.log('🔄 userSlice: Auto-clearing user data from storage');
@@ -199,7 +203,7 @@ const userSlice = createSlice({
       .addCase(loadUserFromStorage.fulfilled, (state, action) => {
         state.isLoading = false;
         if (action.payload) {
-          const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, token } = action.payload;
+          const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, token, isNewUser } = action.payload;
           state._id = _id || '';
           state.userId = userId || '';
           state.fullName = fullName || '';
@@ -209,6 +213,7 @@ const userSlice = createSlice({
           state.email = email || '';
           state.token = token || '';
           state.isAuthenticated = !!token;
+          state.isNewUser = isNewUser || false;
           console.log('✅ userSlice: User data restored from storage, isAuthenticated:', !!token);
         }
       })
@@ -247,6 +252,7 @@ const userSlice = createSlice({
           state.email = '';
           state.token = '';
           state.isAuthenticated = false;
+          state.isNewUser = false;
         } else {
           console.log('✅ userSlice: Token validation successful');
         }
@@ -263,6 +269,7 @@ const userSlice = createSlice({
         state.email = '';
         state.token = '';
         state.isAuthenticated = false;
+        state.isNewUser = false;
       });
   },
 });
