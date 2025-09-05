@@ -12,14 +12,14 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import NotificationIcon from '../Component/NotificationIcon';
+import BackButton from '../Component/BackButton';
 import { useAppSelector } from '../Redux/hooks';
 import notificationService from '../services/notificationService';
 
-// Import local assets
-const ArrowIcon = require('../assests/images/Arrow.png');
 
 // Get screen dimensions for responsive design
 const { width, height } = Dimensions.get('window');
@@ -263,18 +263,12 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Status Bar */}
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Image source={ArrowIcon} style={styles.backIcon} />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Notifications</Text>
         <View style={styles.headerActions}>
           {unreadCount > 0 && (
@@ -325,7 +319,7 @@ const NotificationScreen = ({ navigation }) => {
           notifications.map(renderNotificationItem)
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -338,20 +332,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: getVerticalSize(20),
-    paddingTop: Platform.OS === 'ios' ? getVerticalSize(50) : getVerticalSize(20),
-    paddingBottom: getVerticalSize(15),
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    marginTop: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    padding: getVerticalSize(8),
-  },
-  backIcon: {
-    width: getFontSize(24),
-    height: getFontSize(24),
-    resizeMode: 'contain',
   },
   headerTitle: {
     fontSize: getFontSize(20),
