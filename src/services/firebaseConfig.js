@@ -172,13 +172,8 @@ export const onBackgroundMessage = async (remoteMessage) => {
   console.log('📨 Background message:', remoteMessage);
 };
 
-// Set background handler (using modern API)
-try {
-  const messagingInstance = getMessaging(firebaseApp);
-  messagingInstance.setBackgroundMessageHandler(onBackgroundMessage);
-} catch (error) {
-  console.log('❌ Background handler error:', error.message);
-}
+// Note: Background handler is now registered in index.js at top level
+// This is required for React Native Firebase to work properly
 
 // Status check
 export const checkFirebaseStatus = () => {

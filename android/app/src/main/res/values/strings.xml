@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">LearningSaint</string>
+    
+    <!-- Firebase Notification Channel -->
+    <string name="default_notification_channel_id">fcm_default_channel</string>
+    <string name="default_notification_channel_name">Default Channel</string>
+    <string name="default_notification_channel_description">Default notification channel for LearningSaint app</string>
 </resources>
