@@ -16,7 +16,6 @@ const SuccessScreen = ({ navigation }) => {
   const handleContinue = () => {
     
     navigation.navigate('Category');
-    console.log('Continue pressed');
   };
 
   return (

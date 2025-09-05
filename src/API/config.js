@@ -60,13 +60,10 @@ export const getApiUrl = (endpoint) => {
     console.error('❌ API Config: BASE_URL is undefined! Platform:', Platform.OS);
     // Fallback to a default URL if BASE_URL is somehow undefined
     const fallbackUrl = `http://localhost:3000${endpoint}`;
-    console.log('🌐 API Config: Using fallback URL:', fallbackUrl);
     return fallbackUrl;
   }
   
   const fullUrl = `${API_CONFIG.BASE_URL}${endpoint}`;
-  console.log('🌐 API Config: Full URL:', fullUrl);
-  console.log('🌐 API Config: Platform:', Platform.OS);
   return fullUrl;
 };
 

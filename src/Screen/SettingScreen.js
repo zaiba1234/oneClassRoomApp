@@ -15,18 +15,15 @@ const SettingScreen = ({ navigation }) => {
   const [fingerprintEnabled, setFingerprintEnabled] = useState(true);
 
   const handleLanguageSetting = () => {
-    console.log('Language setting pressed');
     // Add language selection logic here
   };
 
   const handleNotificationSetting = () => {
-    console.log('Notification setting pressed');
     // Add notification settings navigation here
   };
 
   const handleFingerprintToggle = (value) => {
     setFingerprintEnabled(value);
-    console.log('Fingerprint login:', value ? 'enabled' : 'disabled');
   };
 
   return (

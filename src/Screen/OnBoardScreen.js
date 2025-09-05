@@ -27,25 +27,27 @@ const OnBoardScreen = () => {
   const slides = [
     {
       id: 1,
-      image: require('../assests/images/Onboard1.png'),
-      title: 'Start Your Journey',
-      description: 'Begin your educational path today with easy access to a wealth of information and tutorials.',
-      buttonText: 'Get Started',
-    },
-    {
-      id: 2,
       image: require('../assests/images/Onboard2.png'),
       title: 'Explore the Features',
       description: 'Dive into the various features of our platform, designed to enhance your learning experience.',
       buttonText: 'Next',
     },
     {
-      id: 3,
+      id: 2,
       image: require('../assests/images/Onboard3.png'),
       title: 'Join the Community',
       description: 'Connect with fellow learners and professionals, sharing insights and resources to boost your knowledge.',
       buttonText: 'Next',
     },
+    {
+      id: 3,
+      image: require('../assests/images/Onboard1.png'),
+      title: 'Start Your Journey',
+      description: 'Begin your educational path today with easy access to a wealth of information and tutorials.',
+      buttonText: 'Get Started',
+    },
+    
+   
   ];
 
   // Animate text when slide changes
@@ -91,8 +93,14 @@ const OnBoardScreen = () => {
   const currentSlide = slides[currentIndex];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+    <LinearGradient
+      colors={['#FFE0B2', '#FFFFFF', '#FFE4B5']}
+      start={{ x: 1, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar backgroundColor="transparent" barStyle="dark-content" translucent />
       
       {/* Skip Button - Only show on first screen */}
       {currentIndex === 0 && (
@@ -154,7 +162,7 @@ const OnBoardScreen = () => {
         {/* Next/Get Started Button */}
         <TouchableOpacity style={styles.buttonContainer} onPress={handleNext}>
           <LinearGradient
-            colors={['#FF9038', '#FFB800']}
+            colors={['#FFB800','#FF9038', ]}
             style={styles.gradientButton}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -163,18 +171,21 @@ const OnBoardScreen = () => {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  safeArea: {
+    flex: 1,
   },
   skipButton: {
     position: 'absolute',
-    top: 20,
+    top: 50,
     right: 20,
     zIndex: 10,
     padding: 10,

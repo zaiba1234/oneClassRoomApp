@@ -23,7 +23,9 @@ import BackButton from '../Component/BackButton';
 const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { fullName, mobileNumber, token, profileImageUrl, address, email } = useAppSelector((state) => state.user);
-  
+
+  console.log('🔄 PersonalInfoScreen: Initial Redux state:', { fullName, mobileNumber, token, profileImageUrl, address, email });
+
   const [name, setName] = useState(fullName || '');
   const [userAddress, setUserAddress] = useState(address || '');
   const [userEmail, setUserEmail] = useState(email || '');
@@ -32,6 +34,8 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
+  console.log('🔄 PersonalInfoScreen: Initial local state:', { name, userAddress, userEmail, phone });
+
   // Fetch user profile data on component mount
   useEffect(() => {
     fetchUserProfile();
@@ -39,47 +43,81 @@ const PersonalInfoScreen = ({ navigation }) => {
 
   // Update local state when Redux state changes
   useEffect(() => {
-    if (fullName) setName(fullName);
-    if (mobileNumber) setPhone(mobileNumber);
-    if (address) setUserAddress(address);
-    if (email) setUserEmail(email);
-    if (profileImageUrl) setProfileImage({ uri: profileImageUrl });
+   
+    
+    if (fullName !== undefined) {
+      console.log('📝 PersonalInfoScreen: Setting name from Redux:', fullName);
+      setName(fullName);
+    }
+    if (mobileNumber !== undefined) {
+      console.log('📱 PersonalInfoScreen: Setting phone from Redux:', mobileNumber);
+      setPhone(mobileNumber);
+    }
+    if (address !== undefined) {
+      console.log('🏠 PersonalInfoScreen: Setting address from Redux:', address);
+      setUserAddress(address);
+    }
+    if (email !== undefined) {
+     
+      setUserEmail(email);
+      console.log('📧 PersonalInfoScreen: Email state updated to:', email);
+    }
+    if (profileImageUrl) {
+      console.log('🖼️ PersonalInfoScreen: Setting profile image from Redux:', profileImageUrl);
+      setProfileImage({ uri: profileImageUrl });
+    }
   }, [fullName, mobileNumber, address, email, profileImageUrl]);
 
   const fetchUserProfile = async () => {
     if (!token) {
+      console.log('❌ PersonalInfoScreen: No token available for profile fetch');
       setIsLoadingProfile(false);
       return;
     }
 
     try {
       setIsLoadingProfile(true);
+     
+      
       const result = await profileAPI.getUserProfile(token);
       
+
+
       if (result.success && result.data.success) {
         const profileData = result.data.data;
-        console.log('Profile data fetched:', profileData);
-        
+       
+
         // Update Redux store with fetched data
+        console.log('🔄 PersonalInfoScreen: Updating Redux store with profile data...');
         dispatch(setProfileData(profileData));
-        
+
         // Update local state
+        console.log('🔄 PersonalInfoScreen: Updating local state...');
         setName(profileData.fullName || '');
         setPhone(profileData.mobileNumber || '+91');
         setUserAddress(profileData.address || '');
         setUserEmail(profileData.email || '');
+        console.log('📧 PersonalInfoScreen: Set userEmail to:', profileData.email || '');
+        
         if (profileData.profileImageUrl) {
           setProfileImage({ uri: profileData.profileImageUrl });
+          console.log('🖼️ PersonalInfoScreen: Set profile image to:', profileData.profileImageUrl);
         }
       } else {
-        console.log('Failed to fetch profile:', result.data?.message);
+       
         Alert.alert('Error', 'Failed to load profile data');
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('💥 PersonalInfoScreen: Error fetching profile:', error);
+      console.error('💥 PersonalInfoScreen: Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       Alert.alert('Error', 'Failed to load profile data');
     } finally {
       setIsLoadingProfile(false);
+      console.log('🔄 PersonalInfoScreen: Profile fetch completed');
     }
   };
 
@@ -88,17 +126,16 @@ const PersonalInfoScreen = ({ navigation }) => {
       console.log('PersonalInfoScreen - Testing network connectivity...');
       const testUrl = getApiUrl('/api/user/profile/get-profile');
       console.log('PersonalInfoScreen - Test URL:', testUrl);
-      
+
       const response = await fetch(testUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      
-      console.log('PersonalInfoScreen - Test response status:', response.status);
-      console.log('PersonalInfoScreen - Test response ok:', response.ok);
-      
+
+    
+
       return response.ok;
     } catch (error) {
       console.error('PersonalInfoScreen - Network test failed:', error);
@@ -109,15 +146,15 @@ const PersonalInfoScreen = ({ navigation }) => {
   const testBasicConnectivity = async () => {
     try {
       console.log('PersonalInfoScreen - Testing basic connectivity...');
-      
+
       // Test with a simple GET request first
       const baseUrl = getApiUrl('').replace('/api/user/profile/get-profile', '');
       console.log('PersonalInfoScreen - Base URL:', baseUrl);
-      
+
       const response = await fetch(baseUrl, {
         method: 'GET',
       });
-      
+
       console.log('PersonalInfoScreen - Basic connectivity test status:', response.status);
       return true;
     } catch (error) {
@@ -137,13 +174,16 @@ const PersonalInfoScreen = ({ navigation }) => {
       return;
     }
 
+    if (!token) {
+      Alert.alert('Error', 'Please login to verify email');
+      return;
+    }
+
     try {
       setIsLoading(true);
-      console.log('📧 PersonalInfoScreen: Starting email verification...');
-      console.log('📧 PersonalInfoScreen: Email to verify:', userEmail);
-
-      // Call send-emailotp API
-      const response = await fetch(getApiUrl(ENDPOINTS.SEND_EMAIL_OTP), {
+     
+      // Call send-emailotp API with correct endpoint and headers
+      const response = await fetch(getApiUrl('/api/auth/send-emailotp'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +196,7 @@ const PersonalInfoScreen = ({ navigation }) => {
 
       console.log('📡 PersonalInfoScreen: Response status:', response.status);
       console.log('📡 PersonalInfoScreen: Response headers:', response.headers);
-      
+
       // Check if response is ok before parsing JSON
       if (!response.ok) {
         const errorText = await response.text();
@@ -177,7 +217,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       if (result.success) {
         console.log('✅ PersonalInfoScreen: Email OTP sent successfully!');
         Alert.alert(
-          'OTP Sent', 
+          'OTP Sent',
           `OTP has been sent to ${userEmail}`,
           [
             {
@@ -217,7 +257,7 @@ const PersonalInfoScreen = ({ navigation }) => {
 
     try {
       setIsLoading(true);
-      
+
       // Test network connectivity first
       const isNetworkWorking = await testNetworkConnectivity();
       if (!isNetworkWorking) {
@@ -225,7 +265,7 @@ const PersonalInfoScreen = ({ navigation }) => {
         setIsLoading(false);
         return;
       }
-      
+
       const profileData = {
         profileImageUrl: profileImage,
         address: userAddress,
@@ -240,24 +280,24 @@ const PersonalInfoScreen = ({ navigation }) => {
       });
 
       const result = await profileAPI.updateUserProfile(token, profileData);
-      
+
       console.log('PersonalInfoScreen - updateUserProfile result:', result);
-      
+
       if (result.success && result.data.success) {
         console.log('Profile updated successfully:', result.data);
-        
+
         // Update Redux store with new data
         dispatch(setProfileData({
           ...result.data.data,
           fullName: name,
           mobileNumber: phone,
         }));
-        
+
         Alert.alert('Success', 'Profile updated successfully');
       } else {
         console.log('Failed to update profile:', result.data?.message);
         console.log('Full result:', result);
-        
+
         // Try updating without image if the full update failed
         if (profileData.profileImageUrl && profileData.profileImageUrl.uri) {
           console.log('PersonalInfoScreen - Trying update without image...');
@@ -265,19 +305,19 @@ const PersonalInfoScreen = ({ navigation }) => {
             address: userAddress,
             email: userEmail,
           };
-          
+
           const fallbackResult = await profileAPI.updateUserProfile(token, fallbackProfileData);
-          
+
           if (fallbackResult.success && fallbackResult.data.success) {
             console.log('Profile updated successfully without image:', fallbackResult.data);
-            
+
             // Update Redux store with new data
             dispatch(setProfileData({
               ...fallbackResult.data.data,
               fullName: name,
               mobileNumber: phone,
             }));
-            
+
             Alert.alert('Success', 'Profile updated successfully (image update failed)');
           } else {
             Alert.alert('Error', fallbackResult.data?.message || 'Failed to update profile');
@@ -366,7 +406,7 @@ const PersonalInfoScreen = ({ navigation }) => {
         <View style={styles.header}>
           <BackButton onPress={() => navigation.goBack()} />
           <Text style={styles.headerTitle}>Personal Info</Text>
-          <View style={{ width: 32 }} />
+         
         </View>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading profile...</Text>
@@ -391,7 +431,7 @@ const PersonalInfoScreen = ({ navigation }) => {
           source={profileImage}
           style={styles.profileImage}
         />
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.editIconContainer}
           onPress={showImagePickerOptions}
         >
@@ -399,8 +439,8 @@ const PersonalInfoScreen = ({ navigation }) => {
             colors={['#FF8800', '#FFB800']}
             style={styles.editIconCircle}
           >
-            <Image 
-              source={require('../assests/images/CameraIcon.png')} 
+            <Image
+              source={require('../assests/images/CameraIcon.png')}
               style={styles.cameraIcon}
               resizeMode="contain"
             />
@@ -417,8 +457,12 @@ const PersonalInfoScreen = ({ navigation }) => {
             value={name}
             onChangeText={setName}
           />
+          <TouchableOpacity style={styles.editIconBtn}>
+            <Icon name="create-outline" size={20} color="#00AEEF" />
+          </TouchableOpacity>
         </View>
 
+        {/* Address */}
         <Text style={styles.label}>Address</Text>
         <View style={styles.inputContainer}>
           <TextInput
@@ -426,8 +470,12 @@ const PersonalInfoScreen = ({ navigation }) => {
             value={userAddress}
             onChangeText={setUserAddress}
           />
+          <TouchableOpacity style={styles.editIconBtn}>
+            <Icon name="create-outline" size={20} color="#00AEEF" />
+          </TouchableOpacity>
         </View>
 
+        {/* E-mail */}
         <Text style={styles.label}>E-mail</Text>
         <View style={styles.inputContainer}>
           <TextInput
@@ -449,17 +497,20 @@ const PersonalInfoScreen = ({ navigation }) => {
             onChangeText={setPhone}
             keyboardType="phone-pad"
           />
+          <TouchableOpacity style={styles.editIconBtn}>
+            <Icon name="create-outline" size={20} color="#00AEEF" />
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* Save Button */}
-      <TouchableOpacity 
-        style={[styles.saveBtn, isLoading && styles.saveBtnDisabled]} 
+      <TouchableOpacity
+        style={[styles.saveBtn, isLoading && styles.saveBtnDisabled]}
         onPress={handleSaveProfile}
         disabled={isLoading}
       >
         <LinearGradient
-          colors={['#FF8800', '#FFB800']}
+          colors={['#FFB800','#FF8800' ]}
           style={styles.saveBtnGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -472,8 +523,8 @@ const PersonalInfoScreen = ({ navigation }) => {
 
       {/* App Version */}
       <Text style={styles.versionText}>App version 1.0.0.1</Text>
-      
-      
+
+
     </SafeAreaView>
   );
 };
@@ -494,7 +545,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 16,
-    justifyContent: 'space-between',
+    gap: 10,
+   
   },
 
   headerTitle: {
@@ -511,6 +563,8 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
+    borderWidth: 1,
+    borderColor: '#F6B800',
   },
   editIconContainer: {
     position: 'absolute',
@@ -555,8 +609,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#222',
   },
+  editIconBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   inlineEditBtn: {
-    padding: 8,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inlineEditIcon: {
     width: 16,
@@ -564,16 +626,17 @@ const styles = StyleSheet.create({
     tintColor: '#00AEEF',
   },
   verifyBtn: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: '#00AEEF',
     borderRadius: 6,
     marginRight: 8,
   },
+
   verifyBtnText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: 13,
   },
   inlineEditText: {
     color: '#00AEEF',

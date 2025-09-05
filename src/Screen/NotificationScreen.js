@@ -47,21 +47,17 @@ const NotificationScreen = ({ navigation }) => {
   const fetchNotifications = async () => {
     try {
       if (!token) {
-        console.log('❌ NotificationScreen: No user token available');
         setError('Please login to view notifications');
         setIsLoading(false);
         return;
       }
 
-      console.log('🔔 NotificationScreen: Fetching notifications...');
       const result = await notificationService.getNotifications(token, 1, 50);
       
       if (result) {
-        console.log('✅ NotificationScreen: Notifications fetched successfully');
         setNotifications(result.notifications || []);
         setError(null);
       } else {
-        console.log('❌ NotificationScreen: Failed to fetch notifications');
         setError('Failed to load notifications');
       }
     } catch (error) {
@@ -115,7 +111,6 @@ const NotificationScreen = ({ navigation }) => {
   // Handle notification tap
   const handleNotificationTap = (notification) => {
     try {
-      console.log('🔔 NotificationScreen: Notification tapped:', notification);
       
       const { data } = notification;
       
@@ -136,7 +131,6 @@ const NotificationScreen = ({ navigation }) => {
           navigation.navigate('Internship');
           break;
         default:
-          console.log('🔔 NotificationScreen: Unknown notification type:', data?.type);
       }
     } catch (error) {
       console.error('💥 NotificationScreen: Error handling notification tap:', error);

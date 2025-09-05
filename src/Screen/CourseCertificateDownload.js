@@ -47,17 +47,14 @@ const CourseCertificateDownload = () => {
   const checkCurrentPermissions = async () => {
     if (Platform.OS === 'android') {
       try {
-        console.log('🔍 Checking current permission status...');
         
         if (Platform.Version >= 33) {
           const readMediaImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
           const readMediaVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
-          console.log('📱 Current Media Permissions - Images:', readMediaImages, 'Video:', readMediaVideo);
           return { readMediaImages, readMediaVideo };
         } else {
           const writeStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE);
           const readStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-          console.log('📱 Current Storage Permissions - Write:', writeStorage, 'Read:', readStorage);
           return { writeStorage, readStorage };
         }
       } catch (error) {
@@ -71,26 +68,21 @@ const CourseCertificateDownload = () => {
   // Function to test if we can actually write to downloads directory
   const testDownloadsAccess = async () => {
     try {
-      console.log('🔍 Testing downloads directory access...');
       
       // Try to create a test file
       const testFileName = `test_${Date.now()}.txt`;
       const testFilePath = `${RNFS.DownloadDirectoryPath}/${testFileName}`;
       
-      console.log('📁 Test file path:', testFilePath);
       
       // Write a test file
       await RNFS.writeFile(testFilePath, 'test content', 'utf8');
-      console.log('✅ Test file written successfully');
       
       // Check if file exists
       const fileExists = await RNFS.exists(testFilePath);
-      console.log('📋 Test file exists:', fileExists);
       
       if (fileExists) {
         // Delete test file
         await RNFS.unlink(testFilePath);
-        console.log('🗑️ Test file deleted successfully');
         return true;
       }
       
@@ -105,21 +97,17 @@ const CourseCertificateDownload = () => {
   const requestStoragePermission = async () => {
     if (Platform.OS === 'android') {
       try {
-        console.log('📱 Checking platform: Android, Version:', Platform.Version);
         let granted = false;
 
         if (Platform.Version >= 33) {
           // Android 13+ requires READ_MEDIA_IMAGES and READ_MEDIA_VIDEO
-          console.log('📱 Android 13+ detected, requesting media permissions...');
           
           // First check if permissions are already granted
           const hasImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
           const hasVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
           
-          console.log('📱 Current permissions - Images:', hasImages, 'Video:', hasVideo);
           
           if (hasImages && hasVideo) {
-            console.log('✅ Media permissions already granted');
             return true;
           }
           
@@ -135,7 +123,6 @@ const CourseCertificateDownload = () => {
             }
           );
           
-          console.log('📱 READ_MEDIA_IMAGES result:', readMediaImages);
           
           // Request READ_MEDIA_VIDEO permission
           const readMediaVideo = await PermissionsAndroid.request(
@@ -149,12 +136,10 @@ const CourseCertificateDownload = () => {
             }
           );
           
-          console.log('📱 READ_MEDIA_VIDEO result:', readMediaVideo);
           
           granted = (readMediaImages === PermissionsAndroid.RESULTS.GRANTED && 
                     readMediaVideo === PermissionsAndroid.RESULTS.GRANTED);
           
-          console.log('📱 Final Media Permissions Result - Images:', readMediaImages, 'Video:', readMediaVideo, 'Granted:', granted);
           
           if (!granted) {
             // Show detailed explanation for Android 13+
@@ -166,7 +151,6 @@ const CourseCertificateDownload = () => {
                 { 
                   text: 'Open Settings', 
                   onPress: () => {
-                    console.log('🔧 Opening app settings...');
                     Linking.openSettings();
                   }
                 }
@@ -176,7 +160,6 @@ const CourseCertificateDownload = () => {
           
         } else if (Platform.Version >= 29) {
           // Android 10-12
-          console.log('📱 Android 10-12 detected, requesting storage permissions...');
           
           const writePermission = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
@@ -203,11 +186,9 @@ const CourseCertificateDownload = () => {
           granted = (writePermission === PermissionsAndroid.RESULTS.GRANTED && 
                     readPermission === PermissionsAndroid.RESULTS.GRANTED);
           
-          console.log('📱 Storage Permissions Result - Write:', writePermission, 'Read:', readPermission);
           
         } else {
           // Android 9 and below
-          console.log('📱 Android 9 or below detected, requesting legacy storage permissions...');
           
           const writePermission = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
@@ -221,14 +202,11 @@ const CourseCertificateDownload = () => {
           );
           
           granted = writePermission === PermissionsAndroid.RESULTS.GRANTED;
-          console.log('📱 Legacy Storage Permission Result:', writePermission);
         }
 
         if (granted) {
-          console.log('✅ Storage permissions granted');
           return true;
         } else {
-          console.log('❌ Storage permissions denied');
           return false;
         }
       } catch (err) {
@@ -237,7 +215,6 @@ const CourseCertificateDownload = () => {
         return false;
       }
     }
-    console.log('📱 iOS detected, no permission required');
     return true; // iOS doesn't need this permission
   };
 
@@ -298,17 +275,14 @@ const CourseCertificateDownload = () => {
               { 
                 text: 'Open Settings', 
                 onPress: () => {
-                  console.log('🔧 Opening app settings...');
                   Linking.openSettings();
                 }
               },
               {
                 text: 'Try Again',
                 onPress: async () => {
-                  console.log('🔄 Retrying permission request...');
                   const retryPermission = await requestStoragePermission();
                   if (retryPermission) {
-                    console.log('✅ Permission granted on retry, proceeding with download...');
                     handleDownload(); // Recursive call to retry download
                   }
                 }
@@ -325,17 +299,14 @@ const CourseCertificateDownload = () => {
               { 
                 text: 'Open Settings', 
                 onPress: () => {
-                  console.log('🔧 Opening app settings...');
                   Linking.openSettings();
                 }
               },
               {
                 text: 'Try Again',
                 onPress: async () => {
-                  console.log('🔄 Retrying permission request...');
                   const retryPermission = await requestStoragePermission();
                   if (retryPermission) {
-                    console.log('✅ Permission granted on retry, proceeding with download...');
                     handleDownload(); // Recursive call to retry download
                   }
                 }
@@ -347,12 +318,9 @@ const CourseCertificateDownload = () => {
       }
 
       setIsDownloading(true);
-      console.log('🔍 Starting course certificate download for courseId:', courseId);
-      console.log('🔑 Token available:', !!token);
 
       // API endpoint using config file with courseId in URL
       const apiUrl = getApiUrl(`/api/user/certificate/download-course-certificate/${courseId}`);
-      console.log('🌐 API URL:', apiUrl);
       
       // Make direct API call with proper headers
       const response = await fetch(apiUrl, {
@@ -363,47 +331,37 @@ const CourseCertificateDownload = () => {
         },
       });
       
-      console.log('📡 API Response Status:', response.status);
-      console.log('📡 API Response Headers:', JSON.stringify([...response.headers.entries()], null, 2));
       
       if (response.ok) {
-        console.log('✅ API call successful, processing PDF...');
         
         // Get the response as array buffer (works better in React Native)
         const arrayBuffer = await response.arrayBuffer();
-        console.log('📄 ArrayBuffer received, size:', arrayBuffer.byteLength, 'bytes');
         
         // Convert array buffer to base64
         const base64Data = Buffer.from(arrayBuffer).toString('base64');
-        console.log('🔢 Base64 data prepared, length:', base64Data.length);
         
         try {
           // Use app documents directory directly to avoid permission issues
           const fileName = `course_certificate_${courseId}.pdf`;
           const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
           
-          console.log('📁 Using app documents directory:', filePath);
           
           // Ensure directory exists
           const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
           const dirExists = await RNFS.exists(dirPath);
           if (!dirExists) {
             await RNFS.mkdir(dirPath);
-            console.log('📁 Created directory:', dirPath);
           }
           
           // Write the PDF file
           await RNFS.writeFile(filePath, base64Data, 'base64');
-          console.log('✅ PDF saved successfully to:', filePath);
           
           // Check if file exists
           const fileExists = await RNFS.exists(filePath);
-          console.log('📋 File exists check:', fileExists);
           
           if (fileExists) {
             // Get file info
             const fileStats = await RNFS.stat(filePath);
-            console.log('📊 File stats:', fileStats);
             
             // Location message
             const locationMessage = 'App Documents folder';
@@ -420,9 +378,7 @@ const CourseCertificateDownload = () => {
                     try {
                       // Try to open the PDF with a PDF viewer app
                       await Linking.openURL(`file://${filePath}`);
-                      console.log('🔗 PDF opened successfully');
                     } catch (openError) {
-                      console.log('📱 Could not open PDF directly, showing file path');
                       Alert.alert(
                         'PDF Location',
                         `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`
@@ -436,9 +392,7 @@ const CourseCertificateDownload = () => {
                     try {
                       // Try to share the file
                       await Linking.openURL(`file://${filePath}`);
-                      console.log('📤 File shared successfully');
                     } catch (shareError) {
-                      console.log('📤 Could not share file directly');
                       Alert.alert(
                         'File Location',
                         `PDF saved to:\n${filePath}\n\nYou can find it in your file manager.`
@@ -460,7 +414,6 @@ const CourseCertificateDownload = () => {
           try {
             const fallbackFileName = `course_certificate_${courseId}.pdf`;
             const fallbackFilePath = `${RNFS.CachesDirectoryPath}/${fallbackFileName}`;
-            console.log('🔄 Final fallback: trying cache directory:', fallbackFilePath);
             await RNFS.writeFile(fallbackFilePath, base64Data, 'base64');
             
             Alert.alert(
@@ -479,7 +432,6 @@ const CourseCertificateDownload = () => {
                   text: 'Check Permissions',
                   onPress: () => {
                     const currentPerms = checkCurrentPermissions();
-                    console.log('🔍 Current permissions:', currentPerms);
                   }
                 }
               ]

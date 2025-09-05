@@ -492,6 +492,15 @@ const EnrollScreen = ({ navigation, route }) => {
       } else if (error.message && error.message.includes('Razorpay payment failed')) {
         console.log('💳 EnrollScreen: Razorpay payment error');
         Alert.alert('Payment Error', error.message);
+      } else if (error.message && error.message.includes('PAYMENT_CANCELLED')) {
+        console.log('🚫 EnrollScreen: Payment was cancelled by user (alternative check)');
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+      } else if (error.code === 'PAYMENT_CANCELLED') {
+        console.log('🚫 EnrollScreen: Payment was cancelled by user (code check)');
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+      } else if (error.message && error.message.includes('cancelled')) {
+        console.log('🚫 EnrollScreen: Payment was cancelled by user (cancelled check)');
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
       } else {
         console.log('💥 EnrollScreen: Generic enrollment error');
         Alert.alert('Error', `Something went wrong during enrollment: ${error.message || 'Unknown error'}. Please try again.`);
@@ -574,7 +583,7 @@ const EnrollScreen = ({ navigation, route }) => {
       
       const razorpayOptions = {
         description: `Course: ${courseData.title}`,
-        image: 'https://i.imgur.com/3g7nmJC.png',
+       
         currency: 'INR',
         key: RAZORPAY_KEY_ID,
         amount: finalAmount,
@@ -605,14 +614,18 @@ const EnrollScreen = ({ navigation, route }) => {
     } catch (razorpayError) {
       console.log('❌ EnrollScreen: Direct Razorpay error caught:', razorpayError);
       console.log('❌ EnrollScreen: Error message:', razorpayError.message);
+      console.log('❌ EnrollScreen: Error code:', razorpayError.code);
       
       // Handle specific Razorpay errors
-      if (razorpayError.code === 'PAYMENT_CANCELLED') {
+      if (razorpayError.code === 'PAYMENT_CANCELLED' || razorpayError.message === 'PAYMENT_CANCELLED') {
         console.log('🚫 EnrollScreen: Payment was cancelled by user');
         throw new Error('PAYMENT_CANCELLED');
-      } else if (razorpayError.code === 'PAYMENT_FAILED') {
+      } else if (razorpayError.code === 'PAYMENT_FAILED' || razorpayError.message === 'PAYMENT_FAILED') {
         console.log('💥 EnrollScreen: Payment failed');
         throw new Error('PAYMENT_FAILED');
+      } else if (razorpayError.message && razorpayError.message.includes('cancelled')) {
+        console.log('🚫 EnrollScreen: Payment was cancelled by user (message contains cancelled)');
+        throw new Error('PAYMENT_CANCELLED');
       } else {
         console.log('💥 EnrollScreen: Generic Razorpay error:', razorpayError);
         throw new Error(`Razorpay payment failed: ${razorpayError.message || 'Unknown error'}. Please try again.`);
@@ -1045,7 +1058,7 @@ const EnrollScreen = ({ navigation, route }) => {
         <View style={styles.enrollButtonContainer}>
           {paymentStatus === 'failed' ? (
             <View style={styles.paymentFailedContainer}>
-              <Text style={styles.paymentFailedText}>Payment failed. Please try again.</Text>
+             
               <TouchableOpacity 
                 style={styles.retryButton}
                 onPress={() => {

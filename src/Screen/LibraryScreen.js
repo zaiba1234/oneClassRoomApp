@@ -37,11 +37,9 @@ const LibraryScreen = ({ navigation }) => {
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
-    console.log('🔄 LibraryScreen: Pull-to-refresh triggered');
     setRefreshing(true);
     try {
       await fetchCourseData();
-      console.log('✅ LibraryScreen: Pull-to-refresh completed');
     } catch (error) {
       console.error('💥 LibraryScreen: Error during pull-to-refresh:', error);
     } finally {
@@ -65,13 +63,9 @@ const LibraryScreen = ({ navigation }) => {
 
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
-          console.log(`🖼️ LibraryScreen: Course ${index + 1} - ${course.courseName}`);
-          console.log(`🖼️ LibraryScreen: CoverImageUrl: ${course.CoverImageUrl || 'No image URL'}`);
           
           const courseImage = course.CoverImageUrl ? { uri: course.CoverImageUrl } : require('../assests/images/Frame1.png');
           
-          console.log(`🖼️ LibraryScreen: Final image object:`, courseImage);
-          console.log(`🖼️ LibraryScreen: Image type: ${course.CoverImageUrl ? 'URI' : 'require'}`);
 
           return {
             id: course._id || index + 1,
@@ -81,12 +75,9 @@ const LibraryScreen = ({ navigation }) => {
           };
         });
 
-        console.log('🔄 LibraryScreen: Transformed courses:', transformedCourses);
         setLibraryCourses(transformedCourses);
 
       } else {
-        console.log('❌ LibraryScreen: Failed to fetch course data:', result.data?.message);
-        console.log('❌ LibraryScreen: API response:', result);
         setCourseError(result.data?.message || 'Failed to fetch courses');
         // Keep existing course data if API fails
       }
@@ -109,9 +100,6 @@ const LibraryScreen = ({ navigation }) => {
         source={course.image} 
         style={styles.libraryCardImage} 
         resizeMode="cover"
-        onLoad={() => console.log('✅ Image loaded successfully for:', course.title)}
-        onError={(error) => console.log('❌ Image failed to load for:', course.title, 'Error:', error.nativeEvent.error)}
-        onLoadStart={() => console.log('🔄 Image loading started for:', course.title)}
       />
       <View style={styles.libraryCardContent}>
         <Text style={styles.libraryCardTitle}>{course.title}</Text>

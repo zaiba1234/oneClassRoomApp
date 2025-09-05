@@ -345,12 +345,10 @@ const HomeScreen = () => {
 
       if (result.success && result.data.success) {
         const profileData = result.data.data;
-        console.log('HomeScreen: Profile data fetched:', profileData);
         
         // Update Redux store with fresh profile data
         dispatch(setProfileData(profileData));
       } else {
-        console.log('HomeScreen: Failed to fetch profile:', result.data?.message);
       }
     } catch (error) {
       console.error('HomeScreen: Error fetching profile:', error);

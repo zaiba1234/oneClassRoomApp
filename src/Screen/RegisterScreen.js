@@ -32,40 +32,28 @@ const RegisterScreen = ({ route }) => {
 
   // Debug: Log received mobile number
   React.useEffect(() => {
-    console.log('📱 RegisterScreen: Received mobile number from route:', route.params?.mobileNumber);
-    console.log('📱 RegisterScreen: Phone number state set to:', phoneNumber);
   }, [route.params?.mobileNumber, phoneNumber]);
 
   const handleRegister = async () => {
     if (!fullName.trim() || !phoneNumber) {
-      console.log('Please fill all fields');
       return;
     }
 
     setIsLoading(true);
-    console.log('🔥 Firebase RegisterScreen: Starting registration process...');
-    console.log('🔥 Firebase RegisterScreen: Full Name:', fullName.trim());
-    console.log('🔥 Firebase RegisterScreen: Phone Number:', phoneNumber);
     
     try {
       // First, register the user in the backend
-      console.log('🔥 Firebase RegisterScreen: Registering user in backend...');
       const registerResult = await authAPI.register(fullName.trim(), phoneNumber);
-      console.log('🔥 Firebase RegisterScreen: Register result:', registerResult);
       
       if (registerResult.success) {
         // After successful registration, send OTP using Firebase
-        console.log('🔥 Firebase RegisterScreen: Registration successful, sending OTP via Firebase...');
         const otpResult = await authAPI.sendOTP(phoneNumber);
-        console.log('🔥 Firebase RegisterScreen: OTP send result:', otpResult);
         
         if (otpResult.success) {
           // Store user data in Redux
           dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
           
           // Registration successful, navigate to verification with verificationId
-          console.log('✅ Firebase RegisterScreen: OTP sent successfully, navigating to verification');
-          console.log('🔥 Firebase RegisterScreen: Verification ID:', otpResult.data.verificationId);
           
           navigation.navigate('Verify', { 
             mobileNumber: phoneNumber, 
@@ -74,16 +62,11 @@ const RegisterScreen = ({ route }) => {
             isFromRegister: true  // Flag to indicate this is from register flow
           });
         } else {
-          console.log('❌ Firebase RegisterScreen: OTP send failed:', otpResult.data?.message);
-          console.log('❌ Firebase RegisterScreen: Full error response:', otpResult);
         }                                   
       } else {
-        console.log('❌ Firebase RegisterScreen: Registration failed:', registerResult.data?.message);
-        console.log('❌ Firebase RegisterScreen: Full error response:', registerResult);
       }
     } catch (error) {
       console.error('💥 Firebase RegisterScreen: Registration error:', error);
-      console.log('💥 Firebase RegisterScreen: Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }

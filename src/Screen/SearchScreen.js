@@ -33,7 +33,6 @@ const SearchScreen = () => {
   const handleSearch = (text) => {
     setSearchText(text);
     // Add your search logic here
-    console.log('Searching for:', text);
   };
 
   return (

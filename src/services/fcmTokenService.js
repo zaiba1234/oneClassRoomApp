@@ -17,29 +17,24 @@ export class FCMTokenService {
   // Initialize FCM token and send to backend
   async initializeAndSendToken() {
     try {
-      console.log('🔔 FCM Service: Initializing and sending FCM token...');
       
       // Get FCM token
       const fcmToken = await getFCMToken();
       if (!fcmToken) {
-        console.log('❌ FCM Service: No FCM token available');
         return false;
       }
 
       // Get user token
       const userToken = this.getCurrentUserToken();
       if (!userToken) {
-        console.log('ℹ️ FCM Service: User not logged in, token will be sent after login');
         return false;
       }
 
       // Use notification service to send token
       const success = await notificationService.sendFCMTokenToBackend(fcmToken, userToken);
       if (success) {
-        console.log('✅ FCM Service: FCM token sent to backend successfully');
         return true;
       } else {
-        console.log('❌ FCM Service: Failed to send FCM token to backend');
         return false;
       }
     } catch (error) {
@@ -51,29 +46,24 @@ export class FCMTokenService {
   // Send stored FCM token to backend (for when user logs in)
   async sendStoredTokenToBackend() {
     try {
-      console.log('🔔 FCM Service: Sending stored FCM token to backend...');
       
       // Get stored FCM token
       const fcmToken = await getStoredFCMToken();
       if (!fcmToken) {
-        console.log('ℹ️ FCM Service: No stored FCM token found');
         return false;
       }
 
       // Get user token
       const userToken = this.getCurrentUserToken();
       if (!userToken) {
-        console.log('❌ FCM Service: User not logged in');
         return false;
       }
 
       // Use notification service to send token
       const success = await notificationService.sendFCMTokenToBackend(fcmToken, userToken);
       if (success) {
-        console.log('✅ FCM Service: Stored FCM token sent to backend successfully');
         return true;
       } else {
-        console.log('❌ FCM Service: Failed to send stored FCM token to backend');
         return false;
       }
     } catch (error) {
@@ -85,7 +75,6 @@ export class FCMTokenService {
   // Refresh FCM token and send to backend
   async refreshAndSendToken() {
     try {
-      console.log('🔄 FCM Service: Refreshing and sending FCM token...');
       
       // Import refresh function
       const { refreshFCMToken } = require('./firebaseConfig');
@@ -93,24 +82,20 @@ export class FCMTokenService {
       // Refresh token
       const newToken = await refreshFCMToken();
       if (!newToken) {
-        console.log('❌ FCM Service: Failed to refresh FCM token');
         return false;
       }
 
       // Get user token
       const userToken = this.getCurrentUserToken();
       if (!userToken) {
-        console.log('ℹ️ FCM Service: User not logged in, token will be sent after login');
         return false;
       }
 
       // Send to backend
       const success = await sendFCMTokenToBackend(newToken, userToken);
       if (success) {
-        console.log('✅ FCM Service: Refreshed FCM token sent to backend successfully');
         return true;
       } else {
-        console.log('❌ FCM Service: Failed to send refreshed FCM token to backend');
         return false;
       }
     } catch (error) {
@@ -123,7 +108,6 @@ export class FCMTokenService {
   async getCurrentFCMToken() {
     try {
       const token = await getStoredFCMToken();
-      console.log('🔍 FCM Service: Current FCM token:', token ? token.substring(0, 20) + '...' : 'No token');
       return token;
     } catch (error) {
       console.error('💥 FCM Service: Error getting current FCM token:', error);
@@ -134,28 +118,23 @@ export class FCMTokenService {
   // Check if FCM token is valid and send to backend if needed
   async validateAndSendToken() {
     try {
-      console.log('🔍 FCM Service: Validating FCM token...');
       
       const fcmToken = await getStoredFCMToken();
       const userToken = this.getCurrentUserToken();
       
       if (!fcmToken) {
-        console.log('ℹ️ FCM Service: No FCM token found, initializing...');
         return await this.initializeAndSendToken();
       }
       
       if (!userToken) {
-        console.log('ℹ️ FCM Service: User not logged in, token will be sent after login');
         return false;
       }
       
       // Send existing token to backend
       const success = await sendFCMTokenToBackend(fcmToken, userToken);
       if (success) {
-        console.log('✅ FCM Service: Existing FCM token validated and sent to backend');
         return true;
       } else {
-        console.log('❌ FCM Service: Failed to send existing FCM token to backend');
         return false;
       }
     } catch (error) {

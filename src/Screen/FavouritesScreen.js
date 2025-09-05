@@ -49,12 +49,10 @@ const FavouritesScreen = ({ navigation }) => {
       setIsLoading(true);
       setError(null);
       
-      console.log('❤️ FavouritesScreen: Fetching favorite courses...');
       const result = await courseAPI.getFavoriteCourses(token);
       
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('✅ FavouritesScreen: Favorite courses fetched successfully:', apiCourses);
         
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => ({
@@ -70,11 +68,10 @@ const FavouritesScreen = ({ navigation }) => {
         
         setFavouriteCourses(transformedCourses);
       } else {
-        console.log('❌ FavouritesScreen: Failed to fetch favorite courses:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch favorite courses');
       }
     } catch (error) {
-      console.error('💥 FavouritesScreen: Error fetching favorite courses:', error);
+    
       setError('Failed to load favorite courses');
     } finally {
       setIsLoading(false);
@@ -90,7 +87,6 @@ const FavouritesScreen = ({ navigation }) => {
   // Function to toggle favorite status (remove from favorites)
   const toggleFavorite = async (courseId) => {
     try {
-      console.log('❤️ FavouritesScreen: Toggling favorite for courseId:', courseId);
       
       // Check if token exists
       if (!token) {
@@ -106,30 +102,25 @@ const FavouritesScreen = ({ navigation }) => {
       
       // Check if already toggling this course to prevent double calls
       if (togglingFavorites.has(String(courseId))) {
-        console.log('⚠️ FavouritesScreen: Already toggling this course, skipping...');
         return;
       }
       
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
       
-      console.log('🚀 FavouritesScreen: Calling courseAPI.toggleFavorite...');
       const result = await courseAPI.toggleFavorite(token, courseId);
       
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response
         const newFavoriteStatus = result.data.data.isLike;
-        console.log('✅ FavouritesScreen: Favorite toggled successfully! New status:', newFavoriteStatus);
         
         if (!newFavoriteStatus) {
           // Course was removed from favorites, remove it from the list
-          console.log('🗑️ FavouritesScreen: Course removed from favorites, updating list...');
           setFavouriteCourses(prevCourses => 
             prevCourses.filter(course => String(course._id) !== String(courseId))
           );
         }
       } else {
-        console.log('❌ FavouritesScreen: Failed to toggle favorite:', result.data?.message);
       }
     } catch (error) {
       console.error('💥 FavouritesScreen: Error toggling favorite:', error);
@@ -148,7 +139,6 @@ const FavouritesScreen = ({ navigation }) => {
       key={course.id} 
       style={styles.courseCard}
       onPress={() => {
-        console.log('❤️ FavouritesScreen: Navigating to Enroll with courseId:', course._id);
         navigation.navigate('Enroll', { courseId: course._id });
       }}
     >
@@ -181,10 +171,9 @@ const FavouritesScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Favourites</Text>
+        <Text style={styles.headerTitle}>Favourites  </Text>
         {refreshing && (
           <View style={styles.refreshIndicator}>
             <ActivityIndicator size="small" color="#FF8800" />
@@ -238,7 +227,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
-    marginTop: 20,
+    marginTop: 30,
   },
   headerTitle: {
     fontSize: 20,

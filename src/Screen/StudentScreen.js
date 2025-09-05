@@ -52,7 +52,6 @@ const StudentScreen = ({ navigation, route }) => {
     if (subcourseId && token) {
       fetchEnrolledStudents();
     } else {
-      console.log('⚠️ StudentScreen: No subcourseId or token available');
       setIsLoading(false);
     }
   }, [subcourseId, token]);
@@ -63,16 +62,11 @@ const StudentScreen = ({ navigation, route }) => {
       setIsLoading(true);
       setError(null);
       
-      console.log('🎓 StudentScreen: Fetching enrolled students for subcourseId:', subcourseId);
-      console.log('🔑 StudentScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
       
       const result = await courseAPI.getEnrolledStudents(token, subcourseId);
       
       if (result.success && result.data.success) {
         const apiStudents = result.data.data;
-        console.log('🎉 StudentScreen: Enrolled students received successfully!');
-        console.log('👥 StudentScreen: Number of enrolled students:', apiStudents.length);
-        console.log('👥 StudentScreen: First student:', apiStudents[0]);
         
         // Transform API data to match existing UI structure
         const transformedStudents = apiStudents.map((student, index) => {
@@ -87,12 +81,9 @@ const StudentScreen = ({ navigation, route }) => {
           };
         });
         
-        console.log('🔄 StudentScreen: Transformed students data:', transformedStudents);
         setEnrolledStudents(transformedStudents);
         
       } else {
-        console.log('❌ StudentScreen: Failed to fetch enrolled students:', result.data?.message);
-        console.log('❌ StudentScreen: API response:', result);
         setError(result.data?.message || 'Failed to fetch enrolled students');
         // Keep empty array if API fails
         setEnrolledStudents([]);
@@ -109,7 +100,6 @@ const StudentScreen = ({ navigation, route }) => {
 
   // Log subcourseId for debugging
   useEffect(() => {
-    console.log('🔍 StudentScreen: Received subcourseId:', subcourseId);
   }, [subcourseId]);
 
   // Mock student data (fallback)
@@ -160,7 +150,6 @@ const StudentScreen = ({ navigation, route }) => {
   const students = enrolledStudents.length > 0 ? enrolledStudents : mockStudents;
 
   const handleStudentPress = (student) => {
-    console.log('Student clicked:', student.name);
     // Navigate to student detail screen if needed
     // navigation.navigate('StudentDetail', { student });
   };

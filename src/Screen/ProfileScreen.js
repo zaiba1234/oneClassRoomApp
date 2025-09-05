@@ -16,21 +16,21 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import Profilebg from '../assests/images/Profilebg.png';
 import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { logout, clearUserFromStorage } from '../Redux/userSlice';
 import { useNavigation } from '@react-navigation/native';
 import { getApiUrl } from '../API/config';
 
-const { width, height } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const nav = useNavigation();
-  
+
   // State for refreshing
   const [refreshing, setRefreshing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Get user data from Redux
   const { fullName, mobileNumber, _id, userId, profileImageUrl, address, email, token } = useAppSelector((state) => state.user);
 
@@ -39,53 +39,59 @@ const ProfileScreen = ({ navigation }) => {
       id: 1,
       title: 'Personal Info',
       iconName: 'person-outline',
-      iconColor: '#4CAF50',
+      iconColor: '#FF9800',
       screenName: 'PersonalInfo',
+      group: 1,
     },
-   
     {
-      id: 3,
+      id: 2,
       title: 'Invoice History',
       iconName: 'receipt-outline',
-      iconColor: '#2196F3',
+      iconColor: '#4CAF50',
       screenName: 'InvoiceHistory',
+      group: 2,
+    },
+    {
+      id: 3,
+      title: 'Settings',
+      iconName: 'settings-outline',
+      iconColor: '#2196F3',
+      screenName: 'Setting',
+      group: 2,
     },
     {
       id: 4,
-      title: 'Settings',
-      iconName: 'settings-outline',
-      iconColor: '#FF9800',
-      screenName: 'Setting',
+      title: 'Privacy and Policy',
+      iconName: 'shield-checkmark-outline',
+      iconColor: '#4CAF50',
+      screenName: 'PrivacyPolicy',
+      group: 3,
     },
-         {
-       id: 5,
-       title: 'Privacy and Policy',
-       iconName: 'shield-checkmark-outline',
-       iconColor: '#9C27B0',
-       screenName: 'PrivacyPolicy',
-     },
-     {
-       id: 6,
-       title: 'Terms and Condition',
-       iconName: 'document-text-outline',
-       iconColor: '#607D8B',
-       screenName: 'TermsCondition',
-     },
-     {
-       id: 7,
-       title: 'Contact Us',
-       iconName: 'mail-outline',
-       iconColor: '#E91E63',
-       screenName: 'ContactUs',
-     },
-     {
-       id: 8,
-       title: 'Delete Account',
-       iconName: 'trash-outline',
-       iconColor: '#FF4444',
-       screenName: 'DeleteAccount',
-       isDestructive: true,
-     },
+    {
+      id: 5,
+      title: 'Terms and Condition',
+      iconName: 'document-text-outline',
+      iconColor: '#2196F3',
+      screenName: 'TermsCondition',
+      group: 3,
+    },
+    {
+      id: 6,
+      title: 'Contact Us',
+      iconName: 'call-outline',
+      iconColor: '#FF9800',
+      screenName: 'ContactUs',
+      group: 3,
+    },
+    {
+      id: 7,
+      title: 'Delete Account',
+      iconName: 'trash-outline',
+      iconColor: '#FF4444',
+      screenName: 'DeleteAccount',
+      isDestructive: true,
+      group: 4,
+    },
   ];
 
   const handleMenuItemPress = (screenName) => {
@@ -183,7 +189,7 @@ const ProfileScreen = ({ navigation }) => {
       console.log('🗑️ Starting account deletion process...');
 
       const apiUrl = getApiUrl('/api/user/profile/delete-profile');
-      
+
       const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
@@ -197,7 +203,7 @@ const ProfileScreen = ({ navigation }) => {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Account deleted successfully:', result);
-        
+
         Alert.alert(
           'Account Deleted',
           'Your account has been successfully deleted. We\'re sorry to see you go.',
@@ -216,7 +222,7 @@ const ProfileScreen = ({ navigation }) => {
       } else {
         const errorData = await response.json();
         console.error('❌ Delete account failed:', errorData);
-        
+
         Alert.alert(
           'Delete Failed',
           errorData.message || 'Failed to delete account. Please try again later.',
@@ -239,67 +245,77 @@ const ProfileScreen = ({ navigation }) => {
   const handleRefresh = async () => {
     console.log('🔄 ProfileScreen: Pull-to-refresh triggered');
     setRefreshing(true);
-    
+
     // Simulate refresh delay and refresh user data
     setTimeout(() => {
       console.log('✅ ProfileScreen: Pull-to-refresh completed');
       setRefreshing(false);
     }, 1000);
   };
-
-  const renderMenuItem = (item) => (
-    <TouchableOpacity 
-      key={item.id} 
+  const renderMenuItem = (item, isLastInGroup = false) => (
+    <TouchableOpacity
+      key={item.id}
       style={[
         styles.menuItem,
-        item.isDestructive && styles.destructiveMenuItem
+        isLastInGroup && styles.lastMenuItem,
       ]}
       onPress={() => handleMenuItemPress(item?.screenName)}
       disabled={isDeleting && item.isDestructive}
+      activeOpacity={0.7}
     >
-      {item.imageSource ? (
-        <Image 
-          source={item.imageSource} 
-          style={[
-            styles.menuIcon,
-            item.isDestructive && styles.destructiveMenuIcon
-          ]} 
+      {/* Icon inside circular background */}
+      <View style={[
+        styles.iconWrapper,
+        { backgroundColor: item.isDestructive ? "#FFE5E5" : item.iconColor + "20" }
+      ]}>
+        <Icon
+          name={item.iconName}
+          size={20}
+          color={item.isDestructive ? "#FF4444" : item.iconColor}
         />
-      ) : (
-        <Icon 
-          name={item.iconName} 
-          size={24} 
-          color={item.iconColor || (item.isDestructive ? "#FF4444" : "#666")}
-          style={styles.menuIconContainer}
-        />
-      )}
+      </View>
+
       <Text style={[
         styles.menuTitle,
         item.isDestructive && styles.destructiveMenuTitle
       ]}>
         {item.title}
       </Text>
+
       {isDeleting && item.isDestructive ? (
         <ActivityIndicator size="small" color="#FF4444" />
       ) : (
-        <Icon 
-          name="chevron-forward" 
-          size={20} 
-          color={item.isDestructive ? "#FF4444" : "#666"} 
+        <Icon
+          name="chevron-forward"
+          size={20}
+          color={item.isDestructive ? "#FF4444" : "#999"}
         />
       )}
     </TouchableOpacity>
   );
 
+  const renderMenuGroup = (groupItems, groupNumber) => (
+    <View key={groupNumber} style={styles.menuGroup}>
+      {groupItems.map((item, index) =>
+        renderMenuItem(item, index === groupItems.length - 1)
+      )}
+    </View>
+  );
+
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Image source={require('../assests/images/Logout.png')} style={styles.logoutIcon} />
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Icon name="log-out-outline" size={20} color="#006C99" style={styles.logoutIcon} />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </View>
@@ -312,37 +328,38 @@ const ProfileScreen = ({ navigation }) => {
 
       {/* Profile Card */}
       <View style={styles.profileCardContainer}>
-        <LinearGradient
-          colors={['#FF8800', '#FFB800']}
-          style={styles.profileCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Image 
-            source={profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png')} 
-            style={styles.profileImage} 
+        <View style={styles.profileCard}>
+          <Image
+            source={Profilebg}
+            style={styles.profileBackgroundImage}
+            resizeMode="cover"
           />
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{fullName || 'User'}</Text>
-            <Text style={styles.profileEmail}>{email || mobileNumber || 'No email'}</Text>
-            {address && <Text style={styles.profileAddress}>{address}</Text>}
+          <View style={styles.profileContent}>
+            <Image
+              source={profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png')}
+              style={styles.profileImage}
+            />
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{fullName || 'User'}</Text>
+              <Text style={styles.profileEmail}>{email || mobileNumber || 'No email'}</Text>
+            </View>
           </View>
-          <View style={styles.profileNumber}>
-            <Text style={styles.numberText}>1</Text>
-          </View>
-        </LinearGradient>
+        </View>
       </View>
 
       {/* Menu Items */}
-      <ScrollView 
-        style={styles.scrollView} 
+      <ScrollView
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
         <View style={styles.menuContainer}>
-          {menuItems.map((item) => renderMenuItem(item))}
+          {[1, 2, 3, 4].map(groupNumber => {
+            const groupItems = menuItems.filter(item => item.group === groupNumber);
+            return groupItems.length > 0 ? renderMenuGroup(groupItems, groupNumber) : null;
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -359,7 +376,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 10 : 20,
     paddingBottom: 20,
@@ -373,16 +390,20 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 1,
+    borderColor: '#E0F2FF',
   },
   logoutIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 5,
+    marginRight: 6,
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '600',
-    color:'#006C99'
+    color: '#006C99',
   },
   profileCardContainer: {
     paddingHorizontal: 20,
@@ -390,17 +411,37 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   profileCard: {
+    borderRadius: 16,
+    position: 'relative',
+    overflow: 'hidden',
+    height: 120,
+    minHeight: 120,
+  },
+  profileBackgroundImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  profileContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    borderRadius: 16,
     position: 'relative',
+    zIndex: 1,
+    height: '100%',
   },
   profileImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
     marginRight: 15,
+    borderWidth: 1,
+    borderColor: '#fff',
   },
   profileInfo: {
     flex: 1,
@@ -422,17 +463,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginTop: 4,
   },
-  profileNumber: {
-    position: 'absolute',
-    right: 20,
-    top: 20,
-  },
-  numberText: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#fff',
-    opacity: 0.3,
-  },
   scrollView: {
     flex: 1,
   },
@@ -440,18 +470,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100,
   },
+
+  iconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuGroup: {
+    backgroundColor: '#F6F8FA',
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowRadius: 4,
+    overflow: 'hidden',
+  },
+
+
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+   
+  },
+
+  lastMenuItem: {
+    borderBottomWidth: 0,
   },
   menuIcon: {
     width: 30,
@@ -492,4 +538,7 @@ const styles = StyleSheet.create({
     color: '#FF4444',
     fontWeight: '600',
   },
+
+
+
 });
