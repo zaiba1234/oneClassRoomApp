@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Colors -->
+    <color name="colorPrimary">#FF6B35</color>
+    <color name="colorPrimaryDark">#E55A2B</color>
+    <color name="colorAccent">#FF6B35</color>
+    
+    <!-- Notification Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="notification_color">#FF6B35</color>
+</resources>

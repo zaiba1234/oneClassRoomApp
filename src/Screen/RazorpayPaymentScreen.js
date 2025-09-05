@@ -109,9 +109,6 @@ const RazorpayPaymentScreen = () => {
             width: 100%;
           }
           .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #FF6B35;
             margin-bottom: 20px;
           }
           .amount {
@@ -159,7 +156,14 @@ const RazorpayPaymentScreen = () => {
       </head>
       <body>
         <div class="container">
-          <div class="logo">Learning Saint</div>
+          <div class="logo">
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+              <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #FF6B35, #FFB800); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                <span style="color: white; font-weight: bold; font-size: 18px;">LS</span>
+              </div>
+              <span style="font-size: 24px; font-weight: bold; color: #FF6B35;">Learning Saint</span>
+            </div>
+          </div>
           <div class="amount">₹${(options.amount / 100).toFixed(2)}</div>
           <div style="font-size: 12px; color: #999; margin-bottom: 10px;">
             Amount in paise: ${options.amount}

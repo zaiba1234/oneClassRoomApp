@@ -10,7 +10,6 @@ import {
   Platform,
   StatusBar,
   SafeAreaView,
-  Linking,
   Modal,
   Alert,
   RefreshControl,
@@ -22,20 +21,12 @@ import Orientation from 'react-native-orientation-locker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
-import { getApiUrl } from '../API/config';
 import { RAZORPAY_KEY_ID } from '../config/env';
 import BackButton from '../Component/BackButton';
 import RazorpayCheckout from 'react-native-razorpay';
 
-console.log('✅ EnrollScreen: Direct Razorpay package imported successfully');
-
-// Import local assets
-const PlayIcon = require('../assests/images/Course.png');
 const StudentIcon = require('../assests/images/student.png');
 const StarIcon = require('../assests/images/star.png');
-const CheckIcon = require('../assests/images/TickMark.png');
-const WarningIcon = require('../assests/images/Danger.png');
-
 // Get screen dimensions for responsive design
 const { width, height } = Dimensions.get('window');
 
@@ -89,6 +80,16 @@ const EnrollScreen = ({ navigation, route }) => {
   const [isEnrolling, setIsEnrolling] = useState(false); // Add loading state for enrollment
   const [paymentStatus, setPaymentStatus] = useState('idle'); // 'idle', 'processing', 'success', 'failed'
   const [refreshing, setRefreshing] = useState(false); // Add refresh state
+  const [retryCount, setRetryCount] = useState(0); // Track retry attempts
+  const [showCustomAlert, setShowCustomAlert] = useState(false);
+  const [customAlertData, setCustomAlertData] = useState({
+    title: '',
+    message: '',
+    primaryButton: '',
+    secondaryButton: '',
+    onPrimaryPress: null,
+    onSecondaryPress: null
+  });
 
   // Fetch course data when component mounts
   useEffect(() => {
@@ -100,24 +101,13 @@ const EnrollScreen = ({ navigation, route }) => {
   // Handle completed flag when coming back from FeedbackScreen
   useEffect(() => {
     if (route.params?.fromFeedback && route.params?.isCompleted) {
-      console.log('🎯 EnrollScreen: Coming back from FeedbackScreen with completed flag');
-      console.log('🔍 EnrollScreen: Route params:', route.params);
-      
       // Update courseData to show completed status
       setCourseData(prevData => ({
         ...prevData,
         isCompleted: true,
       }));
-      
-      console.log('✅ EnrollScreen: Updated courseData.isCompleted to true');
     }
   }, [route.params]);
-
-  // Debug log for isCompleted changes
-  useEffect(() => {
-    console.log('🔍 EnrollScreen: courseData.isCompleted changed to:', courseData.isCompleted);
-    console.log('🔍 EnrollScreen: courseData object:', JSON.stringify(courseData, null, 2));
-  }, [courseData.isCompleted]);
 
   // Check if course is completed and navigate to BadgeCourseScreen (only once)
   useEffect(() => {
@@ -125,61 +115,39 @@ const EnrollScreen = ({ navigation, route }) => {
       // Check if user has already seen the BadgeCourse for this course
       const badgeSeenKey = `badgeSeen_${courseId}`;
       const hasSeenBadge = global.badgeSeenCourses && global.badgeSeenCourses[badgeSeenKey];
-      
+
       if (!hasSeenBadge) {
-        console.log('🎯 EnrollScreen: Course is completed, navigating to BadgeCourseScreen (first time)');
-        
         // Mark this course badge as seen
         if (!global.badgeSeenCourses) {
           global.badgeSeenCourses = {};
         }
         global.badgeSeenCourses[badgeSeenKey] = true;
-        
-        const navigationParams = { 
+
+        const navigationParams = {
           courseId: courseId,
           courseName: courseData.title,
           returnToEnroll: true // Flag to indicate return to EnrollScreen
         };
-        
-        console.log('📤 EnrollScreen: Full navigation params:', JSON.stringify(navigationParams, null, 2));
-        
+
         // Add delay before navigation
         setTimeout(() => {
-          console.log('⏰ EnrollScreen: Delay completed, now navigating to BadgeCourse');
           navigation.navigate('BadgeCourse', navigationParams);
         }, 1000); // Wait for 1 second
-      } else {
-        console.log('ℹ️ EnrollScreen: User has already seen BadgeCourse for this course, skipping navigation');
       }
     }
   }, [courseData.isCompleted, courseId, courseData.title, navigation, route.params?.fromFeedback]);
-
-  // Log Razorpay import status
-  useEffect(() => {
-    console.log('🔍 EnrollScreen: Direct Razorpay import status:');
-    console.log('  - RazorpayCheckout available:', !!RazorpayCheckout);
-    console.log('  - RazorpayCheckout.open function:', RazorpayCheckout ? typeof RazorpayCheckout.open : 'N/A');
-    console.log('  - RAZORPAY_KEY_ID available:', !!RAZORPAY_KEY_ID);
-  }, []);
 
   // Function to fetch course details from API
   const fetchCourseDetails = async () => {
     try {
       setIsLoadingCourse(true);
       setCourseError(null);
-      
-      console.log('🏠 EnrollScreen: Fetching course details for ID:', courseId);
-      console.log('🔑 EnrollScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
-      
+
       const result = await courseAPI.getSubcourseById(token, courseId);
-      
-      console.log('📡 EnrollScreen: Raw API response:', result);
-      
+
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
-        console.log('🎉 EnrollScreen: Course details received successfully!');
-        console.log('📚 EnrollScreen: Course data:', apiCourse);
-        
+
         const transformedCourse = {
           _id: apiCourse._id || courseId, // Add the subcourse ID
           title: apiCourse.subcourseName || 'Course Title',
@@ -201,30 +169,18 @@ const EnrollScreen = ({ navigation, route }) => {
           paymentStatus: apiCourse.paymentStatus || false,
           isCompleted: Boolean(apiCourse.isCompleted), // Ensure boolean conversion
         };
-        
-        console.log('💰 EnrollScreen: Course price transformation:', {
-          apiPrice: apiCourse.price,
-          transformedPrice: transformedCourse.price,
-          type: typeof apiCourse.price
-        });
-        
-       
-       
+
         // Set isCompleted from API response
         if (apiCourse.isCompleted === true) {
-          console.log('🎯 Setting isCompleted to true from API response');
           transformedCourse.isCompleted = true;
         }
-        
+
         setCourseData(transformedCourse);
-        
+
       } else {
-        console.log(' EnrollScreen: Failed to fetch course details:', result.data?.message);
-      
         setCourseError(result.data?.message || 'Failed to fetch course details');
       }
     } catch (error) {
-      console.error('💥 EnrollScreen: Error fetching course details:', error);
       setCourseError(error.message || 'Network error occurred');
     } finally {
       setIsLoadingCourse(false);
@@ -235,11 +191,9 @@ const EnrollScreen = ({ navigation, route }) => {
   const onRefresh = async () => {
     try {
       setRefreshing(true);
-      console.log('🔄 EnrollScreen: Pull-to-refresh triggered');
       await fetchCourseDetails();
-      console.log('✅ EnrollScreen: Refresh completed successfully');
     } catch (error) {
-      console.error('❌ EnrollScreen: Refresh failed:', error);
+      // Handle refresh error silently
     } finally {
       setRefreshing(false);
     }
@@ -256,43 +210,43 @@ const EnrollScreen = ({ navigation, route }) => {
     const currentMinute = now.getMinutes();
     const currentSecond = now.getSeconds();
     const currentTimeInSeconds = currentHour * 3600 + currentMinute * 60 + currentSecond;
-    
+
     // Find the next lesson based on start time
     let nextLesson = null;
     let minTimeDiff = Infinity;
-    
+
     courseData.lessons.forEach(lesson => {
       if (lesson.startTime) {
         const [startHour, startMinute] = lesson.startTime.split(':').map(Number);
         const lessonStartSeconds = startHour * 3600 + startMinute * 60; // Convert to seconds
-        
+
         // Calculate time difference in seconds
         let timeDiff = lessonStartSeconds - currentTimeInSeconds;
-        
+
         // If lesson already started today, check for next occurrence (tomorrow)
         if (timeDiff <= 0) {
           timeDiff += 24 * 3600; // Add 24 hours (86400 seconds)
         }
-        
+
         if (timeDiff < minTimeDiff) {
           minTimeDiff = timeDiff;
           nextLesson = lesson;
         }
       }
     });
-    
+
     if (!nextLesson || minTimeDiff === Infinity) {
       return null;
     }
-    
+
     // Calculate hours, minutes, and seconds
     const hours = Math.floor(minTimeDiff / 3600);
     const minutes = Math.floor((minTimeDiff % 3600) / 60);
     const seconds = minTimeDiff % 60;
-    
+
     // Format the time string as HH:MM:SS
     const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
+
     return timeString;
   };
 
@@ -337,90 +291,92 @@ const EnrollScreen = ({ navigation, route }) => {
 
   const handleEnrollNow = async () => {
     try {
-    
-      
       // Check if user is already enrolled
       if (courseData.paymentStatus) {
-        console.log('ℹ️ EnrollScreen: User is already enrolled in this course');
         Alert.alert('Already Enrolled', 'You are already enrolled in this course!');
         return;
       }
-      
+
       setIsEnrolling(true);
       setPaymentStatus('processing');
-      
+
       // Check if we have required data
       if (!courseId || !token) {
-        console.log('❌ EnrollScreen: Missing required data - courseId:', courseId, 'token:', !!token);
         setPaymentStatus('failed');
-        Alert.alert('Error', 'Missing required data. Please try again.');
+        Alert.alert(
+          'Authentication Required',
+          'Please log in again to continue with the payment.',
+          [
+            {
+              text: 'Login',
+              onPress: () => {
+                navigation.navigate('Login');
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
         return;
       }
-     
-      
+
       // Extract price from courseData.price (format: "₹99.00")
-      console.log('💰 EnrollScreen: Original courseData.price:', courseData.price);
-      console.log('💰 EnrollScreen: Type of courseData.price:', typeof courseData.price);
-      
       const priceString = courseData.price.replace('₹', '').replace('.00', '');
       const priceInRupees = parseFloat(priceString) || 1;
       const priceInPaise = Math.round(priceInRupees * 100);
-      
-      console.log('💰 EnrollScreen: Price calculation in handleEnrollNow:', {
-        originalPrice: courseData.price,
-        priceString: priceString,
-        priceInRupees: priceInRupees,
-        priceInPaise: priceInPaise
-      });
-      
+
       const orderResult = await courseAPI.createCourseOrder(token, courseId, priceInPaise);
-      
+
       if (!orderResult.success || !orderResult.data.success) {
-        console.log('❌ EnrollScreen: Failed to create course order:', orderResult.data?.message);
         setPaymentStatus('failed');
-        Alert.alert('Error', orderResult.data?.message || 'Failed to create course order');
+        Alert.alert(
+          'Order Creation Failed',
+          orderResult.data?.message || 'Unable to create your order. Please try again.',
+          [
+            {
+              text: 'Try Again',
+              onPress: () => {
+                setPaymentStatus('idle');
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
         return;
       }
-      
+
       const orderData = orderResult.data.data;
-      console.log('✅ EnrollScreen: Course order created successfully:', orderData);
-      console.log('💰 EnrollScreen: Order amount from backend:', orderData.amount);
-      console.log('💰 EnrollScreen: Expected amount (paise):', priceInPaise);
-      console.log('💰 EnrollScreen: Backend amount in rupees:', orderData.amount ? (orderData.amount / 100).toFixed(2) : 'N/A');
-      
-      // Validate order data (key will come from frontend config)
+
+      // Validate order data
       if (!orderData.amount || !orderData.orderId) {
-        console.log('❌ EnrollScreen: Invalid order data received:', orderData);
         setPaymentStatus('failed');
         Alert.alert('Error', 'Invalid order data received. Please try again.');
         return;
       }
-      
-      // Step 2: Open Razorpay payment interface
-      console.log('💳 EnrollScreen: Opening Razorpay payment interface...');
+
+      // Open Razorpay payment interface
       const paymentData = await handlePaymentWithRazorpay(orderData);
-      
+
       if (!paymentData) {
         return; // Payment was cancelled or failed
       }
-      
-      // Log the complete payment response to see the structure
-      console.log('🔍 EnrollScreen: Complete Razorpay payment response:', JSON.stringify(paymentData, null, 2));
-      
+
       // Validate payment data - check for both possible field name formats
       const paymentId = paymentData.razorpay_payment_id || paymentData.razorpayPaymentId;
       const signature = paymentData.razorpay_signature || paymentData.razorpaySignature;
       const orderId = paymentData.razorpay_order_id || paymentData.razorpayOrderId;
-      
+
       if (!paymentId || !signature) {
-        console.log('❌ EnrollScreen: Invalid payment data received:', paymentData);
-        console.log('❌ EnrollScreen: Missing paymentId or signature');
         setPaymentStatus('failed');
         Alert.alert('Error', 'Invalid payment data received. Please contact support.');
         return;
       }
-    
-      
+
       const verificationResult = await courseAPI.verifyPayment(
         token,
         orderData.orderId,
@@ -428,17 +384,16 @@ const EnrollScreen = ({ navigation, route }) => {
         signature,
         courseId // Pass courseId as subcourseId
       );
-      
+
       if (verificationResult.success && verificationResult.data.success) {
-        console.log('🎉 EnrollScreen: Payment verified successfully!');
         setPaymentStatus('success');
-        
+
         // Update local state to reflect enrollment
         setCourseData(prevData => ({
           ...prevData,
           paymentStatus: true,
         }));
-        
+
         // Show success message and navigate to MyCourses
         Alert.alert(
           'Success! 🎉',
@@ -447,41 +402,108 @@ const EnrollScreen = ({ navigation, route }) => {
             {
               text: 'Continue',
               onPress: () => {
-                // Navigate to Courses tab after successful enrollment
-                console.log('🚀 EnrollScreen: Navigating to Courses tab...');
                 navigation.navigate('Home', { screen: 'Courses' });
               }
             }
           ]
         );
       } else {
-        console.log('❌ EnrollScreen: Payment verification failed:', verificationResult.data?.message);
         setPaymentStatus('failed');
         Alert.alert('Error', 'Payment verification failed. Please contact support.');
       }
-      
+
     } catch (error) {
-      console.error('💥 EnrollScreen: Error during enrollment:', error);
-      console.error('💥 EnrollScreen: Error message:', error.message);
-      console.error('💥 EnrollScreen: Error stack:', error.stack);
       setPaymentStatus('failed');
-      
-      // Handle specific Razorpay errors
+
+      // Handle specific Razorpay errors with better user experience
       if (error.message === 'PAYMENT_CANCELLED') {
-        console.log('🚫 EnrollScreen: Payment was cancelled by user');
-        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+        Alert.alert(
+          'Payment Cancelled',
+          'You cancelled the payment. No charges were made to your account.',
+          [
+            {
+              text: 'Try Again',
+              onPress: () => {
+                setRetryCount(prev => prev + 1);
+                setPaymentStatus('idle');
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
       } else if (error.message === 'PAYMENT_FAILED') {
-        console.log('💥 EnrollScreen: Payment failed');
-        Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
-      } else if (error.message && error.message.includes('Invalid Razorpay configuration')) {
-        console.log('⚙️ EnrollScreen: Invalid Razorpay configuration');
-        Alert.alert('Configuration Error', 'Payment gateway configuration error. Please contact support.');
-      } else if (error.message && error.message.includes('Razorpay payment failed')) {
-        console.log('💳 EnrollScreen: Razorpay payment error');
-        Alert.alert('Payment Error', error.message);
+        Alert.alert(
+          'Payment Failed',
+          'Your payment could not be processed. Please check your payment details and try again.',
+          [
+            {
+              text: 'Retry Payment',
+              onPress: () => {
+                setPaymentStatus('idle');
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
+      } else if (error.message === 'PAYMENT_CONFIGURATION_ERROR') {
+        Alert.alert(
+          'Configuration Error',
+          'There seems to be a configuration issue with the payment gateway. Our team has been notified.',
+          [
+            {
+              text: 'OK',
+              style: 'default'
+            }
+          ]
+        );
+      } else if (error.message === 'PAYMENT_NETWORK_ERROR') {
+        Alert.alert(
+          'Network Error',
+          'Please check your internet connection and try again. If the problem persists, please contact support.',
+          [
+            {
+              text: 'Retry',
+              onPress: () => {
+                setPaymentStatus('idle');
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
+      } else if (error.message && error.message.startsWith('PAYMENT_ERROR:')) {
+        const errorMessage = error.message.replace('PAYMENT_ERROR: ', '');
+        showCustomPaymentErrorAlert(
+          'Payment Error',
+          'We encountered an issue processing your payment. This might be due to invalid payment details or a temporary service issue.',
+          'Try Again',
+          'Cancel'
+        );
       } else {
-        console.log('💥 EnrollScreen: Generic enrollment error');
-        Alert.alert('Error', `Something went wrong during enrollment: ${error.message || 'Unknown error'}. Please try again.`);
+        Alert.alert(
+          'Something went wrong',
+          'We encountered an unexpected error. Please try again or contact support if the problem persists.',
+          [
+            {
+              text: 'Try Again',
+              onPress: () => {
+                setPaymentStatus('idle');
+              }
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
       }
     } finally {
       setIsEnrolling(false);
@@ -491,6 +513,32 @@ const EnrollScreen = ({ navigation, route }) => {
   // Function to reset payment status
   const resetPaymentStatus = () => {
     setPaymentStatus('idle');
+    setRetryCount(0);
+  };
+
+  // Function to check if retry is allowed
+  const canRetry = () => {
+    return retryCount < 3; // Allow maximum 3 retries
+  };
+
+  // Function to show custom payment error alert
+  const showCustomPaymentErrorAlert = (title, message, primaryButton, secondaryButton) => {
+    setCustomAlertData({
+      title,
+      message,
+      primaryButton,
+      secondaryButton,
+      onPrimaryPress: () => {
+        setRetryCount(prev => prev + 1);
+        setPaymentStatus('idle');
+        setShowCustomAlert(false);
+      },
+      onSecondaryPress: () => {
+        setShowCustomAlert(false);
+        // Cancel action - just close the modal
+      }
+    });
+    setShowCustomAlert(true);
   };
 
   // Function to get user profile data for Razorpay prefill
@@ -506,62 +554,41 @@ const EnrollScreen = ({ navigation, route }) => {
 
   // Function to handle payment with direct Razorpay
   const handlePaymentWithRazorpay = async (orderData) => {
-    console.log('🚀 EnrollScreen: Starting direct Razorpay payment...');
-    console.log('🔍 EnrollScreen: orderData received:', JSON.stringify(orderData, null, 2));
-    
     if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
-      console.log('❌ EnrollScreen: Direct Razorpay not available');
       Alert.alert('Error', 'Razorpay payment gateway is not available. Please try again later.');
       setPaymentStatus('failed');
       return null;
     }
 
     try {
-      console.log('💳 EnrollScreen: Opening direct Razorpay payment interface...');
-      console.log('🔑 EnrollScreen: Using Razorpay key:', RAZORPAY_KEY_ID ? RAZORPAY_KEY_ID.substring(0, 20) + '...' : 'Not found');
-      
       // Validate Razorpay key is available
       if (!RAZORPAY_KEY_ID) {
-        console.log('❌ EnrollScreen: Razorpay key not found');
         Alert.alert('Error', 'Razorpay configuration not found. Please contact support.');
         setPaymentStatus('failed');
         return null;
       }
-      
+
       const userProfile = getUserProfileData();
-      console.log('👤 EnrollScreen: User profile data:', userProfile);
-      
+
       // Calculate priceInPaise from courseData.price
-      console.log('💰 EnrollScreen: Raw courseData.price:', courseData.price);
-      
       if (!courseData.price || typeof courseData.price !== 'string') {
-        console.log('❌ EnrollScreen: Invalid course price:', courseData.price);
         throw new Error('Invalid course price. Please refresh and try again.');
       }
-      
+
       const priceString = courseData.price.replace('₹', '').replace('.00', '');
       const priceInRupees = parseFloat(priceString);
-      
+
       if (isNaN(priceInRupees) || priceInRupees <= 0) {
-        console.log('❌ EnrollScreen: Invalid price calculation:', { priceString, priceInRupees });
         throw new Error('Invalid course price. Please contact support.');
       }
-      
+
       const priceInPaise = Math.round(priceInRupees * 100);
-      
-      console.log('💰 EnrollScreen: Price calculation:', {
-        originalPrice: courseData.price,
-        priceString: priceString,
-        priceInRupees: priceInRupees,
-        priceInPaise: priceInPaise
-      });
-      
+
       // Use the calculated price from frontend
       const finalAmount = priceInPaise;
-      
+
       const razorpayOptions = {
         description: `Course: ${courseData.title}`,
-        image: 'https://i.imgur.com/3g7nmJC.png',
         currency: 'INR',
         key: RAZORPAY_KEY_ID,
         amount: finalAmount,
@@ -576,76 +603,61 @@ const EnrollScreen = ({ navigation, route }) => {
           color: '#FF6B35'
         }
       };
-      
-      console.log('🎨 EnrollScreen: Direct Razorpay options:', JSON.stringify(razorpayOptions, null, 2));
-      
+
       // Validate Razorpay options
       if (!razorpayOptions.key || !razorpayOptions.amount || !razorpayOptions.order_id) {
-        console.log('❌ EnrollScreen: Invalid Razorpay options');
         throw new Error('Invalid Razorpay options: missing key, amount, or order_id');
       }
-      
-      console.log('🔧 EnrollScreen: Calling direct RazorpayCheckout.open()...');
+
       const paymentData = await RazorpayCheckout.open(razorpayOptions);
-      console.log('✅ EnrollScreen: Direct payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
-      console.log('❌ EnrollScreen: Direct Razorpay error caught:', razorpayError);
-      console.log('❌ EnrollScreen: Error message:', razorpayError.message);
-      
-      // Handle specific Razorpay errors
-      if (razorpayError.code === 'PAYMENT_CANCELLED') {
-        console.log('🚫 EnrollScreen: Payment was cancelled by user');
+      // Handle specific Razorpay errors with better user experience
+      if (razorpayError.code === 'PAYMENT_CANCELLED' || razorpayError.message === 'PAYMENT_CANCELLED') {
         throw new Error('PAYMENT_CANCELLED');
-      } else if (razorpayError.code === 'PAYMENT_FAILED') {
-        console.log('💥 EnrollScreen: Payment failed');
+      } else if (razorpayError.code === 'PAYMENT_FAILED' || razorpayError.message === 'PAYMENT_FAILED') {
         throw new Error('PAYMENT_FAILED');
+      } else if (razorpayError.code === 'BAD_REQUEST_ERROR') {
+        throw new Error('PAYMENT_ERROR: Invalid payment parameters. Please check your payment details and try again.');
+      } else if (razorpayError.code === 'GATEWAY_ERROR') {
+        throw new Error('PAYMENT_NETWORK_ERROR');
+      } else if (razorpayError.code === 'NETWORK_ERROR') {
+        throw new Error('PAYMENT_NETWORK_ERROR');
+      } else if (razorpayError.message && razorpayError.message.includes('Invalid Razorpay configuration')) {
+        throw new Error('PAYMENT_CONFIGURATION_ERROR');
       } else {
-        console.log('💥 EnrollScreen: Generic Razorpay error:', razorpayError);
-        throw new Error(`Razorpay payment failed: ${razorpayError.message || 'Unknown error'}. Please try again.`);
+        // Provide a more user-friendly error message
+        const userFriendlyMessage = razorpayError.description || razorpayError.message || 'Payment processing failed';
+        throw new Error(`PAYMENT_ERROR: ${userFriendlyMessage}`);
       }
     }
   };
 
   const handleStudentIconClick = () => {
-    console.log('🎓 EnrollScreen: Student icon clicked, navigating to Student screen with courseId:', courseId);
     navigation.navigate('Student', { subcourseId: courseId });
   };
 
   const handleStarIconClick = () => {
-    console.log('⭐ EnrollScreen: Star icon clicked');
-    console.log('🆔 EnrollScreen: courseId from route params:', courseId);
-    console.log('🆔 EnrollScreen: courseData._id:', courseData._id);
-    
     // Use courseData._id if available, otherwise fall back to route params
     const subcourseIdToPass = courseData._id || courseId;
-    console.log('🚀 EnrollScreen: Navigating to Review screen with subcourseId:', subcourseIdToPass);
-    
     navigation.navigate('Review', { subcourseId: subcourseIdToPass });
   };
 
   const handleLiveClick = () => {
-    console.log('Live clicked');
+    // Live click handler
   };
 
   const handleDownloadCertificate = async () => {
     try {
-      console.log('🚀 Download certificate clicked for courseId:', courseId);
-      
       // Check payment status from existing courseData
-      console.log('🔍 Checking payment status from courseData:', courseData.paymentStatus);
-      
       if (courseData.paymentStatus === true) {
-        console.log('✅ Payment status is true, navigating to DownloadCertificateScreen');
         navigation.navigate('DownloadCertificate', { courseId: courseId });
         return;
       } else {
-        console.log('❌ Payment status is false, showing popup message');
         setShowDownloadModal(true);
         return;
       }
     } catch (error) {
-      console.error('💥 Error checking payment status:', error);
       // On error, show the popup to be safe
       setShowDownloadModal(true);
     }
@@ -900,8 +912,8 @@ const EnrollScreen = ({ navigation, route }) => {
         />
       ) : (
         <View style={styles.videoThumbnail}>
-          <Image 
-            source={require('../assests/images/Course.png')} 
+          <Image
+            source={require('../assests/images/Course.png')}
             style={styles.thumbnailImage}
             resizeMode="cover"
           />
@@ -911,7 +923,7 @@ const EnrollScreen = ({ navigation, route }) => {
         </View>
       )}
       {!isVideoPlaying && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.playButton}
           onPress={handlePlayVideo}
         >
@@ -964,7 +976,7 @@ const EnrollScreen = ({ navigation, route }) => {
             <Text style={styles.bestSellerText}>Best Seller</Text>
           </LinearGradient>
         )}
-        
+
         {liveTime && (
           <TouchableOpacity style={styles.liveBadge} onPress={handleLiveClick}>
             <Text style={styles.liveText}>
@@ -980,9 +992,9 @@ const EnrollScreen = ({ navigation, route }) => {
       <Text style={styles.courseDescription}>
         {typeof courseData.description === 'string' ? courseData.description : 'No description available'}
       </Text>
-      
 
-      
+
+
       <View style={styles.courseStats}>
         <View style={styles.statItem}>
           <Icon name="time-outline" size={getFontSize(16)} color="#FF8800" style={styles.statIcon} />
@@ -999,13 +1011,9 @@ const EnrollScreen = ({ navigation, route }) => {
   );
 
   const renderTabs = () => {
-    console.log('🔍 renderTabs: courseData.isCompleted =', courseData.isCompleted);
-    console.log('🔍 renderTabs: Downloads tab disabled =', !courseData.isCompleted);
-    console.log('🔍 renderTabs: courseData object =', JSON.stringify(courseData, null, 2));
-    
     return (
       <View style={[styles.tabsContainer, isFullScreen && { display: 'none' }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'lessons' && styles.activeTab]}
           onPress={() => setActiveTab('lessons')}
         >
@@ -1013,18 +1021,17 @@ const EnrollScreen = ({ navigation, route }) => {
             Lessons
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.tab, 
+            styles.tab,
             activeTab === 'downloads' && styles.activeTab
           ]}
           onPress={() => {
-            console.log('📥 Downloads tab clicked! isCompleted =', courseData.isCompleted);
             setActiveTab('downloads');
           }}
         >
           <Text style={[
-            styles.tabText, 
+            styles.tabText,
             activeTab === 'downloads' && styles.activeTabText
           ]}>
             Downloads
@@ -1050,12 +1057,12 @@ const EnrollScreen = ({ navigation, route }) => {
       <View style={styles.lessonsContainer}>
         {courseData.lessons.map((lesson, index) => {
           // Extra safety checks for each property
-          const lessonTitle = lesson && lesson.lessonName && typeof lesson.lessonName === 'string' 
-            ? lesson.lessonName 
+          const lessonTitle = lesson && lesson.lessonName && typeof lesson.lessonName === 'string'
+            ? lesson.lessonName
             : `Lesson ${index + 1}`;
-          
-          const lessonDuration = lesson && lesson.duration && typeof lesson.duration === 'string' 
-            ? lesson.duration 
+
+          const lessonDuration = lesson && lesson.duration && typeof lesson.duration === 'string'
+            ? lesson.duration
             : '0 mins';
 
           // Ensure thumbnail is valid
@@ -1065,24 +1072,13 @@ const EnrollScreen = ({ navigation, route }) => {
 
           // Check if lesson should be locked
           const isFirstLesson = index === 0;
-          const isLessonLocked = !courseData.paymentStatus || 
+          const isLessonLocked = !courseData.paymentStatus ||
             (!isFirstLesson && !courseData.lessons[index - 1]?.isCompleted);
 
-          console.log('🔍 Rendering lesson:', {
-            index,
-            lessonTitle,
-            lessonDuration,
-            hasThumbnail: !!lesson.thumbnailImageUrl,
-            isCompleted: lesson.isCompleted,
-            isFirstLesson,
-            isLessonLocked,
-            paymentStatus: courseData.paymentStatus
-          });
-
           return (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={`lesson-${index}`}
-              style={styles.lessonItem} // Remove lockedLessonItem style
+              style={styles.lessonItem}
               onPress={() => {
                 if (isLessonLocked) {
                   if (!courseData.paymentStatus) {
@@ -1092,34 +1088,33 @@ const EnrollScreen = ({ navigation, route }) => {
                   }
                   return;
                 }
-                
+
                 if (courseData.paymentStatus) {
-                  console.log('🎬 EnrollScreen: Lesson clicked, navigating to LessonVideo with lessonId:', lesson.lessonId);
                   navigation.navigate('LessonVideo', { lessonId: lesson.lessonId });
                 }
               }}
               disabled={isLessonLocked}
             >
-              <Image 
+              <Image
                 source={thumbnailSource}
-                style={styles.lessonThumbnail} // Remove lockedLessonThumbnail style
+                style={styles.lessonThumbnail}
               />
               <View style={styles.lessonInfo}>
-                <Text style={styles.lessonTitle}> {/* Remove lockedLessonTitle style */}
+                <Text style={styles.lessonTitle}>
                   {lessonTitle}
                 </Text>
-                <Text style={styles.lessonDuration}> {/* Remove lockedLessonDuration style */}
+                <Text style={styles.lessonDuration}>
                   {lessonDuration}
                 </Text>
               </View>
-              
+
               {/* Show lock icon for locked lessons */}
               {isLessonLocked && (
                 <View style={styles.lockIconContainer}>
                   <Icon name="lock-closed" size={24} color="#999999" />
                 </View>
               )}
-              
+
               {/* Show completed badge for completed lessons */}
               {lesson.isCompleted && !isLessonLocked && (
                 <View style={styles.completedBadge}>
@@ -1136,7 +1131,7 @@ const EnrollScreen = ({ navigation, route }) => {
   const renderDownloads = () => (
     <View style={styles.downloadsContainer}>
       <View style={styles.enabledDownloadsContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.downloadCertificateCard}
           onPress={handleDownloadCertificate}
         >
@@ -1144,10 +1139,10 @@ const EnrollScreen = ({ navigation, route }) => {
             <Text style={styles.downloadCertificateTitle}>Download Module Certificate </Text>
           </View>
           <View style={styles.downloadCertificateRight}>
-            <TouchableOpacity 
-              style={styles.downloadButton} 
+            <TouchableOpacity
+              style={styles.downloadButton}
               onPress={handleDownloadCertificate}
-              onPressIn={(e) => e.stopPropagation()} 
+              onPressIn={(e) => e.stopPropagation()}
             >
               <Icon name="download-outline" size={24} color="#FF6B35" />
             </TouchableOpacity>
@@ -1166,21 +1161,21 @@ const EnrollScreen = ({ navigation, route }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             {/* Close Icon in top right corner */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setShowDownloadModal(false)}
             >
               <Icon name="close" size={24} color="#FF8800" />
             </TouchableOpacity>
-            
+
             <View style={styles.modalHeader}>
               <Icon name="warning" size={60} color="#FFFFFF" style={{ marginRight: getVerticalSize(12) }} />
             </View>
-           
+
             <Text style={styles.modalMessage}>
               First you have to complete Your course to download Cirtificate
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.modalButton, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}
               onPress={() => setShowDownloadModal(false)}
             >
@@ -1218,7 +1213,7 @@ const EnrollScreen = ({ navigation, route }) => {
         </View>
       )}
 
-      <ScrollView 
+      <ScrollView
         style={[styles.scrollView, isFullScreen && { display: 'none' }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -1258,8 +1253,8 @@ const EnrollScreen = ({ navigation, route }) => {
         <View style={styles.enrollButtonContainer}>
           {paymentStatus === 'failed' ? (
             <View style={styles.paymentFailedContainer}>
-              <Text style={styles.paymentFailedText}>Payment failed. Please try again.</Text>
-              <TouchableOpacity 
+           
+              <TouchableOpacity
                 style={styles.retryButton}
                 onPress={() => {
                   resetPaymentStatus();
@@ -1270,7 +1265,7 @@ const EnrollScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.enrollButton, isEnrolling && styles.enrollButtonDisabled]}
               onPress={handleEnrollNow}
               disabled={isEnrolling}
@@ -1289,6 +1284,52 @@ const EnrollScreen = ({ navigation, route }) => {
           )}
         </View>
       )}
+
+      {/* Custom Payment Error Alert */}
+      <Modal
+        visible={showCustomAlert}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCustomAlert(false)}
+      >
+        <View style={styles.customAlertOverlay}>
+          <View style={styles.customAlertContainer}>
+            {/* Error Icon */}
+            <View style={styles.customAlertIconContainer}>
+              <View style={styles.customAlertIcon}>
+                <Text style={styles.customAlertIconText}>⚠️</Text>
+              </View>
+            </View>
+
+            {/* Title */}
+            <Text style={styles.customAlertTitle}>{customAlertData.title}</Text>
+
+            {/* Message */}
+            <Text style={styles.customAlertMessage}>{customAlertData.message}</Text>
+
+            {/* Buttons */}
+            <View style={styles.customAlertButtonsContainer}>
+              <TouchableOpacity
+                style={[styles.customAlertButton, styles.customAlertSecondaryButton]}
+                onPress={customAlertData.onSecondaryPress}
+              >
+                <Text style={styles.customAlertSecondaryButtonText}>
+                  {customAlertData.secondaryButton}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.customAlertButton, styles.customAlertPrimaryButton]}
+                onPress={customAlertData.onPrimaryPress}
+              >
+                <Text style={styles.customAlertPrimaryButtonText}>
+                  {customAlertData.primaryButton}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1331,8 +1372,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: getVerticalSize(250),
     position: 'relative',
-   
-   
+
+
   },
   fullScreenVideoContainer: {
     width: Dimensions.get('window').width,
@@ -1343,7 +1384,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1000,
-    
+
   },
   webView: {
     width: '100%',
@@ -1431,17 +1472,6 @@ const styles = StyleSheet.create({
     lineHeight: getFontSize(24),
     marginBottom: getVerticalSize(15),
   },
-  debugInfo: {
-    backgroundColor: '#F0F0F0',
-    padding: getVerticalSize(10),
-    borderRadius: getFontSize(5),
-    marginBottom: getVerticalSize(15),
-  },
-  debugText: {
-    fontSize: getFontSize(12),
-    color: '#666666',
-    fontFamily: 'monospace',
-  },
   courseStats: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1513,18 +1543,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  completedCourseBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: getVerticalSize(8),
-    paddingVertical: getVerticalSize(4),
-    borderRadius: getFontSize(12),
-    marginRight: getVerticalSize(10),
-  },
-  completedCourseText: {
-    color: '#FFFFFF',
-    fontSize: getFontSize(12),
-    fontWeight: '600',
-  },
   liveBadge: {
     backgroundColor: 'transparent',
     paddingHorizontal: getVerticalSize(6),
@@ -1556,9 +1574,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: '#FF6B35',
   },
-  disabledTab: {
-    opacity: 0.5,
-  },
   tabText: {
     fontSize: getFontSize(16),
     color: '#666666',
@@ -1567,9 +1582,6 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#FF6B35',
     fontWeight: 'bold',
-  },
-  disabledTabText: {
-    color: '#999999',
   },
   lessonsContainer: {
     padding: getVerticalSize(20),
@@ -1582,18 +1594,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F8F8',
     borderRadius: getFontSize(8),
   },
-  lockedLessonItem: {
-    backgroundColor: '#F0F0F0',
-    opacity: 0.7,
-  },
   lessonThumbnail: {
     width: getFontSize(60),
     height: getFontSize(40),
     borderRadius: getFontSize(6),
     marginRight: getVerticalSize(12),
-  },
-  lockedLessonThumbnail: {
-    opacity: 0.5,
   },
   lessonInfo: {
     flex: 1,
@@ -1604,15 +1609,9 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginBottom: getVerticalSize(4),
   },
-  lockedLessonTitle: {
-    color: '#999999',
-  },
   lessonDuration: {
     fontSize: getFontSize(14),
     color: '#666666',
-  },
-  lockedLessonDuration: {
-    color: '#999999',
   },
   lockIconContainer: {
     width: getFontSize(24),
@@ -1632,25 +1631,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: getVerticalSize(8),
   },
-  checkIcon: {
-    width: getFontSize(12),
-    height: getFontSize(12),
-    resizeMode: 'contain',
-    tintColor: '#FFFFFF',
-  },
   downloadsContainer: {
     padding: getVerticalSize(20),
-  },
-  disabledMessageContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: getVerticalSize(40),
-  },
-  disabledMessageText: {
-    fontSize: getFontSize(16),
-    color: '#999999',
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
   enabledDownloadsContainer: {
     paddingVertical: getVerticalSize(20),
@@ -1866,6 +1848,95 @@ const styles = StyleSheet.create({
     fontSize: getFontSize(14),
     fontWeight: '600',
     textAlign: 'center',
+  },
+
+  // Custom Alert Styles
+  customAlertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getVerticalSize(20),
+  },
+  customAlertContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: getFontSize(20),
+    padding: getVerticalSize(30),
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: getVerticalSize(350),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  customAlertIconContainer: {
+    marginBottom: getVerticalSize(20),
+  },
+  customAlertIcon: {
+    width: getVerticalSize(60),
+    height: getVerticalSize(60),
+    borderRadius: getVerticalSize(30),
+    backgroundColor: '#FFF3E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFB74D',
+  },
+  customAlertIconText: {
+    fontSize: getFontSize(30),
+  },
+  customAlertTitle: {
+    fontSize: getFontSize(20),
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    textAlign: 'center',
+    marginBottom: getVerticalSize(15),
+  },
+  customAlertMessage: {
+    fontSize: getFontSize(16),
+    color: '#7F8C8D',
+    textAlign: 'center',
+    lineHeight: getFontSize(22),
+    marginBottom: getVerticalSize(30),
+  },
+  customAlertButtonsContainer: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: getVerticalSize(15),
+  },
+  customAlertButton: {
+    flex: 1,
+    paddingVertical: getVerticalSize(15),
+    paddingHorizontal: getVerticalSize(20),
+    borderRadius: getFontSize(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customAlertSecondaryButton: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  customAlertPrimaryButton: {
+    backgroundColor: '#FF6B35',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  customAlertSecondaryButtonText: {
+    color: '#7F8C8D',
+    fontSize: getFontSize(16),
+    fontWeight: '600',
+  },
+  customAlertPrimaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
   },
 });
 

@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 20,
     alignItems: 'flex-start',
-    marginTop: 20,
+    marginTop: 30,
   },
   headerTitle: {
     fontSize: 20,

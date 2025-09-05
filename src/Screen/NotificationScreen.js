@@ -354,18 +354,16 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   headerTitle: {
-    marginTop:20,
     fontSize: getFontSize(20),
     fontWeight: 'bold',
     color: '#000000',
     textAlign: 'center',
-  },
-  placeholder: {
-    width: getFontSize(40),
+    flex: 1,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: getVerticalSize(5),
   },
   markAllButton: {
     backgroundColor: '#FF6B35',

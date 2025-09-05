@@ -40,15 +40,9 @@ class NotificationService {
   // Setup background message handler
   setupBackgroundHandler() {
     try {
-      const messagingInstance = getMessaging(getFirebaseApp());
-      this.backgroundMessageHandler = messagingInstance.setBackgroundMessageHandler(async (remoteMessage) => {
-        console.log('📨 NotificationService: Background message received:', remoteMessage);
-        
-        // Handle background notification
-        await this.handleBackgroundNotification(remoteMessage);
-      });
-      
-      console.log('✅ NotificationService: Background handler set up');
+      // Note: Background handler is now registered in index.js at top level
+      // This is required for React Native Firebase to work properly
+      console.log('✅ NotificationService: Background handler is registered in index.js');
     } catch (error) {
       console.error('❌ NotificationService: Background handler setup failed:', error);
     }
@@ -98,6 +92,7 @@ class NotificationService {
   async handleBackgroundNotification(remoteMessage) {
     try {
       console.log('🔔 NotificationService: Processing background notification...');
+      console.log('📨 NotificationService: Background message data:', JSON.stringify(remoteMessage, null, 2));
       
       const { notification, data } = remoteMessage;
       
@@ -111,7 +106,15 @@ class NotificationService {
         type: data?.type || 'general'
       });
       
-      console.log('✅ NotificationService: Background notification processed');
+      // For background notifications, the system automatically shows them
+      // when the app is in background or closed
+      if (notification) {
+        console.log('🔔 NotificationService: Background notification will be shown by system');
+        console.log('📱 NotificationService: Title:', notification.title);
+        console.log('📱 NotificationService: Body:', notification.body);
+      }
+      
+      console.log('✅ NotificationService: Background notification processed and stored');
     } catch (error) {
       console.error('❌ NotificationService: Background notification handling failed:', error);
     }
