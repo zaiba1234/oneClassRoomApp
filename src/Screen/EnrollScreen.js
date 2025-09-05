@@ -25,31 +25,9 @@ import { courseAPI } from '../API/courseAPI';
 import { getApiUrl } from '../API/config';
 import { RAZORPAY_KEY_ID } from '../config/env';
 import BackButton from '../Component/BackButton';
+import RazorpayCheckout from 'react-native-razorpay';
 
-// Custom Razorpay implementation using WebView
-let RazorpayCheckout = null;
-let RazorpayImportError = null;
-
-// Create a custom RazorpayCheckout class that uses WebView
-class CustomRazorpayCheckout {
-  constructor(navigation) {
-    this.navigation = navigation;
-  }
-  
-  open(options) {
-    return new Promise((resolve, reject) => {
-      // Store the options and callbacks globally so WebView can access them
-      global.razorpayOptions = options;
-      global.razorpayResolve = resolve;
-      global.razorpayReject = reject;
-      
-      // Navigate to Razorpay payment screen
-      this.navigation.navigate('RazorpayPayment', { options });
-    });
-  }
-}
-
-console.log('✅ EnrollScreen: Custom RazorpayCheckout class created successfully');
+console.log('✅ EnrollScreen: Direct Razorpay package imported successfully');
 
 // Import local assets
 const PlayIcon = require('../assests/images/Course.png');
@@ -76,8 +54,7 @@ const EnrollScreen = ({ navigation, route }) => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const webViewRef = useRef(null);
 
-  // Create RazorpayCheckout instance with navigation
-  const [razorpayCheckout] = useState(() => new CustomRazorpayCheckout(navigation));
+  // Direct Razorpay integration - no custom class needed
 
   // Get user data from Redux
   const { token } = useAppSelector((state) => state.user);
@@ -179,11 +156,11 @@ const EnrollScreen = ({ navigation, route }) => {
 
   // Log Razorpay import status
   useEffect(() => {
-    console.log('🔍 EnrollScreen: Razorpay import status:');
-    console.log('  - RazorpayCheckout available:', !!razorpayCheckout);
-    console.log('  - RazorpayCheckout.open function:', razorpayCheckout ? typeof razorpayCheckout.open : 'N/A');
-    console.log('  - Import error:', RazorpayImportError);
-  }, [razorpayCheckout]);
+    console.log('🔍 EnrollScreen: Direct Razorpay import status:');
+    console.log('  - RazorpayCheckout available:', !!RazorpayCheckout);
+    console.log('  - RazorpayCheckout.open function:', RazorpayCheckout ? typeof RazorpayCheckout.open : 'N/A');
+    console.log('  - RAZORPAY_KEY_ID available:', !!RAZORPAY_KEY_ID);
+  }, []);
 
   // Function to fetch course details from API
   const fetchCourseDetails = async () => {
@@ -527,27 +504,25 @@ const EnrollScreen = ({ navigation, route }) => {
     };
   };
 
-  // Function to handle payment with Razorpay
+  // Function to handle payment with direct Razorpay
   const handlePaymentWithRazorpay = async (orderData) => {
-    console.log('🚀 EnrollScreen: Starting handlePaymentWithRazorpay...');
+    console.log('🚀 EnrollScreen: Starting direct Razorpay payment...');
     console.log('🔍 EnrollScreen: orderData received:', JSON.stringify(orderData, null, 2));
     
-    if (!razorpayCheckout || typeof razorpayCheckout.open !== 'function') {
-      console.log('❌ EnrollScreen: Razorpay not available');
-      console.log('❌ EnrollScreen: razorpayCheckout:', razorpayCheckout);
-      console.log('❌ EnrollScreen: typeof razorpayCheckout.open:', typeof razorpayCheckout?.open);
+    if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
+      console.log('❌ EnrollScreen: Direct Razorpay not available');
       Alert.alert('Error', 'Razorpay payment gateway is not available. Please try again later.');
       setPaymentStatus('failed');
       return null;
     }
 
     try {
-      console.log('💳 EnrollScreen: Opening Razorpay payment interface...');
-      console.log('🔑 EnrollScreen: Using Razorpay key from frontend config:', RAZORPAY_KEY_ID ? RAZORPAY_KEY_ID.substring(0, 20) + '...' : 'Not found');
+      console.log('💳 EnrollScreen: Opening direct Razorpay payment interface...');
+      console.log('🔑 EnrollScreen: Using Razorpay key:', RAZORPAY_KEY_ID ? RAZORPAY_KEY_ID.substring(0, 20) + '...' : 'Not found');
       
       // Validate Razorpay key is available
       if (!RAZORPAY_KEY_ID) {
-        console.log('❌ EnrollScreen: Razorpay key not found in frontend config');
+        console.log('❌ EnrollScreen: Razorpay key not found');
         Alert.alert('Error', 'Razorpay configuration not found. Please contact support.');
         setPaymentStatus('failed');
         return null;
@@ -574,30 +549,23 @@ const EnrollScreen = ({ navigation, route }) => {
       
       const priceInPaise = Math.round(priceInRupees * 100);
       
-      console.log('💰 EnrollScreen: Price calculation in handlePaymentWithRazorpay:', {
+      console.log('💰 EnrollScreen: Price calculation:', {
         originalPrice: courseData.price,
         priceString: priceString,
         priceInRupees: priceInRupees,
         priceInPaise: priceInPaise
       });
       
-      // Always use the calculated price from frontend to ensure correct amount
-      // The backend might return default amounts, so we use our calculated price
+      // Use the calculated price from frontend
       const finalAmount = priceInPaise;
       
-      console.log('💰 EnrollScreen: Final amount decision:', {
-        backendAmount: orderData.amount,
-        calculatedAmount: priceInPaise,
-        finalAmount: finalAmount,
-        reason: 'Using calculated amount from frontend to ensure correct pricing'
-      });
-      
       const razorpayOptions = {
-        key: RAZORPAY_KEY_ID, // Use Razorpay key from frontend config for security
-        amount: finalAmount, // Use calculated amount if backend returns default
-        currency: orderData.currency || 'INR',
-        name: 'Learning Saint',
         description: `Course: ${courseData.title}`,
+        image: 'https://i.imgur.com/3g7nmJC.png',
+        currency: 'INR',
+        key: RAZORPAY_KEY_ID,
+        amount: finalAmount,
+        name: 'Learning Saint',
         order_id: orderData.orderId,
         prefill: {
           email: userProfile.email,
@@ -606,57 +574,32 @@ const EnrollScreen = ({ navigation, route }) => {
         },
         theme: {
           color: '#FF6B35'
-        },
-        modal: {
-          ondismiss: () => {
-            console.log('🔒 EnrollScreen: Razorpay modal dismissed');
-            setPaymentStatus('idle');
-          }
         }
       };
       
-      console.log('💰 EnrollScreen: Razorpay options amount:', razorpayOptions.amount);
-      console.log('💰 EnrollScreen: Razorpay options amount in rupees:', (razorpayOptions.amount / 100).toFixed(2));
-      console.log('💰 EnrollScreen: Final amount being sent to Razorpay:', {
-        amountInPaise: razorpayOptions.amount,
-        amountInRupees: (razorpayOptions.amount / 100).toFixed(2),
-        currency: razorpayOptions.currency
-      });
-      
-      console.log('🎨 EnrollScreen: Razorpay options configured:', JSON.stringify(razorpayOptions, null, 2));
+      console.log('🎨 EnrollScreen: Direct Razorpay options:', JSON.stringify(razorpayOptions, null, 2));
       
       // Validate Razorpay options
       if (!razorpayOptions.key || !razorpayOptions.amount || !razorpayOptions.order_id) {
-        console.log('❌ EnrollScreen: Invalid Razorpay options:', {
-          hasKey: !!razorpayOptions.key,
-          hasAmount: !!razorpayOptions.amount,
-          hasOrderId: !!razorpayOptions.order_id,
-          key: razorpayOptions.key ? 'present' : 'missing',
-          amount: razorpayOptions.amount,
-          order_id: razorpayOptions.order_id
-        });
+        console.log('❌ EnrollScreen: Invalid Razorpay options');
         throw new Error('Invalid Razorpay options: missing key, amount, or order_id');
       }
       
-      console.log('🔧 EnrollScreen: Calling razorpayCheckout.open()...');
-      const paymentData = await razorpayCheckout.open(razorpayOptions);
-      console.log('✅ EnrollScreen: Payment successful:', JSON.stringify(paymentData, null, 2));
+      console.log('🔧 EnrollScreen: Calling direct RazorpayCheckout.open()...');
+      const paymentData = await RazorpayCheckout.open(razorpayOptions);
+      console.log('✅ EnrollScreen: Direct payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
-      console.log('❌ EnrollScreen: Razorpay error caught:', razorpayError);
+      console.log('❌ EnrollScreen: Direct Razorpay error caught:', razorpayError);
       console.log('❌ EnrollScreen: Error message:', razorpayError.message);
-      console.log('❌ EnrollScreen: Error stack:', razorpayError.stack);
       
-      // More specific error handling
-      if (razorpayError.message === 'PAYMENT_CANCELLED') {
+      // Handle specific Razorpay errors
+      if (razorpayError.code === 'PAYMENT_CANCELLED') {
         console.log('🚫 EnrollScreen: Payment was cancelled by user');
         throw new Error('PAYMENT_CANCELLED');
-      } else if (razorpayError.message === 'PAYMENT_FAILED') {
+      } else if (razorpayError.code === 'PAYMENT_FAILED') {
         console.log('💥 EnrollScreen: Payment failed');
         throw new Error('PAYMENT_FAILED');
-      } else if (razorpayError.message && razorpayError.message.includes('Invalid Razorpay options')) {
-        console.log('⚙️ EnrollScreen: Invalid Razorpay configuration');
-        throw new Error('Invalid Razorpay configuration. Please contact support.');
       } else {
         console.log('💥 EnrollScreen: Generic Razorpay error:', razorpayError);
         throw new Error(`Razorpay payment failed: ${razorpayError.message || 'Unknown error'}. Please try again.`);
@@ -686,71 +629,25 @@ const EnrollScreen = ({ navigation, route }) => {
   };
 
   const handleDownloadCertificate = async () => {
-    // Check if course is completed first
-    if (!courseData.isCompleted) {
-      console.log(' Course not completed, showing popup message');
-      setShowDownloadModal(true);
-      return;
-    }
-
     try {
-      console.log(' Download certificate clicked for courseId:', courseId);
+      console.log('🚀 Download certificate clicked for courseId:', courseId);
       
-      // API endpoint using config file
-      const apiUrl = getApiUrl('/api/user/certificate/download-certificate');
+      // Check payment status from existing courseData
+      console.log('🔍 Checking payment status from courseData:', courseData.paymentStatus);
       
-      // Request body for POST method
-      const requestBody = {
-        subcourseId: courseId
-      };
-      
-      console.log('🌐 API URL:', apiUrl);
-      console.log('📦 Request Body:', requestBody);
-      
-      // Make the API call with POST method and JSON body
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      if (response.ok) {
-        console.log('✅ Certificate download successful');
-        console.log('🎉 SUCCESS: Certificate downloaded successfully! 🎉');
-        
-        // For React Native, we'll handle the response based on content type
-        const contentType = response.headers.get('content-type');
-        console.log('📄 Content Type:', contentType);
-        
-        if (contentType && contentType.includes('application/pdf')) {
-          // Handle PDF download
-          const blob = await response.blob();
-          console.log('📥 PDF certificate received, size:', blob.size);
-          
-          // Success message for PDF
-          console.log('🎯 PDF Certificate Downloaded Successfully!');
-          console.log('📊 File Size:', blob.size, 'bytes');
-          console.log('📱 Ready for React Native file handling');
-        } else {
-          // Handle other content types
-          const text = await response.text();
-          console.log('📄 Response text:', text.substring(0, 100) + '...');
-          console.log('📋 Non-PDF Certificate Downloaded Successfully!');
-        }
-        
-        // Final success message
-        console.log('🏆 CERTIFICATE DOWNLOAD COMPLETED SUCCESSFULLY! 🏆');
-        console.log('🎓 User can now access their course completion certificate');
-        
+      if (courseData.paymentStatus === true) {
+        console.log('✅ Payment status is true, navigating to DownloadCertificateScreen');
+        navigation.navigate('DownloadCertificate', { courseId: courseId });
+        return;
       } else {
-        console.log('❌ Certificate download failed:', response.status, response.statusText);
-        console.log('💥 ERROR: Failed to download certificate');
+        console.log('❌ Payment status is false, showing popup message');
+        setShowDownloadModal(true);
+        return;
       }
     } catch (error) {
-      console.error('💥 Error downloading certificate:', error);
+      console.error('💥 Error checking payment status:', error);
+      // On error, show the popup to be safe
+      setShowDownloadModal(true);
     }
   };
 
@@ -1241,16 +1138,7 @@ const EnrollScreen = ({ navigation, route }) => {
       <View style={styles.enabledDownloadsContainer}>
         <TouchableOpacity 
           style={styles.downloadCertificateCard}
-          onPress={() => {
-            // Check payment status before navigation
-            if (!courseData.paymentStatus) {
-              console.log('🚫 Payment not completed, cannot navigate to DownloadCertificateScreen');
-              Alert.alert('Payment Required', 'Please complete the payment first to access certificate download.');
-              return;
-            }
-            console.log('🚀 Navigating to DownloadCertificateScreen with courseId:', courseId);
-            navigation.navigate('DownloadCertificate', { courseId: courseId });
-          }}
+          onPress={handleDownloadCertificate}
         >
           <View style={styles.downloadCertificateLeft}>
             <Text style={styles.downloadCertificateTitle}>Download Module Certificate </Text>
@@ -1277,15 +1165,23 @@ const EnrollScreen = ({ navigation, route }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
+            {/* Close Icon in top right corner */}
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowDownloadModal(false)}
+            >
+              <Icon name="close" size={24} color="#FF8800" />
+            </TouchableOpacity>
+            
             <View style={styles.modalHeader}>
-              <Image source={WarningIcon} style={styles.modalWarningIcon} />
-              <Text style={styles.modalTitle}>Course Completion Required</Text>
+              <Icon name="warning" size={60} color="#FFFFFF" style={{ marginRight: getVerticalSize(12) }} />
             </View>
+           
             <Text style={styles.modalMessage}>
               First you have to complete Your course to download Cirtificate
             </Text>
             <TouchableOpacity 
-              style={styles.modalButton}
+              style={[styles.modalButton, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}
               onPress={() => setShowDownloadModal(false)}
             >
               <Text style={styles.modalButtonText}>Continue</Text>
@@ -1886,17 +1782,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    position: 'relative',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: getVerticalSize(-15),
+    right: getVerticalSize(12),
+    zIndex: 1,
+    padding: getVerticalSize(8),
+    borderRadius: getFontSize(20),
+    backgroundColor: '#fff',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: getVerticalSize(20),
-  },
-  modalWarningIcon: {
-    width: getFontSize(32),
-    height: getFontSize(32),
-    marginRight: getVerticalSize(12),
-    tintColor: '#FFFFFF',
   },
   modalTitle: {
     fontSize: getFontSize(18),
@@ -1914,8 +1814,8 @@ const styles = StyleSheet.create({
   modalButton: {
     backgroundColor: '#FFFFFF',
     paddingVertical: getVerticalSize(14),
-    paddingHorizontal: getVerticalSize(32),
-    borderRadius: getFontSize(25),
+    paddingHorizontal: getVerticalSize(40),
+    borderRadius: getFontSize(10),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,

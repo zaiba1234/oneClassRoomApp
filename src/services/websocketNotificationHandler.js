@@ -33,30 +33,48 @@ class WebSocketNotificationHandler {
       console.log('🔔 WebSocketNotificationHandler: Setting up event listeners...');
       
       // Live lesson notification
-      websocketService.on('live_lesson', (data) => {
+      websocketService.onLiveLesson((data) => {
         console.log('📺 WebSocketNotificationHandler: Live lesson event received:', data);
         this.handleLiveLessonNotification(data);
       });
+      console.log('✅ WebSocketNotificationHandler: Live lesson listener set up');
+      
+      // Lesson started notification (join now)
+      websocketService.onLessonStarted((data) => {
+        console.log('🎥 WebSocketNotificationHandler: Lesson started event received:', data);
+        this.handleLessonStartedNotification(data);
+      });
+      console.log('✅ WebSocketNotificationHandler: Lesson started listener set up');
       
       // Buy course notification
-      websocketService.on('buy_course', (data) => {
+      websocketService.onBuyCourse((data) => {
         console.log('💳 WebSocketNotificationHandler: Buy course event received:', data);
         this.handleBuyCourseNotification(data);
       });
+      console.log('✅ WebSocketNotificationHandler: Buy course listener set up');
+      
+      // Course unlocked notification
+      websocketService.on('course_unlocked', (data) => {
+        console.log('🎓 WebSocketNotificationHandler: Course unlocked event received:', data);
+        this.handleCourseUnlockedNotification(data);
+      });
+      console.log('✅ WebSocketNotificationHandler: Course unlocked listener set up');
       
       // Request internship letter notification
-      websocketService.on('request_internship_letter', (data) => {
+      websocketService.onRequestInternshipLetter((data) => {
         console.log('📜 WebSocketNotificationHandler: Request internship letter event received:', data);
         this.handleInternshipRequestNotification(data);
       });
+      console.log('✅ WebSocketNotificationHandler: Request internship letter listener set up');
       
       // Upload internship letter notification
-      websocketService.on('upload_internship_letter', (data) => {
+      websocketService.onUploadInternshipLetter((data) => {
         console.log('📄 WebSocketNotificationHandler: Upload internship letter event received:', data);
         this.handleInternshipUploadNotification(data);
       });
+      console.log('✅ WebSocketNotificationHandler: Upload internship letter listener set up');
       
-      console.log('✅ WebSocketNotificationHandler: Event listeners set up successfully');
+      console.log('✅ WebSocketNotificationHandler: All event listeners set up successfully');
     } catch (error) {
       console.error('❌ WebSocketNotificationHandler: Failed to setup event listeners:', error);
     }
@@ -94,14 +112,50 @@ class WebSocketNotificationHandler {
     }
   }
 
+  // Handle lesson started notification (join now)
+  async handleLessonStartedNotification(data) {
+    try {
+      console.log('🎥 WebSocketNotificationHandler: Processing lesson started notification...');
+      console.log('🎥 WebSocketNotificationHandler: Received data:', JSON.stringify(data, null, 2));
+      
+      const notification = {
+        title: '🎥 Lesson Started - Join Now!',
+        body: data.lessonName ? `"${data.lessonName}" has started! Click to join the live session.` : 'A lesson has started! Click to join now.',
+        data: {
+          type: 'lesson_started',
+          lessonId: data.lessonId,
+          courseId: data.courseId,
+          subcourseId: data.subcourseId,
+          startTime: data.startTime,
+          lessonName: data.lessonName
+        },
+        timestamp: new Date().toISOString(),
+        isRead: false
+      };
+      
+      console.log('🎥 WebSocketNotificationHandler: Created notification:', JSON.stringify(notification, null, 2));
+      
+      // Show in-app notification
+      this.showInAppNotification(notification);
+      
+      // Store notification locally
+      await notificationService.storeNotification(notification);
+      
+      console.log('✅ WebSocketNotificationHandler: Lesson started notification processed');
+    } catch (error) {
+      console.error('❌ WebSocketNotificationHandler: Lesson started notification failed:', error);
+    }
+  }
+
   // Handle buy course notification
   async handleBuyCourseNotification(data) {
     try {
       console.log('💳 WebSocketNotificationHandler: Processing buy course notification...');
+      console.log('💳 WebSocketNotificationHandler: Received data:', JSON.stringify(data, null, 2));
       
       const notification = {
-        title: 'Course Purchase Successful!',
-        body: data.courseName ? `You have successfully enrolled in "${data.courseName}"` : 'You have successfully enrolled in a new course',
+        title: '🎉 Course Purchased Successfully!',
+        body: data.courseName ? `Congratulations! You have successfully enrolled in "${data.courseName}". Start learning now!` : 'Congratulations! You have successfully enrolled in a new course. Start learning now!',
         data: {
           type: 'buy_course',
           courseId: data.courseId,
@@ -113,6 +167,8 @@ class WebSocketNotificationHandler {
         isRead: false
       };
       
+      console.log('💳 WebSocketNotificationHandler: Created notification:', JSON.stringify(notification, null, 2));
+      
       // Show in-app notification
       this.showInAppNotification(notification);
       
@@ -122,6 +178,39 @@ class WebSocketNotificationHandler {
       console.log('✅ WebSocketNotificationHandler: Buy course notification processed');
     } catch (error) {
       console.error('❌ WebSocketNotificationHandler: Buy course notification failed:', error);
+    }
+  }
+
+  // Handle course unlocked notification
+  async handleCourseUnlockedNotification(data) {
+    try {
+      console.log('🎓 WebSocketNotificationHandler: Processing course unlocked notification...');
+      console.log('🎓 WebSocketNotificationHandler: Received data:', JSON.stringify(data, null, 2));
+      
+      const notification = {
+        title: '🎉 Course Purchased Successfully!',
+        body: data.courseName ? `Congratulations! You have successfully enrolled in "${data.courseName}". Start learning now!` : 'Congratulations! You have successfully enrolled in a new course. Start learning now!',
+        data: {
+          type: 'course_unlocked',
+          courseId: data.courseId,
+          subcourseId: data.subcourseId,
+          courseName: data.courseName,
+        },
+        timestamp: new Date().toISOString(),
+        isRead: false
+      };
+      
+      console.log('🎓 WebSocketNotificationHandler: Created notification:', JSON.stringify(notification, null, 2));
+      
+      // Show in-app notification
+      this.showInAppNotification(notification);
+      
+      // Store notification locally
+      await notificationService.storeNotification(notification);
+      
+      console.log('✅ WebSocketNotificationHandler: Course unlocked notification processed');
+    } catch (error) {
+      console.error('❌ WebSocketNotificationHandler: Course unlocked notification failed:', error);
     }
   }
 
@@ -193,6 +282,8 @@ class WebSocketNotificationHandler {
   showInAppNotification(notification) {
     try {
       console.log('🔔 WebSocketNotificationHandler: Showing in-app notification:', notification);
+      console.log('🔔 WebSocketNotificationHandler: Notification title:', notification.title);
+      console.log('🔔 WebSocketNotificationHandler: Notification body:', notification.body);
       
       // Show alert with action buttons
       Alert.alert(
@@ -201,14 +292,22 @@ class WebSocketNotificationHandler {
         [
           {
             text: 'View',
-            onPress: () => this.handleNotificationTap(notification)
+            onPress: () => {
+              console.log('🔔 WebSocketNotificationHandler: User tapped View button');
+              this.handleNotificationTap(notification);
+            }
           },
           {
             text: 'Dismiss',
-            style: 'cancel'
+            style: 'cancel',
+            onPress: () => {
+              console.log('🔔 WebSocketNotificationHandler: User dismissed notification');
+            }
           }
         ]
       );
+      
+      console.log('✅ WebSocketNotificationHandler: In-app notification displayed successfully');
     } catch (error) {
       console.error('❌ WebSocketNotificationHandler: In-app notification failed:', error);
     }

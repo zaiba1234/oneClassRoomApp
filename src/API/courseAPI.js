@@ -718,4 +718,5 @@ export const courseAPI = {
       return { success: false, data: { message: 'Network error occurred' }, status: 0 };
     }
   },
+
 };
