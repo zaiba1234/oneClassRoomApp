@@ -1038,23 +1038,43 @@ const DownloadCertificateScreen = () => {
         console.log('🔢 Base64 data prepared, length:', base64Data.length);
         
         try {
-          // Use app documents directory directly to avoid permission issues
+          // First try to save to Downloads folder (accessible via file manager)
           const fileName = `certificate_${courseId}.pdf`;
-          const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+          let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+          let locationMessage = 'Downloads folder';
           
-          console.log('📁 Using app documents directory:', filePath);
+          console.log('📁 Trying Downloads directory first:', filePath);
           
-          // Ensure directory exists
-          const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-          const dirExists = await RNFS.exists(dirPath);
-          if (!dirExists) {
-            await RNFS.mkdir(dirPath);
-            console.log('📁 Created directory:', dirPath);
+          try {
+            // Test if we can write to Downloads directory
+            const canWriteToDownloads = await testDownloadsAccess();
+            
+            if (canWriteToDownloads) {
+              // Write the PDF file to Downloads
+              await RNFS.writeFile(filePath, base64Data, 'base64');
+              console.log('✅ PDF saved successfully to Downloads:', filePath);
+            } else {
+              throw new Error('Cannot write to Downloads directory');
+            }
+          } catch (downloadsError) {
+            console.log('📁 Downloads directory failed, trying app documents directory...');
+            
+            // Fallback to app documents directory
+            filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+            locationMessage = 'App Documents folder';
+            
+            // Ensure directory exists
+            const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+            const dirExists = await RNFS.exists(dirPath);
+            if (!dirExists) {
+              await RNFS.mkdir(dirPath);
+              console.log('📁 Created directory:', dirPath);
+            }
+            
+            // Write the PDF file
+            await RNFS.writeFile(filePath, base64Data, 'base64');
+            console.log('✅ PDF saved successfully to app documents:', filePath);
           }
-          
-          // Write the PDF file
-          await RNFS.writeFile(filePath, base64Data, 'base64');
-          console.log('✅ PDF saved successfully to:', filePath);
           
           // Check if file exists
           const fileExists = await RNFS.exists(filePath);
@@ -1065,13 +1085,10 @@ const DownloadCertificateScreen = () => {
             const fileStats = await RNFS.stat(filePath);
             console.log('📊 File stats:', fileStats);
             
-            // Location message
-            const locationMessage = 'App Documents folder';
-            
             // Show success message with file location
             Alert.alert(
               'Download Complete! 🎉',
-              `Certificate saved as ${fileName}\nLocation: ${locationMessage}\n\nYou can access it through your file manager.`,
+              `Certificate saved as ${fileName}\nLocation: ${locationMessage}\n\nYou can find it in your file manager.`,
               [
                 { text: 'OK' },
                 { 
