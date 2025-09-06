@@ -135,7 +135,17 @@ const HomeScreen = () => {
   );
   // Auto-rotate carousel items
   useEffect(() => {
-    const totalItems = featuredCourses.length + (bannerData.promos && bannerData.promos.length > 1 ? bannerData.promos.length - 1 : 0);
+    // Calculate total items based on actual banner data
+    let totalItems = 0;
+    
+    if (bannerData.recentSubcourse) totalItems++;
+    if (bannerData.recentPurchasedSubcourse) totalItems++;
+    if (bannerData.promos && bannerData.promos.length > 0) totalItems += bannerData.promos.length;
+    
+    // Fallback to featured courses if no banner data
+    if (totalItems === 0 && featuredCourses.length > 0) {
+      totalItems = featuredCourses.length;
+    }
     
     if (totalItems > 1) {
       const interval = setInterval(() => {
@@ -156,7 +166,7 @@ const HomeScreen = () => {
 
       return () => clearInterval(interval);
     }
-  }, [featuredCourses.length, bannerData.promos]);
+  }, [featuredCourses.length, bannerData.recentSubcourse, bannerData.recentPurchasedSubcourse, bannerData.promos]);
 
   // Function to fetch featured courses from API
   const fetchFeaturedCourses = async () => {
@@ -338,11 +348,14 @@ const HomeScreen = () => {
         const result = await response.json();
         
         if (result.success) {
+          console.log('🏠 HomeScreen: Banner data fetched successfully:', result.data);
           setBannerData(result.data);
         } else {
+          console.log('❌ HomeScreen: Banner API response not successful:', result);
           setBannerError(result.message || 'Failed to fetch banner data');
         }
       } else {
+        console.log('❌ HomeScreen: Banner API call failed:', response.status, response.statusText);
         setBannerError(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
@@ -626,66 +639,32 @@ const HomeScreen = () => {
   };
 
   const renderCarouselItem = (item, index) => {
-    // Use banner data if available, otherwise fall back to featured courses
+    // Check if this is a promo item
+    const isPromoItem = item.isPromo || false;
+    
+    // Set display properties based on item type
     let displayItem = item;
-    let buttonText = item.buttonText;
-    let progress = item.progress;
+    let buttonText = item.buttonText || '';
+    let progress = item.progress || 0;
     let showProgressCircle = false;
     let showCourseDetails = true;
-    let isPromoItem = false;
     
-    // Check if we have banner data and use it for the first two items
-    if (index === 0 && bannerData.recentSubcourse) {
-      // First item: recentSubcourse (no progress key, always show Explore)
-      displayItem = {
-        ...item,
-        title: bannerData.recentSubcourse.subcourseName,
-        lessons: `${bannerData.recentSubcourse.totalLessons} lessons`,
-        image: bannerData.recentSubcourse.thumbnailImageUrl ? { uri: bannerData.recentSubcourse.thumbnailImageUrl } : item.image,
-        progress: 0, // No progress for recent subcourse
-      };
-      buttonText = 'Explore'; // Always show Explore button for recent subcourse
-      progress = 0;
-      showProgressCircle = false; // Don't show progress circle for recent subcourse
-      showCourseDetails = true; // Show course details (title, lessons)
-      isPromoItem = false;
-    } else if (index === 1 && bannerData.recentPurchasedSubcourse) {
-      // Second item: recentPurchasedSubcourse (has progress key, always show Continue Learning)
-      const hasProgress = bannerData.recentPurchasedSubcourse.hasOwnProperty('progress');
-      const progressValue = hasProgress ? parseInt(bannerData.recentPurchasedSubcourse.progress?.replace('%', '') || '0') : 0;
-      
-      displayItem = {
-        ...item,
-        title: bannerData.recentPurchasedSubcourse.subcourseName,
-        lessons: `${bannerData.recentPurchasedSubcourse.totalLessons} lessons`,
-        image: bannerData.recentPurchasedSubcourse.thumbnailImageUrl ? { uri: bannerData.recentPurchasedSubcourse.thumbnailImageUrl } : item.image,
-        progress: progressValue,
-      };
-      
-      // Always show Continue Learning button if progress key exists (even if 0%)
-      if (hasProgress) {
-        buttonText = 'Continue Learning';
-        showProgressCircle = true; // Always show progress circle for Continue Learning
-      } else {
-        buttonText = 'Explore';
-        showProgressCircle = false; // Don't show progress circle for Explore
-      }
-      progress = progressValue;
-      showCourseDetails = true; // Show course details (title, lessons)
-      isPromoItem = false;
-    } else if (index === 2 && bannerData.promos && bannerData.promos.length > 0) {
-      // Third item: first promo image (complete image banner, no text, no buttons, no course details)
-      const promo = bannerData.promos[0]; // Always use first promo for index 2
-      
-      displayItem = {
-        ...item,
-        image: promo.promo ? { uri: promo.promo } : item.image,
-      };
+    if (isPromoItem) {
+      // Promo item: complete image banner, no text, no buttons, no course details
       buttonText = ''; // No button for promo image
       progress = 0;
       showProgressCircle = false; // Don't show progress circle for promo
       showCourseDetails = false; // Don't show course details for promo
-      isPromoItem = true; // Mark as promo item
+    } else {
+      // Course item: show course details and appropriate button
+      showCourseDetails = true; // Show course details (title, lessons)
+      
+      // Determine if we should show progress circle
+      if (item.buttonText === 'Continue Learning') {
+        showProgressCircle = true; // Show progress circle for Continue Learning
+      } else {
+        showProgressCircle = false; // Don't show progress circle for Explore
+      }
     }
     
     return (
@@ -904,27 +883,66 @@ const HomeScreen = () => {
                 {/* Render all carousel items in sequence */}
                 {(() => {
                   const allItems = [];
+                  let itemIndex = 0;
                   
-                  // Add featured courses
-                  featuredCourses.forEach((course, index) => {
-                    allItems.push(renderCarouselItem(course, index));
-                  });
+                  // First, add recentSubcourse if available
+                  if (bannerData.recentSubcourse) {
+                    const recentCourse = {
+                      id: bannerData.recentSubcourse._id,
+                      title: bannerData.recentSubcourse.subcourseName,
+                      lessons: `${bannerData.recentSubcourse.totalLessons} lessons`,
+                      image: bannerData.recentSubcourse.thumbnailImageUrl ? { uri: bannerData.recentSubcourse.thumbnailImageUrl } : require('../assests/images/Circular.png'),
+                      progress: 0,
+                      buttonText: 'Explore'
+                    };
+                    allItems.push(renderCarouselItem(recentCourse, itemIndex));
+                    itemIndex++;
+                  }
+                  
+                  // Second, add recentPurchasedSubcourse if available
+                  if (bannerData.recentPurchasedSubcourse) {
+                    const purchasedCourse = {
+                      id: bannerData.recentPurchasedSubcourse._id,
+                      title: bannerData.recentPurchasedSubcourse.subcourseName,
+                      lessons: `${bannerData.recentPurchasedSubcourse.totalLessons} lessons`,
+                      image: bannerData.recentPurchasedSubcourse.thumbnailImageUrl ? { uri: bannerData.recentPurchasedSubcourse.thumbnailImageUrl } : require('../assests/images/Circular.png'),
+                      progress: parseInt(bannerData.recentPurchasedSubcourse.progress?.replace('%', '') || '0'),
+                      buttonText: 'Continue Learning'
+                    };
+                    allItems.push(renderCarouselItem(purchasedCourse, itemIndex));
+                    itemIndex++;
+                  }
+                  
+                  // Third, add first promo if available
+                  if (bannerData.promos && bannerData.promos.length > 0) {
+                    const promo = bannerData.promos[0];
+                    const promoItem = {
+                      id: `promo-${promo._id}`,
+                      image: { uri: promo.promo },
+                      isPromo: true
+                    };
+                    allItems.push(renderCarouselItem(promoItem, itemIndex));
+                    itemIndex++;
+                  }
+                  
+                  // Add featured courses if no banner data or as fallback
+                  if (allItems.length === 0 && featuredCourses.length > 0) {
+                    featuredCourses.forEach((course, index) => {
+                      allItems.push(renderCarouselItem(course, itemIndex));
+                      itemIndex++;
+                    });
+                  }
                   
                   // Add additional promo images if available
                   if (bannerData.promos && bannerData.promos.length > 1) {
                     bannerData.promos.slice(1).forEach((promo, index) => {
-                      const promoIndex = featuredCourses.length + index;
-                      allItems.push(
-                        <View key={`promo-${promoIndex}`} style={styles.carouselItem}>
-                          <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
-                            <Image 
-                              source={{ uri: promo.promo }} 
-                              style={styles.carouselBannerImage} 
-                              resizeMode="cover" 
-                            />
-                          </View>
-                        </View>
-                      );
+                      const promoItem = {
+                        id: `promo-${promo._id}`,
+                        image: { uri: promo.promo },
+                        isPromo: true
+                      };
+                      allItems.push(renderCarouselItem(promoItem, itemIndex));
+                      itemIndex++;
                     });
                   }
                   
@@ -935,7 +953,17 @@ const HomeScreen = () => {
               {/* Carousel Dots - Show dots for all carousel items */}
               <View style={styles.dotsContainer}>
                 {(() => {
-                  const totalItems = featuredCourses.length + (bannerData.promos && bannerData.promos.length > 1 ? bannerData.promos.length - 1 : 0);
+                  // Calculate total items based on actual banner data
+                  let totalItems = 0;
+                  
+                  if (bannerData.recentSubcourse) totalItems++;
+                  if (bannerData.recentPurchasedSubcourse) totalItems++;
+                  if (bannerData.promos && bannerData.promos.length > 0) totalItems += bannerData.promos.length;
+                  
+                  // Fallback to featured courses if no banner data
+                  if (totalItems === 0 && featuredCourses.length > 0) {
+                    totalItems = featuredCourses.length;
+                  }
                   
                   return Array.from({ length: totalItems }, (_, index) => (
                     <View

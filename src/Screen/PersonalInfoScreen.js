@@ -24,6 +24,8 @@ const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { fullName, mobileNumber, token, profileImageUrl, address, email } = useAppSelector((state) => state.user);
 
+  console.log('🔄 PersonalInfoScreen: Initial Redux state:', { fullName, mobileNumber, token, profileImageUrl, address, email });
+
   const [name, setName] = useState(fullName || '');
   const [userAddress, setUserAddress] = useState(address || '');
   const [userEmail, setUserEmail] = useState(email || '');
@@ -32,6 +34,8 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
+  console.log('🔄 PersonalInfoScreen: Initial local state:', { name, userAddress, userEmail, phone });
+
   // Fetch user profile data on component mount
   useEffect(() => {
     fetchUserProfile();
@@ -39,47 +43,102 @@ const PersonalInfoScreen = ({ navigation }) => {
 
   // Update local state when Redux state changes
   useEffect(() => {
-    if (fullName) setName(fullName);
-    if (mobileNumber) setPhone(mobileNumber);
-    if (address) setUserAddress(address);
-    if (email) setUserEmail(email);
-    if (profileImageUrl) setProfileImage({ uri: profileImageUrl });
+    console.log('🔄 PersonalInfoScreen: Redux state changed:');
+    console.log('🔄 PersonalInfoScreen: fullName:', fullName);
+    console.log('🔄 PersonalInfoScreen: mobileNumber:', mobileNumber);
+    console.log('🔄 PersonalInfoScreen: address:', address);
+    console.log('🔄 PersonalInfoScreen: email:', email);
+    console.log('🔄 PersonalInfoScreen: profileImageUrl:', profileImageUrl);
+    
+    if (fullName !== undefined) {
+      console.log('📝 PersonalInfoScreen: Setting name from Redux:', fullName);
+      setName(fullName);
+    }
+    if (mobileNumber !== undefined) {
+      console.log('📱 PersonalInfoScreen: Setting phone from Redux:', mobileNumber);
+      setPhone(mobileNumber);
+    }
+    if (address !== undefined) {
+      console.log('🏠 PersonalInfoScreen: Setting address from Redux:', address);
+      setUserAddress(address);
+    }
+    if (email !== undefined) {
+      console.log('📧 PersonalInfoScreen: Updating email from Redux:', email);
+      console.log('📧 PersonalInfoScreen: Current userEmail state:', userEmail);
+      setUserEmail(email);
+      console.log('📧 PersonalInfoScreen: Email state updated to:', email);
+    }
+    if (profileImageUrl) {
+      console.log('🖼️ PersonalInfoScreen: Setting profile image from Redux:', profileImageUrl);
+      setProfileImage({ uri: profileImageUrl });
+    }
   }, [fullName, mobileNumber, address, email, profileImageUrl]);
 
   const fetchUserProfile = async () => {
     if (!token) {
+      console.log('❌ PersonalInfoScreen: No token available for profile fetch');
       setIsLoadingProfile(false);
       return;
     }
 
     try {
       setIsLoadingProfile(true);
+      console.log('🔄 PersonalInfoScreen: Starting profile fetch...');
+      console.log('🔄 PersonalInfoScreen: Using token:', token ? `${token.substring(0, 20)}...` : 'No token');
+      
       const result = await profileAPI.getUserProfile(token);
+      
+      console.log('📡 PersonalInfoScreen: Profile API response received:');
+      console.log('📡 PersonalInfoScreen: result.success:', result.success);
+      console.log('📡 PersonalInfoScreen: result.status:', result.status);
+      console.log('📡 PersonalInfoScreen: result.data:', result.data);
+      console.log('📡 PersonalInfoScreen: result.data.success:', result.data?.success);
+      console.log('📡 PersonalInfoScreen: result.data.data:', result.data?.data);
 
       if (result.success && result.data.success) {
         const profileData = result.data.data;
-        console.log('Profile data fetched:', profileData);
+        console.log('✅ PersonalInfoScreen: Profile data fetched successfully:');
+        console.log('✅ PersonalInfoScreen: profileData:', profileData);
+        console.log('✅ PersonalInfoScreen: profileData.email:', profileData.email);
+        console.log('✅ PersonalInfoScreen: profileData.fullName:', profileData.fullName);
+        console.log('✅ PersonalInfoScreen: profileData.address:', profileData.address);
+        console.log('✅ PersonalInfoScreen: profileData.mobileNumber:', profileData.mobileNumber);
 
         // Update Redux store with fetched data
+        console.log('🔄 PersonalInfoScreen: Updating Redux store with profile data...');
         dispatch(setProfileData(profileData));
 
         // Update local state
+        console.log('🔄 PersonalInfoScreen: Updating local state...');
         setName(profileData.fullName || '');
         setPhone(profileData.mobileNumber || '+91');
         setUserAddress(profileData.address || '');
         setUserEmail(profileData.email || '');
+        console.log('📧 PersonalInfoScreen: Set userEmail to:', profileData.email || '');
+        
         if (profileData.profileImageUrl) {
           setProfileImage({ uri: profileData.profileImageUrl });
+          console.log('🖼️ PersonalInfoScreen: Set profile image to:', profileData.profileImageUrl);
         }
       } else {
-        console.log('Failed to fetch profile:', result.data?.message);
+        console.log('❌ PersonalInfoScreen: Failed to fetch profile:');
+        console.log('❌ PersonalInfoScreen: result.success:', result.success);
+        console.log('❌ PersonalInfoScreen: result.data.success:', result.data?.success);
+        console.log('❌ PersonalInfoScreen: Error message:', result.data?.message);
+        console.log('❌ PersonalInfoScreen: Full result:', result);
         Alert.alert('Error', 'Failed to load profile data');
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('💥 PersonalInfoScreen: Error fetching profile:', error);
+      console.error('💥 PersonalInfoScreen: Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       Alert.alert('Error', 'Failed to load profile data');
     } finally {
       setIsLoadingProfile(false);
+      console.log('🔄 PersonalInfoScreen: Profile fetch completed');
     }
   };
 
@@ -137,13 +196,19 @@ const PersonalInfoScreen = ({ navigation }) => {
       return;
     }
 
+    if (!token) {
+      Alert.alert('Error', 'Please login to verify email');
+      return;
+    }
+
     try {
       setIsLoading(true);
       console.log('📧 PersonalInfoScreen: Starting email verification...');
       console.log('📧 PersonalInfoScreen: Email to verify:', userEmail);
+      console.log('📧 PersonalInfoScreen: Using token:', token ? `${token.substring(0, 20)}...` : 'No token');
 
-      // Call send-emailotp API
-      const response = await fetch(getApiUrl(ENDPOINTS.SEND_EMAIL_OTP), {
+      // Call send-emailotp API with correct endpoint and headers
+      const response = await fetch(getApiUrl('/api/auth/send-emailotp'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

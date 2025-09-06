@@ -26,8 +26,24 @@ export const profileAPI = {
       clearTimeout(timeoutId);
       
       const responseData = await response.json();
-      console.log('profileAPI.getUserProfile - Response Status:', response.status);
-      console.log('profileAPI.getUserProfile - Response Data:', responseData);
+      console.log('📡 profileAPI.getUserProfile - Response Status:', response.status);
+      console.log('📡 profileAPI.getUserProfile - Response OK:', response.ok);
+      console.log('📡 profileAPI.getUserProfile - Response Data:', responseData);
+      console.log('📡 profileAPI.getUserProfile - Response Data Type:', typeof responseData);
+      console.log('📡 profileAPI.getUserProfile - Response Data Keys:', Object.keys(responseData || {}));
+      
+      if (responseData && responseData.data) {
+        console.log('📡 profileAPI.getUserProfile - Nested Data:', responseData.data);
+        console.log('📡 profileAPI.getUserProfile - Nested Data Type:', typeof responseData.data);
+        console.log('📡 profileAPI.getUserProfile - Nested Data Keys:', Object.keys(responseData.data || {}));
+        
+        if (responseData.data && responseData.data.data) {
+          console.log('📡 profileAPI.getUserProfile - User Profile Data:', responseData.data.data);
+          console.log('📡 profileAPI.getUserProfile - User Profile Data Type:', typeof responseData.data.data);
+          console.log('📡 profileAPI.getUserProfile - User Profile Data Keys:', Object.keys(responseData.data.data || {}));
+          console.log('📡 profileAPI.getUserProfile - User Email:', responseData.data.data?.email);
+        }
+      }
       
       return {
         success: response.ok,

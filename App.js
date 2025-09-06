@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
@@ -56,6 +56,7 @@ const AppContent = () => {
   const dispatch = useDispatch();
   const { token } = useSelector((state) => state.user);
   const fcmService = getFCMTokenService(store);
+  const navigationRef = useRef(null);
 
   useEffect(() => {
     console.log('🚀 App started!');
@@ -103,13 +104,9 @@ const AppContent = () => {
           console.log('📏 App: Token Length:', fcmToken.length);
           console.log('👀 App: Token Preview:', fcmToken.substring(0, 50) + '...');
           
-          // Send token to backend
-          const sent = await fcmService.initializeAndSendToken();
-          if (sent) {
-            console.log('✅ App: FCM token sent to backend successfully');
-          } else {
-            console.log('ℹ️ App: FCM token will be sent after user login');
-          }
+          // Just initialize FCM token, don't send to backend yet
+          // Token will be sent when user logs in
+          console.log('ℹ️ App: FCM token generated, will be sent after user login');
         } else {
           console.log('❌ App: Failed to generate FCM token');
         }
@@ -152,6 +149,9 @@ const AppContent = () => {
     global.testFCM = () => testFCMTokenGeneration();
     global.checkFirebase = () => checkFirebaseStatus();
     global.testConfig = () => testFirebaseConfig();
+    
+    // Set global navigation reference for notification handlers
+    global.navigationRef = navigationRef;
     
     // Add notification testing functions
     global.testNotifications = () => notificationTester.runCompleteTest();
@@ -219,7 +219,8 @@ const AppContent = () => {
       if (token) {
         try {
           console.log('🔔 App: User logged in, handling post-login tasks...');
-          // Send FCM token to backend
+          
+          // Send FCM token to backend (only once when user logs in)
           console.log('🔔 App: Sending FCM token to backend...');
           const sent = await fcmService.sendStoredTokenToBackend();
           if (sent) {
@@ -227,9 +228,7 @@ const AppContent = () => {
           } else {
             console.log('ℹ️ App: No FCM token to send or failed to send');
           }
-          // Initialize FCM token with notification service
-          console.log('🔔 App: Initializing FCM token with notification service...');
-          await notificationService.initializeFCMToken(token);
+          
           // Join WebSocket user room
           console.log('🔌 App: Joining WebSocket user room...');
           const { _id, userId } = store.getState().user;
@@ -257,7 +256,7 @@ const AppContent = () => {
   }, [token, fcmService]);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="OnBoard" component={OnBoardScreen} />

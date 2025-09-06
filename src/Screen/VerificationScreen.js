@@ -3,7 +3,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
 import { profileAPI } from '../API/profileAPI';
 import { useAppDispatch } from '../Redux/hooks';
-import { setUserData, saveUserToStorage } from '../Redux/userSlice';
+import { setUserData, saveUserToStorage, setProfileData } from '../Redux/userSlice';
 import store from '../Redux/store';
 import { getApiUrl } from '../API/config';
 import {
@@ -122,26 +122,37 @@ const VerificationScreen = ({ route }) => {
     if (isEmailVerification) {
       console.log('📧 VerificationScreen: Resending email OTP...');
       console.log('📧 VerificationScreen: Email for resend:', email);
+      console.log('📧 VerificationScreen: Token for resend:', route.params?.token ? `${route.params.token.substring(0, 20)}...` : 'No token');
+      
+      if (!route.params?.token) {
+        console.log('❌ VerificationScreen: No token available for email OTP resend');
+        Alert.alert('Error', 'Authentication token not found. Please try again.');
+        return;
+      }
       
       setIsResending(true);
       
       try {
-        // Call send-emailotp API again
+        // Call send-emailotp API again with correct endpoint and headers
         const response = await fetch(getApiUrl('/api/auth/send-emailotp'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${route.params?.token || ''}`,
+            'Authorization': `Bearer ${route.params.token}`,
           },
           body: JSON.stringify({
             email: email
           })
         });
 
+        console.log('📡 VerificationScreen: Resend response status:', response.status);
+        
         if (response.ok) {
           const result = await response.json();
+          console.log('📡 VerificationScreen: Resend response:', result);
           if (result.success) {
             console.log('✅ VerificationScreen: Email OTP resent successfully!');
+            Alert.alert('Success', 'OTP resent successfully!');
             // Reset timer to 45 seconds
             setResendTimer(45);
             // Clear OTP fields
@@ -150,12 +161,16 @@ const VerificationScreen = ({ route }) => {
             otpRefs.current[0]?.focus();
           } else {
             console.log('❌ VerificationScreen: Email OTP resend failed:', result.message);
+            Alert.alert('Error', result.message || 'Failed to resend OTP');
           }
         } else {
-          console.log('❌ VerificationScreen: Email OTP resend failed:', response.status);
+          const errorText = await response.text();
+          console.log('❌ VerificationScreen: Email OTP resend failed:', response.status, errorText);
+          Alert.alert('Error', `Failed to resend OTP. Status: ${response.status}`);
         }
       } catch (error) {
         console.error('💥 VerificationScreen: Email OTP resend error:', error);
+        Alert.alert('Error', 'Failed to resend OTP. Please try again.');
       } finally {
         setIsResending(false);
       }
@@ -193,9 +208,16 @@ const VerificationScreen = ({ route }) => {
     console.log('📧 VerificationScreen: Starting email OTP verification...');
     console.log('📧 VerificationScreen: OTP entered:', otpString);
     console.log('📧 VerificationScreen: Email from route:', email);
+    console.log('📧 VerificationScreen: Token from route:', route.params?.token ? `${route.params.token.substring(0, 20)}...` : 'No token');
     
     if (otpString.length !== 6) {
       console.log('❌ VerificationScreen: OTP incomplete, length:', otpString.length);
+      return;
+    }
+
+    if (!route.params?.token) {
+      console.log('❌ VerificationScreen: No token available for email verification');
+      Alert.alert('Error', 'Authentication token not found. Please try again.');
       return;
     }
 
@@ -203,12 +225,12 @@ const VerificationScreen = ({ route }) => {
     console.log('🔄 VerificationScreen: Loading started, calling verify-emailOtp API...');
     
     try {
-      // Call verify-emailOtp API
+      // Call verify-emailOtp API with correct endpoint and headers
       const response = await fetch(getApiUrl('/api/auth/verify-emailOtp'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${route.params?.token || ''}`,
+          'Authorization': `Bearer ${route.params.token}`,
         },
         body: JSON.stringify({
           email: email,
@@ -238,6 +260,13 @@ const VerificationScreen = ({ route }) => {
       
       if (result.success) {
         console.log('✅ VerificationScreen: Email OTP verification successful!');
+        
+        // Update Redux store with verified email
+        console.log('🔄 VerificationScreen: Updating Redux store with verified email:', email);
+        dispatch(setProfileData({
+          email: email
+        }));
+        
         Alert.alert(
           'Success', 
           'Email verified successfully!',

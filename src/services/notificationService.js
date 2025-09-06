@@ -181,27 +181,29 @@ class NotificationService {
     try {
       console.log('🔔 NotificationService: Handling notification tap:', notification);
       
-      const { data } = notification;
-      
-      // Handle different notification types
-      switch (data?.type) {
-        case 'live_lesson':
-          this.handleLiveLessonNotification(data);
-          break;
-        case 'buy_course':
-          this.handleBuyCourseNotification(data);
-          break;
-        case 'request_internship_letter':
-          this.handleInternshipRequestNotification(data);
-          break;
-        case 'upload_internship_letter':
-          this.handleInternshipUploadNotification(data);
-          break;
-        default:
-          console.log('🔔 NotificationService: Unknown notification type:', data?.type);
-      }
+      // Navigate to notification screen
+      this.navigateToNotificationScreen();
     } catch (error) {
       console.error('❌ NotificationService: Notification tap handling failed:', error);
+    }
+  }
+
+  // Navigate to notification screen
+  navigateToNotificationScreen() {
+    try {
+      console.log('🔔 NotificationService: Navigating to notification screen...');
+      
+      // Import navigation service or use global navigation
+      // For now, we'll use a simple approach
+      // You might need to adjust this based on your navigation setup
+      if (global.navigationRef && global.navigationRef.current) {
+        global.navigationRef.current.navigate('Notification');
+        console.log('✅ NotificationService: Navigated to notification screen');
+      } else {
+        console.log('❌ NotificationService: Navigation not available');
+      }
+    } catch (error) {
+      console.error('❌ NotificationService: Navigation failed:', error);
     }
   }
 
