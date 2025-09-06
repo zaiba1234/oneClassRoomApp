@@ -191,6 +191,14 @@ export const getFirebaseApp = () => {
 // Send to backend
 export const sendFCMTokenToBackend = async (token, userToken) => {
   try {
+    // Check if this token was already sent recently
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const lastSentToken = await AsyncStorage.getItem('last_sent_fcm_token_firebase');
+    if (lastSentToken === token) {
+      console.log('ℹ️ Firebase: Token already sent, skipping duplicate');
+      return true;
+    }
+
     const { getApiUrl } = require('../API/config');
     const apiUrl = getApiUrl('/api/user/fcm-token/update');
     
@@ -207,7 +215,14 @@ export const sendFCMTokenToBackend = async (token, userToken) => {
     });
     
     const result = await response.json();
-    return response.ok && result.success;
+    const success = response.ok && result.success;
+    
+    if (success) {
+      // Store the sent token to prevent duplicates
+      await AsyncStorage.setItem('last_sent_fcm_token_firebase', token);
+    }
+    
+    return success;
   } catch (error) {
     console.log('❌ Backend send error:', error.message);
     return false;

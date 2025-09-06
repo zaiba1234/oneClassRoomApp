@@ -249,6 +249,8 @@ const AppContent = () => {
         console.log('👋 App: User logged out, cleaning up...');
         websocketService.emit('leave', {});
         await notificationService.cleanup();
+        // Reset FCM token tracking
+        fcmService.resetTokenTracking();
       }
     };
 

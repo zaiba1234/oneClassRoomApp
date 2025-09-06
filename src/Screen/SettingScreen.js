@@ -23,7 +23,7 @@ const SettingScreen = ({ navigation }) => {
 
   const handleNotificationSetting = () => {
     console.log('Notification setting pressed');
-    // Add notification settings navigation here
+    navigation.navigate('Notification');
   };
 
   const handleFingerprintToggle = (value) => {
@@ -47,10 +47,10 @@ const SettingScreen = ({ navigation }) => {
         {/* Language Setting */}
         <TouchableOpacity style={styles.settingCard} onPress={handleLanguageSetting}>
           <View style={styles.settingContent}>
-            <Text style={styles.settingLabel}>Language Setting</Text>
+            <Text style={styles.settingLabel}>Language </Text>
             <View style={styles.settingRight}>
               <Text style={styles.languageValue}>English</Text>
-              <Icon name="chevron-down" size={20} color="#FF8800" />
+           
             </View>
           </View>
         </TouchableOpacity>
@@ -63,19 +63,7 @@ const SettingScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Fingerprint Log In */}
-        <View style={styles.settingCard}>
-          <View style={styles.settingContent}>
-            <Text style={styles.settingLabel}>Fingerprint Log In</Text>
-            <Switch
-              value={fingerprintEnabled}
-              onValueChange={handleFingerprintToggle}
-              trackColor={{ false: '#E0E0E0', true: '#FF8800' }}
-              thumbColor={fingerprintEnabled ? '#FFFFFF' : '#FFFFFF'}
-              ios_backgroundColor="#E0E0E0"
-            />
-          </View>
-        </View>
+        
       </ScrollView>
     </SafeAreaView>
   );
@@ -95,7 +83,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 10 : 20,
     paddingBottom: 20,
-    marginTop: 30,
+    marginTop: 0,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',

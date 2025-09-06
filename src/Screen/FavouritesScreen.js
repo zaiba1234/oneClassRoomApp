@@ -35,11 +35,16 @@ const FavouritesScreen = ({ navigation }) => {
     }
   }, [token]);
 
-  // Auto-refresh when screen comes into focus
+  // Auto-refresh when screen comes into focus (with debouncing)
   useFocusEffect(
     React.useCallback(() => {
       if (token) {
-        fetchFavoriteCourses();
+        // Add a small delay to prevent too frequent calls
+        const timeoutId = setTimeout(() => {
+          fetchFavoriteCourses();
+        }, 500);
+        
+        return () => clearTimeout(timeoutId);
       }
     }, [token])
   );

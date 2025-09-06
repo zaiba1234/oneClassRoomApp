@@ -182,11 +182,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderBottomRightRadius: 40,
     borderBottomLeftRadius: 40,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
   },
   logoSection: {
     alignItems: 'center',

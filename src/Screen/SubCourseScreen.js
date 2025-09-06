@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 20,
-    marginTop: 10,
+    marginTop: 30,
     minHeight: 80,
   },
   headerTitle: {

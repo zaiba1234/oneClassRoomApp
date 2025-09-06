@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   StatusBar,
   Alert,
   Platform,
+  Modal,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -19,6 +22,14 @@ import { setFullName, setMobileNumber, setProfileData } from '../Redux/userSlice
 import { profileAPI } from '../API/profileAPI';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import BackButton from '../Component/BackButton';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive dimensions
+const getResponsiveSize = (size) => {
+  const scale = Math.min(width, height) / 375; // Base width
+  return Math.round(size * scale);
+};
 
 const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -33,8 +44,126 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [profileImage, setProfileImage] = useState(profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png'));
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  
+  // Custom Modal State
+  const [customAlert, setCustomAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info', // 'info', 'success', 'error', 'warning', 'loading'
+    buttons: [],
+    showSpinner: false
+  });
 
   console.log('🔄 PersonalInfoScreen: Initial local state:', { name, userAddress, userEmail, phone });
+
+  // Custom Modal Component
+  const CustomAlert = () => (
+    <Modal
+      visible={customAlert.visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+    >
+      <View style={styles.alertOverlay}>
+        <View style={styles.alertContainer}>
+          {/* Close Button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+          >
+            <Icon name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+          
+          <View style={[styles.alertIcon, { backgroundColor: getAlertColor(customAlert.type) }]}>
+            {customAlert.showSpinner ? (
+              <ActivityIndicator size="large" color="#fff" />
+            ) : (
+              <Text style={styles.alertIconText}>
+                {getAlertIcon(customAlert.type)}
+              </Text>
+            )}
+          </View>
+          <Text style={styles.alertTitle}>{customAlert.title}</Text>
+          <Text style={styles.alertMessage}>{customAlert.message}</Text>
+          <View style={styles.alertButtons}>
+            {customAlert.buttons.map((button, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.alertButton,
+                  button.style === 'primary' && styles.alertButtonPrimary,
+                  button.style === 'secondary' && styles.alertButtonSecondary,
+                  button.style === 'danger' && styles.alertButtonDanger
+                ]}
+                onPress={() => {
+                  setCustomAlert(prev => ({ ...prev, visible: false }));
+                  if (button.onPress) {
+                    try {
+                      button.onPress();
+                    } catch (error) {
+                      showCustomAlert(
+                        'Error',
+                        'An error occurred while handling the alert button.',
+                        'error',
+                        [{ text: 'OK', style: 'primary' }]
+                      );
+                    }
+                  }
+                }}
+              >
+                <Text style={[
+                  styles.alertButtonText,
+                  button.style === 'primary' && styles.alertButtonTextPrimary,
+                  button.style === 'secondary' && styles.alertButtonTextSecondary,
+                  button.style === 'danger' && styles.alertButtonTextDanger
+                ]}>
+                  {button.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Helper functions for custom alert
+  const getAlertColor = (type) => {
+    switch (type) {
+      case 'success': return '#4CAF50';
+      case 'error': return '#F44336';
+      case 'warning': return '#FF9800';
+      case 'loading': return '#2196F3';
+      default: return '#2196F3';
+    }
+  };
+
+  const getAlertIcon = (type) => {
+    switch (type) {
+      case 'success': return '✓';
+      case 'error': return '✕';
+      case 'warning': return '⚠';
+      case 'loading': return '⏳';
+      default: return 'ℹ';
+    }
+  };
+
+  // Safe alert function
+  const showCustomAlert = useCallback((title, message, type = 'info', buttons = [], showSpinner = false) => {
+    try {
+      setCustomAlert({
+        visible: true,
+        title: title || 'Alert',
+        message: message || '',
+        type,
+        buttons: buttons.length > 0 ? buttons : [{ text: 'OK', style: 'primary' }],
+        showSpinner
+      });
+    } catch (error) {
+      console.error('Error showing custom alert:', error);
+    }
+  }, []);
 
   // Fetch user profile data on component mount
   useEffect(() => {
@@ -78,6 +207,19 @@ const PersonalInfoScreen = ({ navigation }) => {
     if (!token) {
       console.log('❌ PersonalInfoScreen: No token available for profile fetch');
       setIsLoadingProfile(false);
+      showCustomAlert(
+        'Authentication Required',
+        'Please login to view your profile information.',
+        'warning',
+        [
+          { text: 'OK', style: 'primary' },
+          { 
+            text: 'Go to Login', 
+            style: 'secondary',
+            onPress: () => navigation.navigate('Login')
+          }
+        ]
+      );
       return;
     }
 
@@ -126,7 +268,16 @@ const PersonalInfoScreen = ({ navigation }) => {
         console.log('❌ PersonalInfoScreen: result.data.success:', result.data?.success);
         console.log('❌ PersonalInfoScreen: Error message:', result.data?.message);
         console.log('❌ PersonalInfoScreen: Full result:', result);
-        Alert.alert('Error', 'Failed to load profile data');
+        
+        showCustomAlert(
+          'Profile Load Error',
+          result.data?.message || 'Failed to load your profile data. Please try again.',
+          'error',
+          [
+            { text: 'Retry', style: 'primary', onPress: () => fetchUserProfile() },
+            { text: 'Cancel', style: 'secondary' }
+          ]
+        );
       }
     } catch (error) {
       console.error('💥 PersonalInfoScreen: Error fetching profile:', error);
@@ -135,7 +286,31 @@ const PersonalInfoScreen = ({ navigation }) => {
         stack: error.stack,
         name: error.name
       });
-      Alert.alert('Error', 'Failed to load profile data');
+      
+      // Determine error type and show appropriate message
+      let errorTitle = 'Network Error';
+      let errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+      
+      if (error.message.includes('timeout')) {
+        errorTitle = 'Request Timeout';
+        errorMessage = 'The request took too long to complete. Please check your internet connection and try again.';
+      } else if (error.message.includes('Network request failed')) {
+        errorTitle = 'Connection Failed';
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      } else if (error.message.includes('JSON')) {
+        errorTitle = 'Data Error';
+        errorMessage = 'Received invalid data from the server. Please try again.';
+      }
+      
+      showCustomAlert(
+        errorTitle,
+        errorMessage,
+        'error',
+        [
+          { text: 'Retry', style: 'primary', onPress: () => fetchUserProfile() },
+          { text: 'Cancel', style: 'secondary' }
+        ]
+      );
     } finally {
       setIsLoadingProfile(false);
       console.log('🔄 PersonalInfoScreen: Profile fetch completed');
@@ -187,17 +362,39 @@ const PersonalInfoScreen = ({ navigation }) => {
 
   const handleEmailVerification = async () => {
     if (!userEmail || !userEmail.trim()) {
-      Alert.alert('Error', 'Please enter an email address first');
+      showCustomAlert(
+        'Email Required',
+        'Please enter an email address first.',
+        'warning',
+        [{ text: 'OK', style: 'primary' }]
+      );
       return;
     }
 
     if (!userEmail.includes('@') || !userEmail.includes('.')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      showCustomAlert(
+        'Invalid Email',
+        'Please enter a valid email address format.',
+        'error',
+        [{ text: 'OK', style: 'primary' }]
+      );
       return;
     }
 
     if (!token) {
-      Alert.alert('Error', 'Please login to verify email');
+      showCustomAlert(
+        'Authentication Required',
+        'Please login to verify your email address.',
+        'warning',
+        [
+          { text: 'OK', style: 'primary' },
+          { 
+            text: 'Go to Login', 
+            style: 'secondary',
+            onPress: () => navigation.navigate('Login')
+          }
+        ]
+      );
       return;
     }
 
@@ -226,7 +423,34 @@ const PersonalInfoScreen = ({ navigation }) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.log('❌ PersonalInfoScreen: API error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        
+        let errorTitle = 'Verification Failed';
+        let errorMessage = 'Unable to send verification email. Please try again.';
+        
+        if (response.status === 400) {
+          errorTitle = 'Invalid Request';
+          errorMessage = 'Please check your email address and try again.';
+        } else if (response.status === 401) {
+          errorTitle = 'Authentication Error';
+          errorMessage = 'Your session has expired. Please login again.';
+        } else if (response.status === 429) {
+          errorTitle = 'Too Many Requests';
+          errorMessage = 'Please wait a moment before requesting another verification email.';
+        } else if (response.status >= 500) {
+          errorTitle = 'Server Error';
+          errorMessage = 'Our servers are experiencing issues. Please try again later.';
+        }
+        
+        showCustomAlert(
+          errorTitle,
+          errorMessage,
+          'error',
+          [
+            { text: 'Retry', style: 'primary', onPress: () => handleEmailVerification() },
+            { text: 'Cancel', style: 'secondary' }
+          ]
+        );
+        return;
       }
 
       let result;
@@ -236,17 +460,28 @@ const PersonalInfoScreen = ({ navigation }) => {
       } catch (parseError) {
         console.error('💥 PersonalInfoScreen: JSON parse error:', parseError);
         console.log('📡 PersonalInfoScreen: Raw response text:', await response.text());
-        throw new Error('Invalid response from server. Please try again.');
+        showCustomAlert(
+          'Data Error',
+          'Received invalid response from server. Please try again.',
+          'error',
+          [
+            { text: 'Retry', style: 'primary', onPress: () => handleEmailVerification() },
+            { text: 'Cancel', style: 'secondary' }
+          ]
+        );
+        return;
       }
 
       if (result.success) {
         console.log('✅ PersonalInfoScreen: Email OTP sent successfully!');
-        Alert.alert(
-          'OTP Sent',
-          `OTP has been sent to ${userEmail}`,
+        showCustomAlert(
+          'OTP Sent Successfully! 📧',
+          `A verification code has been sent to ${userEmail}. Please check your email and enter the code to verify your email address.`,
+          'success',
           [
             {
               text: 'Verify Now',
+              style: 'primary',
               onPress: () => {
                 // Navigate to verification screen with email
                 navigation.navigate('Verify', {
@@ -258,17 +493,45 @@ const PersonalInfoScreen = ({ navigation }) => {
             },
             {
               text: 'Cancel',
-              style: 'cancel'
+              style: 'secondary'
             }
           ]
         );
       } else {
         console.log('❌ PersonalInfoScreen: Failed to send email OTP:', result.message);
-        Alert.alert('Error', result.message || 'Failed to send OTP');
+        showCustomAlert(
+          'Verification Failed',
+          result.message || 'Failed to send verification email. Please try again.',
+          'error',
+          [
+            { text: 'Retry', style: 'primary', onPress: () => handleEmailVerification() },
+            { text: 'Cancel', style: 'secondary' }
+          ]
+        );
       }
     } catch (error) {
       console.error('💥 PersonalInfoScreen: Email verification error:', error);
-      Alert.alert('Error', 'Failed to send OTP. Please try again.');
+      
+      let errorTitle = 'Network Error';
+      let errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
+      
+      if (error.message.includes('timeout')) {
+        errorTitle = 'Request Timeout';
+        errorMessage = 'The request took too long to complete. Please check your internet connection and try again.';
+      } else if (error.message.includes('Network request failed')) {
+        errorTitle = 'Connection Failed';
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      }
+      
+      showCustomAlert(
+        errorTitle,
+        errorMessage,
+        'error',
+        [
+          { text: 'Retry', style: 'primary', onPress: () => handleEmailVerification() },
+          { text: 'Cancel', style: 'secondary' }
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -276,7 +539,50 @@ const PersonalInfoScreen = ({ navigation }) => {
 
   const handleSaveProfile = async () => {
     if (!token) {
-      Alert.alert('Error', 'Please login to save profile');
+      showCustomAlert(
+        'Authentication Required',
+        'Please login to save your profile changes.',
+        'warning',
+        [
+          { text: 'OK', style: 'primary' },
+          { 
+            text: 'Go to Login', 
+            style: 'secondary',
+            onPress: () => navigation.navigate('Login')
+          }
+        ]
+      );
+      return;
+    }
+
+    // Validate required fields
+    if (!name || !name.trim()) {
+      showCustomAlert(
+        'Name Required',
+        'Please enter your full name.',
+        'warning',
+        [{ text: 'OK', style: 'primary' }]
+      );
+      return;
+    }
+
+    if (!userEmail || !userEmail.trim()) {
+      showCustomAlert(
+        'Email Required',
+        'Please enter your email address.',
+        'warning',
+        [{ text: 'OK', style: 'primary' }]
+      );
+      return;
+    }
+
+    if (!userEmail.includes('@') || !userEmail.includes('.')) {
+      showCustomAlert(
+        'Invalid Email',
+        'Please enter a valid email address format.',
+        'error',
+        [{ text: 'OK', style: 'primary' }]
+      );
       return;
     }
 
@@ -286,7 +592,15 @@ const PersonalInfoScreen = ({ navigation }) => {
       // Test network connectivity first
       const isNetworkWorking = await testNetworkConnectivity();
       if (!isNetworkWorking) {
-        Alert.alert('Network Error', 'Unable to connect to server. Please check your internet connection.');
+        showCustomAlert(
+          'Network Error',
+          'Unable to connect to server. Please check your internet connection and try again.',
+          'error',
+          [
+            { text: 'Retry', style: 'primary', onPress: () => handleSaveProfile() },
+            { text: 'Cancel', style: 'secondary' }
+          ]
+        );
         setIsLoading(false);
         return;
       }
@@ -318,7 +632,12 @@ const PersonalInfoScreen = ({ navigation }) => {
           mobileNumber: phone,
         }));
 
-        Alert.alert('Success', 'Profile updated successfully');
+        showCustomAlert(
+          'Profile Updated Successfully! 🎉',
+          'Your profile information has been saved successfully.',
+          'success',
+          [{ text: 'OK', style: 'primary' }]
+        );
       } else {
         console.log('Failed to update profile:', result.data?.message);
         console.log('Full result:', result);
@@ -343,12 +662,33 @@ const PersonalInfoScreen = ({ navigation }) => {
               mobileNumber: phone,
             }));
 
-            Alert.alert('Success', 'Profile updated successfully (image update failed)');
+            showCustomAlert(
+              'Profile Updated with Warning ⚠️',
+              'Your profile information has been saved successfully, but the image update failed. You can try updating the image again later.',
+              'warning',
+              [{ text: 'OK', style: 'primary' }]
+            );
           } else {
-            Alert.alert('Error', fallbackResult.data?.message || 'Failed to update profile');
+            showCustomAlert(
+              'Update Failed',
+              fallbackResult.data?.message || 'Failed to update your profile. Please try again.',
+              'error',
+              [
+                { text: 'Retry', style: 'primary', onPress: () => handleSaveProfile() },
+                { text: 'Cancel', style: 'secondary' }
+              ]
+            );
           }
         } else {
-          Alert.alert('Error', result.data?.message || 'Failed to update profile');
+          showCustomAlert(
+            'Update Failed',
+            result.data?.message || 'Failed to update your profile. Please try again.',
+            'error',
+            [
+              { text: 'Retry', style: 'primary', onPress: () => handleSaveProfile() },
+              { text: 'Cancel', style: 'secondary' }
+            ]
+          );
         }
       }
     } catch (error) {
@@ -358,31 +698,52 @@ const PersonalInfoScreen = ({ navigation }) => {
         stack: error.stack,
         name: error.name
       });
-      Alert.alert('Error', `Failed to update profile: ${error.message}`);
+      
+      let errorTitle = 'Update Error';
+      let errorMessage = 'Failed to update your profile. Please try again.';
+      
+      if (error.message.includes('timeout')) {
+        errorTitle = 'Request Timeout';
+        errorMessage = 'The update request took too long to complete. Please check your internet connection and try again.';
+      } else if (error.message.includes('Network request failed')) {
+        errorTitle = 'Connection Failed';
+        errorMessage = 'Unable to connect to the server. Please check your internet connection.';
+      } else if (error.message.includes('JSON')) {
+        errorTitle = 'Data Error';
+        errorMessage = 'Received invalid data from the server. Please try again.';
+      }
+      
+      showCustomAlert(
+        errorTitle,
+        errorMessage,
+        'error',
+        [
+          { text: 'Retry', style: 'primary', onPress: () => handleSaveProfile() },
+          { text: 'Cancel', style: 'secondary' }
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   const showImagePickerOptions = () => {
-    Alert.alert(
-      'Select Image',
-      'Choose an option',
+    showCustomAlert(
+      'Select Profile Image',
+      'Choose how you would like to update your profile picture.',
+      'info',
       [
         {
           text: 'Camera',
+          style: 'primary',
           onPress: () => openCamera(),
         },
         {
           text: 'Gallery',
+          style: 'primary',
           onPress: () => openGallery(),
         },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
@@ -392,6 +753,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       includeBase64: false,
       maxHeight: 2000,
       maxWidth: 2000,
+      quality: 0.8,
     };
 
     launchCamera(options, (response) => {
@@ -399,8 +761,27 @@ const PersonalInfoScreen = ({ navigation }) => {
         console.log('User cancelled camera');
       } else if (response.error) {
         console.log('Camera Error: ', response.error);
-      } else {
+        showCustomAlert(
+          'Camera Error',
+          response.error.message || 'Unable to access camera. Please check camera permissions.',
+          'error',
+          [{ text: 'OK', style: 'primary' }]
+        );
+      } else if (response.assets && response.assets.length > 0) {
         setProfileImage({ uri: response.assets[0].uri });
+        showCustomAlert(
+          'Image Selected',
+          'Profile image updated successfully!',
+          'success',
+          [{ text: 'OK', style: 'primary' }]
+        );
+      } else {
+        showCustomAlert(
+          'No Image Selected',
+          'No image was captured. Please try again.',
+          'warning',
+          [{ text: 'OK', style: 'primary' }]
+        );
       }
     });
   };
@@ -411,6 +792,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       includeBase64: false,
       maxHeight: 2000,
       maxWidth: 2000,
+      quality: 0.8,
     };
 
     launchImageLibrary(options, (response) => {
@@ -418,8 +800,27 @@ const PersonalInfoScreen = ({ navigation }) => {
         console.log('User cancelled gallery');
       } else if (response.error) {
         console.log('Gallery Error: ', response.error);
-      } else {
+        showCustomAlert(
+          'Gallery Error',
+          response.error.message || 'Unable to access gallery. Please check storage permissions.',
+          'error',
+          [{ text: 'OK', style: 'primary' }]
+        );
+      } else if (response.assets && response.assets.length > 0) {
         setProfileImage({ uri: response.assets[0].uri });
+        showCustomAlert(
+          'Image Selected',
+          'Profile image updated successfully!',
+          'success',
+          [{ text: 'OK', style: 'primary' }]
+        );
+      } else {
+        showCustomAlert(
+          'No Image Selected',
+          'No image was selected. Please try again.',
+          'warning',
+          [{ text: 'OK', style: 'primary' }]
+        );
       }
     });
   };
@@ -434,8 +835,10 @@ const PersonalInfoScreen = ({ navigation }) => {
          
         </View>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF8800" />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
+        <CustomAlert />
       </SafeAreaView>
     );
   }
@@ -443,6 +846,7 @@ const PersonalInfoScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <CustomAlert />
       {/* Header */}
       <View style={styles.header}>
         <BackButton onPress={() => navigation.goBack()} />
@@ -718,5 +1122,105 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(20),
+  },
+  alertContainer: {
+    backgroundColor: '#fff',
+    borderRadius: getResponsiveSize(16),
+    padding: getResponsiveSize(24),
+    alignItems: 'center',
+    minWidth: getResponsiveSize(280),
+    maxWidth: getResponsiveSize(320),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    position: 'relative',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: getResponsiveSize(-10),
+    right: getResponsiveSize(8),
+    width: getResponsiveSize(32),
+    height: getResponsiveSize(32),
+    borderRadius: getResponsiveSize(16),
+    backgroundColor: '#FF8800',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  alertIcon: {
+    width: getResponsiveSize(60),
+    height: getResponsiveSize(60),
+    borderRadius: getResponsiveSize(30),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: getResponsiveSize(16),
+  },
+  alertIconText: {
+    fontSize: getResponsiveSize(30),
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  alertTitle: {
+    fontSize: getResponsiveSize(20),
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: getResponsiveSize(12),
+  },
+  alertMessage: {
+    fontSize: getResponsiveSize(16),
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: getResponsiveSize(22),
+    marginBottom: getResponsiveSize(24),
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: getResponsiveSize(12),
+    flexWrap: 'wrap',
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(16),
+    borderRadius: getResponsiveSize(8),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertButtonPrimary: {
+    backgroundColor: '#FF8800',
+  },
+  alertButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#FF8800',
+  },
+  alertButtonDanger: {
+    backgroundColor: '#F44336',
+  },
+  alertButtonText: {
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600',
+  },
+  alertButtonTextPrimary: {
+    color: '#fff',
+  },
+  alertButtonTextSecondary: {
+    color: '#FF8800',
+  },
+  alertButtonTextDanger: {
+    color: '#fff',
   },
 });

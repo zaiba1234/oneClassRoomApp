@@ -719,4 +719,38 @@ export const courseAPI = {
     }
   },
 
+  // Get course certificate description and details
+  getCourseCertificateDesc: async (token, courseId) => {
+    try {
+      const url = getApiUrl(`/api/user/course/get-CoursecertificateDesc/${courseId}`);
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      console.log('🌐 courseAPI: Course certificate desc URL:', url);
+      console.log('📋 courseAPI: Course certificate desc headers:', headers);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Course certificate desc response status:', response.status);
+      console.log('📡 courseAPI: Course certificate desc response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully fetched course certificate description');
+        return { success: true, data: responseData, status: response.status };
+      } else {
+        console.log('❌ courseAPI: Failed to fetch course certificate description:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error fetching course certificate description:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
 };

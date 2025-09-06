@@ -6,6 +6,8 @@ import notificationService from './notificationService';
 export class FCMTokenService {
   constructor(store) {
     this.store = store;
+    this.lastSentToken = null; // Track last sent token to prevent duplicates
+    this.isTokenSent = false; // Flag to prevent multiple sends
   }
 
   // Get current user token from Redux store
@@ -60,6 +62,12 @@ export class FCMTokenService {
         return false;
       }
 
+      // Check if this token was already sent
+      if (this.lastSentToken === fcmToken && this.isTokenSent) {
+        console.log('ℹ️ FCM Service: Token already sent, skipping duplicate send');
+        return true;
+      }
+
       // Get user token
       const userToken = this.getCurrentUserToken();
       if (!userToken) {
@@ -71,6 +79,8 @@ export class FCMTokenService {
       const success = await notificationService.sendFCMTokenToBackend(fcmToken, userToken);
       if (success) {
         console.log('✅ FCM Service: Stored FCM token sent to backend successfully');
+        this.lastSentToken = fcmToken;
+        this.isTokenSent = true;
         return true;
       } else {
         console.log('❌ FCM Service: Failed to send stored FCM token to backend');
@@ -97,6 +107,12 @@ export class FCMTokenService {
         return false;
       }
 
+      // Check if this is a new token
+      if (this.lastSentToken === newToken) {
+        console.log('ℹ️ FCM Service: Token unchanged, skipping send');
+        return true;
+      }
+
       // Get user token
       const userToken = this.getCurrentUserToken();
       if (!userToken) {
@@ -108,6 +124,8 @@ export class FCMTokenService {
       const success = await sendFCMTokenToBackend(newToken, userToken);
       if (success) {
         console.log('✅ FCM Service: Refreshed FCM token sent to backend successfully');
+        this.lastSentToken = newToken;
+        this.isTokenSent = true;
         return true;
       } else {
         console.log('❌ FCM Service: Failed to send refreshed FCM token to backend');
@@ -149,10 +167,18 @@ export class FCMTokenService {
         return false;
       }
       
+      // Check if this token was already sent
+      if (this.lastSentToken === fcmToken && this.isTokenSent) {
+        console.log('ℹ️ FCM Service: Token already sent, skipping duplicate send');
+        return true;
+      }
+      
       // Send existing token to backend
       const success = await sendFCMTokenToBackend(fcmToken, userToken);
       if (success) {
         console.log('✅ FCM Service: Existing FCM token validated and sent to backend');
+        this.lastSentToken = fcmToken;
+        this.isTokenSent = true;
         return true;
       } else {
         console.log('❌ FCM Service: Failed to send existing FCM token to backend');
@@ -162,6 +188,13 @@ export class FCMTokenService {
       console.error('💥 FCM Service: Error in validateAndSendToken:', error);
       return false;
     }
+  }
+
+  // Reset token tracking (for logout)
+  resetTokenTracking() {
+    console.log('🔄 FCM Service: Resetting token tracking');
+    this.lastSentToken = null;
+    this.isTokenSent = false;
   }
 }
 

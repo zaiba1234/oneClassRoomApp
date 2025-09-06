@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
+  Modal,
 } from 'react-native';
 import RNFS from 'react-native-fs';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -38,6 +39,13 @@ const getResponsiveSize = (size) => {
 const InternshipLetterScreen = () => {
   console.log('🚀 InternshipLetterScreen: Component initialized');
   
+  // Suppress all console errors to prevent red error warnings
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    // Only log to console, don't show red error warnings
+    originalConsoleError(...args);
+  };
+  
   const navigation = useNavigation();
   const route = useRoute();
   const { token } = useAppSelector((state) => state.user);
@@ -47,6 +55,19 @@ const InternshipLetterScreen = () => {
   const [isLoadingCourse, setIsLoadingCourse] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPageRefreshing, setIsPageRefreshing] = useState(false);
+
+
+  console.log('course price:', courseData);
+  
+  // Custom Alert State
+  const [customAlert, setCustomAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info', // info, success, error, warning
+    buttons: [],
+    showSpinner: false
+  });
   
   console.log('🔍 InternshipLetterScreen: Initial state values:', {
     hasNavigation: !!navigation,
@@ -73,6 +94,42 @@ const InternshipLetterScreen = () => {
       name: userState.name || userState.fullName || 'User'
     };
   };
+
+  // Custom Alert Helper Functions
+  const getAlertColor = useCallback((type) => {
+    switch (type) {
+      case 'success': return '#4CAF50';
+      case 'error': return '#F44336';
+      case 'warning': return '#FF9800';
+      case 'info': return '#2196F3';
+      default: return '#2196F3';
+    }
+  }, []);
+
+  const getAlertIcon = useCallback((type) => {
+    switch (type) {
+      case 'success': return 'checkmark-circle';
+      case 'error': return 'close-circle';
+      case 'warning': return 'warning';
+      case 'info': return 'information-circle';
+      default: return 'information-circle';
+    }
+  }, []);
+
+  const showCustomAlert = useCallback((title, message, type = 'info', buttons = [], showSpinner = false) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      type,
+      buttons: buttons.length > 0 ? buttons : [{ text: 'OK', onPress: hideCustomAlert }],
+      showSpinner
+    });
+  }, []);
+
+  const hideCustomAlert = useCallback(() => {
+    setCustomAlert(prev => ({ ...prev, visible: false }));
+  }, []);
 
   // Fetch course details when component mounts
   useEffect(() => {
@@ -130,37 +187,38 @@ const InternshipLetterScreen = () => {
       console.log('📚 InternshipLetterScreen: Setting isLoadingCourse to true');
       setIsLoadingCourse(true);
       
-      console.log('📚 InternshipLetterScreen: Calling courseAPI.getAllCourses with token:', !!token);
-      const result = await courseAPI.getAllCourses(token);
+      console.log('📚 InternshipLetterScreen: Calling courseAPI.getCourseCertificateDesc with courseId:', courseId, 'token:', !!token);
+      const result = await courseAPI.getCourseCertificateDesc(token, courseId);
       console.log('📚 InternshipLetterScreen: API response received:', JSON.stringify(result, null, 2));
       
       if (result.success && result.data.success) {
         console.log('✅ InternshipLetterScreen: API call successful');
-        const apiCourses = result.data.data;
-        console.log('📚 InternshipLetterScreen: Total courses received:', apiCourses.length);
+        const courseDetails = result.data.data;
+        console.log('📚 InternshipLetterScreen: Course details received:', JSON.stringify(courseDetails, null, 2));
         
-        const currentCourse = apiCourses.find(course => course._id === courseId);
-        console.log('🔍 InternshipLetterScreen: Current course found:', !!currentCourse);
-        
-        if (currentCourse) {
-          console.log('✅ InternshipLetterScreen: Setting courseData:', JSON.stringify(currentCourse, null, 2));
+        if (courseDetails) {
+          console.log('✅ InternshipLetterScreen: Setting courseData:', JSON.stringify(courseDetails, null, 2));
           
-          // Ensure price is properly formatted
+          // Format the course data with proper price formatting
           const courseWithPrice = {
-            ...currentCourse,
-            price: currentCourse.price ? `₹${currentCourse.price}.00` : '₹99.00'
+            courseName: courseDetails.courseName,
+            description: courseDetails.certificateDescription,
+            price: courseDetails.price ? `₹${courseDetails.price}.00` : '₹99.00',
+            uploadStatus: courseDetails.uploadStatus
           };
           
           console.log('💰 InternshipLetterScreen: Course price formatted:', courseWithPrice.price);
+          console.log('📝 InternshipLetterScreen: Course name:', courseWithPrice.courseName);
           setCourseData(courseWithPrice);
         } else {
-          console.log('❌ InternshipLetterScreen: Course not found in API response');
+          console.log('❌ InternshipLetterScreen: Course details not found in API response');
         }
       } else {
-        console.log('❌ InternshipLetterScreen: API call failed:', result.message);
+        console.log('❌ InternshipLetterScreen: API call failed:', result.data?.message || result.message);
       }
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error in fetchCourseDetails:', error);
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error in fetchCourseDetails:', error);
     } finally {
       console.log('📚 InternshipLetterScreen: Setting isLoadingCourse to false');
       setIsLoadingCourse(false);
@@ -174,7 +232,8 @@ const InternshipLetterScreen = () => {
     try {
       await fetchCourseDetails();
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error during refresh:', error);
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error during refresh:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -190,7 +249,8 @@ const InternshipLetterScreen = () => {
       await checkInternshipStatus();
       setTimeout(() => setIsPageRefreshing(false), 1000);
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error during page refresh:', error);
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error during page refresh:', error);
       setIsPageRefreshing(false);
     }
   };
@@ -243,19 +303,22 @@ const InternshipLetterScreen = () => {
       } else {
         console.log('❌ InternshipLetterScreen: Check status API call failed - response.ok:', response.ok, 'result.success:', result.success);
         console.log('❌ InternshipLetterScreen: Error message:', result.message);
-        Alert.alert(
+        showCustomAlert(
           'Status Check Failed',
-          result.message || 'Failed to check internship status',
-          [{ text: 'OK' }]
+          result.message || 'Failed to check internship status. Please try again.',
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
         );
         return { isEnrolled: false, error: true };
       }
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error in checkInternshipStatus:', error);
-      Alert.alert(
-        'Error',
-        'Network error occurred while checking internship status',
-        [{ text: 'OK' }]
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error in checkInternshipStatus:', error);
+      showCustomAlert(
+        'Network Error',
+        'Unable to check internship status. Please check your internet connection and try again.',
+        'error',
+        [{ text: 'OK', onPress: hideCustomAlert }]
       );
       return { isEnrolled: false, error: true };
     }
@@ -314,6 +377,15 @@ const InternshipLetterScreen = () => {
       if (response.ok && result.success && result.data) {
         console.log('✅ InternshipLetterScreen: API call successful, setting requestData');
         console.log('🔍 InternshipLetterScreen: Setting requestData with:', JSON.stringify(result.data, null, 2));
+        
+        // Debug: Check the amount in API response
+        if (result.data.internshipLetter) {
+          console.log('💰 InternshipLetterScreen: API Response Amount Check:');
+          console.log('💰 Amount from API:', result.data.internshipLetter.amount);
+          console.log('💰 Amount type:', typeof result.data.internshipLetter.amount);
+          console.log('💰 All internshipLetter fields:', Object.keys(result.data.internshipLetter));
+        }
+        
         setRequestData(result.data);
         
         console.log('🎯 InternshipLetterScreen: Calling openRazorpayPayment with result.data');
@@ -322,33 +394,71 @@ const InternshipLetterScreen = () => {
         openRazorpayPayment(result.data);
       } else {
         console.log('❌ InternshipLetterScreen: API call failed - response.ok:', response.ok, 'result.success:', result.success);
-        Alert.alert(
+        showCustomAlert(
           'Request Failed',
-          result.message || 'Failed to request internship letter',
-          [{ text: 'OK' }]
+          result.message || 'Unable to process your request. Please try again.',
+          'error',
+          [
+            { text: 'Retry', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+            { text: 'Cancel', onPress: hideCustomAlert }
+          ]
         );
       }
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error in requestInternshipLetter:', error);
-      console.error('💥 InternshipLetterScreen: Error message:', error.message);
-      console.error('💥 InternshipLetterScreen: Error stack:', error.stack);
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error in requestInternshipLetter:', error);
+      console.log('💥 InternshipLetterScreen: Error message:', error.message);
       
-      // Handle specific Razorpay errors
+      // Handle specific Razorpay errors with custom alerts
       if (error.message === 'PAYMENT_CANCELLED') {
         console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
-        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+        showCustomAlert(
+          'Payment Cancelled',
+          'You cancelled the payment. No charges have been made. You can try again anytime.',
+          'warning',
+          [
+            { text: 'Try Again', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+            { text: 'Cancel', onPress: hideCustomAlert }
+          ]
+        );
       } else if (error.message === 'PAYMENT_FAILED') {
         console.log('💥 InternshipLetterScreen: Payment failed');
-        Alert.alert('Payment Failed', 'Payment was not successful. Please try again.');
+        showCustomAlert(
+          'Payment Failed',
+          'Payment was not successful. Please check your payment method and try again.',
+          'error',
+          [
+            { text: 'Retry', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+            { text: 'Cancel', onPress: hideCustomAlert }
+          ]
+        );
       } else if (error.message && error.message.includes('Invalid course price')) {
         console.log('⚙️ InternshipLetterScreen: Invalid course price');
-        Alert.alert('Configuration Error', 'Course price configuration error. Please contact support.');
+        showCustomAlert(
+          'Configuration Error',
+          'Course price configuration error. Please contact support.',
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
+        );
       } else if (error.message && error.message.includes('Razorpay payment failed')) {
         console.log('💳 InternshipLetterScreen: Razorpay payment error');
-        Alert.alert('Payment Error', error.message);
+        showCustomAlert(
+          'Payment Error',
+          error.message,
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
+        );
       } else {
         console.log('💥 InternshipLetterScreen: Generic error');
-        Alert.alert('Error', `Something went wrong: ${error.message || 'Unknown error'}. Please try again.`);
+        showCustomAlert(
+          'Something went wrong',
+          'An unexpected error occurred. Please try again.',
+          'error',
+          [
+            { text: 'Retry', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+            { text: 'Cancel', onPress: hideCustomAlert }
+          ]
+        );
       }
     } finally {
       console.log('🎯 InternshipLetterScreen: Setting isRequesting to false');
@@ -370,7 +480,12 @@ const InternshipLetterScreen = () => {
         
         if (!coursePrice || typeof coursePrice !== 'string') {
           console.log('❌ InternshipLetterScreen: Invalid course price:', coursePrice);
-          Alert.alert('Error', 'Invalid course price. Please refresh and try again.');
+          showCustomAlert(
+            'Invalid Course Price',
+            'Course price information is not available. Please refresh and try again.',
+            'error',
+            [{ text: 'OK', onPress: hideCustomAlert }]
+          );
           return;
         }
         
@@ -379,7 +494,12 @@ const InternshipLetterScreen = () => {
         
         if (isNaN(priceInRupees) || priceInRupees <= 0) {
           console.log('❌ InternshipLetterScreen: Invalid price calculation:', { priceString, priceInRupees });
-          Alert.alert('Error', 'Invalid course price. Please contact support.');
+          showCustomAlert(
+            'Invalid Course Price',
+            'Course price configuration error. Please contact support.',
+            'error',
+            [{ text: 'OK', onPress: hideCustomAlert }]
+          );
           return;
         }
         
@@ -392,11 +512,21 @@ const InternshipLetterScreen = () => {
           priceInPaise: priceInPaise
         });
         
+        // Use the API amount if available, otherwise use calculated amount
+        const apiAmount = requestData.internshipLetter.amount;
+        const finalAmount = apiAmount && apiAmount > 0 ? apiAmount : priceInPaise;
+        
+        console.log('💰 InternshipLetterScreen: Amount comparison:', {
+          apiAmount: apiAmount,
+          calculatedAmount: priceInPaise,
+          finalAmount: finalAmount
+        });
+        
         // Use the EXACT SAME logic as EnrollScreen.js
         // The API should return the same structure as courseAPI.createCourseOrder
         const orderData = {
           key: RAZORPAY_KEY_ID, // Use the live Razorpay key from env config
-          amount: priceInPaise, // Use calculated price instead of API amount
+          amount: finalAmount, // Use API amount if available, otherwise calculated amount
           currency: requestData.internshipLetter.paymentCurrency || 'INR',
           orderId: requestData.internshipLetter.razorpayOrderId,
         };
@@ -407,7 +537,15 @@ const InternshipLetterScreen = () => {
         // Validate order data (key will come from frontend config)
         if (!orderData.amount || !orderData.orderId) {
           console.log('❌ InternshipLetterScreen: Invalid order data received:', orderData);
-          Alert.alert('Error', 'Invalid payment data received. Please try again.');
+          showCustomAlert(
+            'Invalid Payment Data',
+            'Payment information is incomplete. Please try again.',
+            'error',
+            [
+              { text: 'Retry', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+              { text: 'Cancel', onPress: hideCustomAlert }
+            ]
+          );
           return;
         }
         
@@ -431,32 +569,56 @@ const InternshipLetterScreen = () => {
         if (requestData.razorpayOrder) {
           console.log('❌ InternshipLetterScreen: Available fields in razorpayOrder:', Object.keys(requestData.razorpayOrder));
         }
-        Alert.alert('Error', 'No payment order found. Please try again.');
+        showCustomAlert(
+          'Payment Order Error',
+          'Payment order not found. Please try again.',
+          'error',
+          [
+            { text: 'Retry', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+            { text: 'Cancel', onPress: hideCustomAlert }
+          ]
+        );
       }
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error in openRazorpayPayment:', error);
-      Alert.alert('Error', 'Failed to open payment interface. Please try again.');
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error in openRazorpayPayment:', error);
+      showCustomAlert(
+        'Payment Interface Error',
+        'Unable to open payment gateway. Please check your internet connection and try again.',
+        'error',
+        [
+          { text: 'Retry', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+          { text: 'Cancel', onPress: hideCustomAlert }
+        ]
+      );
     }
   };
 
   // Function to handle payment with Razorpay - EXACT SAME AS ENROLLSCREEN
   const handlePaymentWithRazorpay = async (orderData) => {
-   
-    
-    if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
-      console.log('❌ InternshipLetterScreen: Razorpay not available');
-      Alert.alert('Error', 'Razorpay payment gateway is not available. Please try again later.');
-      return null;
-    }
-
     try {
+      if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
+        console.log('❌ InternshipLetterScreen: Razorpay not available');
+        showCustomAlert(
+          'Payment Gateway Unavailable',
+          'Payment service is temporarily unavailable. Please try again later.',
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
+        );
+        return null;
+      }
       console.log('💳 InternshipLetterScreen: Opening Razorpay payment interface...');
       console.log('🔑 InternshipLetterScreen: Using Razorpay key from frontend config:', RAZORPAY_KEY_ID ? RAZORPAY_KEY_ID.substring(0, 20) + '...' : 'Not found');
       
       // Validate Razorpay key is available
       if (!RAZORPAY_KEY_ID) {
         console.log('❌ InternshipLetterScreen: Razorpay key not found in frontend config');
-        Alert.alert('Error', 'Razorpay configuration not found. Please contact support.');
+        showCustomAlert(
+          'Configuration Error',
+          'Payment configuration is missing. Please contact support.',
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
+        );
         return null;
       }
       
@@ -488,8 +650,8 @@ const InternshipLetterScreen = () => {
         priceInPaise: priceInPaise
       });
       
-      // Always use the calculated price from frontend to ensure correct amount
-      const finalAmount = priceInPaise;
+      // Use the orderData amount (which comes from API or calculated)
+      const finalAmount = orderData.amount;
       
       const razorpayOptions = {
         key: orderData.key,
@@ -497,7 +659,6 @@ const InternshipLetterScreen = () => {
         currency: orderData.currency,
         name: 'Learning Saint',
         description: `Internship Letter Payment - ${courseData?.courseName || 'Course'}`,
-        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMTUwIDUwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTUwIiBoZWlnaHQ9IjUwIiByeD0iOCIgZmlsbD0iI0ZGNkIzNSIvPgo8dGV4dCB4PSI3NSIgeT0iMzAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5MZWFybmluZyBTYWludDwvdGV4dD4KPC9zdmc+',
         order_id: orderData.orderId,
         prefill: {
           email: userProfile.email,
@@ -521,11 +682,10 @@ const InternshipLetterScreen = () => {
       console.log('✅ InternshipLetterScreen: Payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
+      // Suppress console errors to prevent red error warnings
       console.log('❌ InternshipLetterScreen: Razorpay error caught:', razorpayError);
-      console.log('❌ InternshipLetterScreen: Error message:', razorpayError.message);
-      console.log('❌ InternshipLetterScreen: Error stack:', razorpayError.stack);
       
-      // More specific error handling
+      // More specific error handling - suppress console errors for user experience
       if (razorpayError.message === 'PAYMENT_CANCELLED') {
         console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
         throw new Error('PAYMENT_CANCELLED');
@@ -536,8 +696,9 @@ const InternshipLetterScreen = () => {
         console.log('⚙️ InternshipLetterScreen: Invalid course price');
         throw new Error('Invalid course price. Please contact support.');
       } else {
+        // Suppress detailed error messages from user
         console.log('💥 InternshipLetterScreen: Generic Razorpay error:', razorpayError);
-        throw new Error(`Razorpay payment failed: ${razorpayError.message || 'Unknown error'}. Please try again.`);
+        throw new Error('PAYMENT_FAILED');
       }
     }
   };
@@ -564,7 +725,15 @@ const InternshipLetterScreen = () => {
       if (!internshipLetterId) {
         console.log('❌ InternshipLetterScreen: Missing internshipLetterId');
         console.log('❌ InternshipLetterScreen: Available data structure:', Object.keys(dataToUse || {}));
-        Alert.alert('Error', 'Missing internship letter ID. Please try again.');
+        showCustomAlert(
+          'Missing Information',
+          'Required information is missing. Please try again.',
+          'error',
+          [
+            { text: 'Retry', onPress: () => { hideCustomAlert(); requestInternshipLetter(); } },
+            { text: 'Cancel', onPress: hideCustomAlert }
+          ]
+        );
         return;
       }
       
@@ -606,12 +775,14 @@ const InternshipLetterScreen = () => {
             setRequestData(verificationResult.data);
           }
           
-          Alert.alert(
+          showCustomAlert(
             'Success! 🎉',
             'Payment successful! Your internship letter is being processed and will be available for download shortly.',
+            'success',
             [{ 
-              text: 'OK',
+              text: 'Great!',
               onPress: () => {
+                hideCustomAlert();
                 // Navigate back to Internship screen with uploadStatus to show updated button state
                 console.log('✅ InternshipLetterScreen: Navigating back to Internship screen with uploadStatus');
                 console.log('✅ InternshipLetterScreen: Verification result data:', JSON.stringify(verificationResult.data, null, 2));
@@ -629,17 +800,33 @@ const InternshipLetterScreen = () => {
           );
         } else {
           console.log('❌ InternshipLetterScreen: Payment verification failed:', verificationResult.message);
-          Alert.alert('Error', 'Payment verification failed. Please contact support.');
+          showCustomAlert(
+            'Payment Verification Failed',
+            'Unable to verify your payment. Please contact support.',
+            'error',
+            [{ text: 'OK', onPress: hideCustomAlert }]
+          );
         }
       } else {
         console.log('❌ InternshipLetterScreen: Payment verification failed - response not ok');
         const errorText = await verificationResponse.text();
         console.log('❌ InternshipLetterScreen: Error response:', errorText);
-        Alert.alert('Error', 'Payment verification failed. Please contact support.');
+        showCustomAlert(
+          'Payment Verification Failed',
+          'Unable to verify your payment. Please contact support.',
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
+        );
       }
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error in handleSuccessfulPayment:', error);
-      Alert.alert('Error', 'Failed to verify payment. Please contact support.');
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error in handleSuccessfulPayment:', error);
+      showCustomAlert(
+        'Payment Verification Error',
+        'Unable to verify your payment. Please contact support.',
+        'error',
+        [{ text: 'OK', onPress: hideCustomAlert }]
+      );
     }
   };
 
@@ -662,17 +849,24 @@ const InternshipLetterScreen = () => {
       
       if (!downloadUrl) {
         console.log('❌ InternshipLetterScreen: No download URL found');
-        Alert.alert('Error', 'Download URL not found. Please try again.');
+        showCustomAlert(
+          'Download Error',
+          'Download link is not available. Please try again later.',
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
+        );
         return;
       }
       
       console.log('🌐 InternshipLetterScreen: Download URL:', downloadUrl);
       
       // Show loading alert
-      Alert.alert(
+      showCustomAlert(
         'Downloading... 📥',
         'Please wait while we download your internship letter.',
-        [{ text: 'OK' }]
+        'info',
+        [],
+        true
       );
       
       const fileName = `internship_letter_${courseId}.pdf`;
@@ -706,29 +900,40 @@ const InternshipLetterScreen = () => {
             const fileStats = await RNFS.stat(filePath);
             console.log('📊 InternshipLetterScreen: File stats:', fileStats);
             
-            Alert.alert(
+            hideCustomAlert();
+            showCustomAlert(
               'Download Complete! 🎉',
               `Your internship letter has been downloaded successfully!\n\nFile: ${fileName}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB\n\nYou can find it in your app's documents folder.`,
-              [
-                { 
-                  text: 'OK',
-                  onPress: () => {
-                    console.log('✅ InternshipLetterScreen: Download completed successfully');
-                  }
-                }
-              ]
+              'success',
+              [{ text: 'Great!', onPress: hideCustomAlert }]
             );
           } else {
             console.log('❌ InternshipLetterScreen: File was not created successfully');
-            Alert.alert('Error', 'Failed to save the file. Please try again.');
+            hideCustomAlert();
+            showCustomAlert(
+              'Save Error',
+              'Failed to save the file. Please try again.',
+              'error',
+              [{ text: 'OK', onPress: hideCustomAlert }]
+            );
           }
         } else {
           console.log('❌ InternshipLetterScreen: Download failed with status:', downloadResult.statusCode);
-          Alert.alert('Error', 'Failed to download the internship letter. Please try again.');
+          hideCustomAlert();
+          showCustomAlert(
+            'Download Failed',
+            'Failed to download the internship letter. Please try again.',
+            'error',
+            [
+              { text: 'Retry', onPress: () => { hideCustomAlert(); handleDownloadLetter(); } },
+              { text: 'Cancel', onPress: hideCustomAlert }
+            ]
+          );
         }
         
-      } catch (downloadError) {
-        console.error('💥 InternshipLetterScreen: Download error:', downloadError);
+        } catch (downloadError) {
+          // Suppress console errors to prevent red error warnings
+          console.log('💥 InternshipLetterScreen: Download error:', downloadError);
         
         // Fallback: Try to open the URL in browser
         console.log('🔄 InternshipLetterScreen: Trying fallback - opening URL in browser...');
@@ -736,23 +941,48 @@ const InternshipLetterScreen = () => {
           const supported = await Linking.canOpenURL(downloadUrl);
           if (supported) {
             await Linking.openURL(downloadUrl);
-            Alert.alert(
+            hideCustomAlert();
+            showCustomAlert(
               'Opening in Browser',
               'The internship letter will open in your browser. You can download it from there.',
-              [{ text: 'OK' }]
+              'info',
+              [{ text: 'OK', onPress: hideCustomAlert }]
             );
           } else {
-            Alert.alert('Error', 'Unable to download the file. Please try again later.');
+            hideCustomAlert();
+            showCustomAlert(
+              'Download Unavailable',
+              'Unable to download the file. Please try again later.',
+              'error',
+              [{ text: 'OK', onPress: hideCustomAlert }]
+            );
           }
         } catch (linkingError) {
-          console.error('💥 InternshipLetterScreen: Linking error:', linkingError);
-          Alert.alert('Error', 'Unable to download the file. Please try again later.');
+          // Suppress console errors to prevent red error warnings
+          console.log('💥 InternshipLetterScreen: Linking error:', linkingError);
+          hideCustomAlert();
+          showCustomAlert(
+            'Download Error',
+            'Unable to download the file. Please try again later.',
+            'error',
+            [{ text: 'OK', onPress: hideCustomAlert }]
+          );
         }
       }
       
     } catch (error) {
-      console.error('💥 InternshipLetterScreen: Error in handleDownloadLetter:', error);
-      Alert.alert('Error', 'Network error occurred while downloading internship letter. Please try again.');
+      // Suppress console errors to prevent red error warnings
+      console.log('💥 InternshipLetterScreen: Error in handleDownloadLetter:', error);
+      hideCustomAlert();
+      showCustomAlert(
+        'Network Error',
+        'Network error occurred while downloading internship letter. Please try again.',
+        'error',
+        [
+          { text: 'Retry', onPress: () => { hideCustomAlert(); handleDownloadLetter(); } },
+          { text: 'Cancel', onPress: hideCustomAlert }
+        ]
+      );
     }
   };
 
@@ -810,8 +1040,12 @@ const InternshipLetterScreen = () => {
           <>
             {/* Congratulations Section */}
             <View style={styles.congratulationsContainer}>
-              <Text style={styles.congratulationsText}>Congratulations</Text>
-              <Text style={styles.congratulationsSubtext}>Download Intership letter</Text>
+              <Image 
+                source={require('../assests/images/conge.png')} 
+                style={styles.congratulationsImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.congratulationsSubtext}>Download Internship Letter</Text>
               
               {/* Dynamic Course Name */}
               <Text style={styles.courseNameText}>{courseData.courseName}</Text>
@@ -930,13 +1164,78 @@ const InternshipLetterScreen = () => {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.downloadButtonText}>
-                  {isRequesting ? 'Processing...' : `Get Internship Letter - ${courseData?.price || '₹0.00'}`}
+                  {isRequesting ? 'Processing...' : `Get Internship Letter  - ${courseData?.price || '₹0.00'}`}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
           );
         })()}
       </View>
+
+      {/* Custom Alert Modal */}
+      <Modal
+        visible={customAlert.visible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={hideCustomAlert}
+      >
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertContainer}>
+            {/* Close Button */}
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={hideCustomAlert}
+            >
+              <Icon name="close" size={24} color="#666" />
+            </TouchableOpacity>
+            
+            {/* Alert Icon */}
+            <View style={[styles.alertIcon, { backgroundColor: getAlertColor(customAlert.type) }]}>
+              <Icon 
+                name={getAlertIcon(customAlert.type)} 
+                size={32} 
+                color="#fff" 
+              />
+            </View>
+            
+            {/* Alert Title */}
+            <Text style={styles.alertTitle}>{customAlert.title}</Text>
+            
+            {/* Alert Message */}
+            <Text style={styles.alertMessage}>{customAlert.message}</Text>
+            
+            {/* Loading Spinner */}
+            {customAlert.showSpinner && (
+              <ActivityIndicator 
+                size="large" 
+                color={getAlertColor(customAlert.type)} 
+                style={styles.alertSpinner}
+              />
+            )}
+            
+            {/* Alert Buttons */}
+            <View style={styles.alertButtons}>
+              {customAlert.buttons.map((button, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.alertButton,
+                    index === 0 ? styles.alertButtonPrimary : styles.alertButtonSecondary
+                  ]}
+                  onPress={button.onPress}
+                >
+                  <Text style={[
+                    styles.alertButtonText,
+                    index === 0 ? styles.alertButtonTextPrimary : styles.alertButtonTextSecondary
+                  ]}>
+                    {button.text}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -981,13 +1280,10 @@ const styles = StyleSheet.create({
     // paddingTop: getResponsiveSize(40),
     // paddingBottom: getResponsiveSize(10), // Reduced from 30 to 10
   },
-  congratulationsText: {
-    fontSize: getResponsiveSize(36),
-    fontWeight: 'bold',
-    color: '#2285FA',
-    fontStyle: 'italic',
-    // marginBottom: getResponsiveSize(8),
-    textAlign: 'center',
+  congratulationsImage: {
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(80),
+    marginBottom: getResponsiveSize(10),
   },
   congratulationsSubtext: {
     fontSize: getResponsiveSize(16),
@@ -1030,10 +1326,12 @@ const styles = StyleSheet.create({
   },
   certificateContainer: {
     alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(20),
+    marginTop: getResponsiveSize(-20),
     // marginVertical: getResponsiveSize(10), // Added small margin to control gap
   },
   certificateImage: {
-    width: width - getResponsiveSize(-10),
+    width: width - getResponsiveSize(40),
     height: getResponsiveSize(450),
   },
   descriptionContainer: {
@@ -1120,5 +1418,96 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: getResponsiveSize(20),
+  },
+  
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(20),
+  },
+  alertContainer: {
+    backgroundColor: '#fff',
+    borderRadius: getResponsiveSize(16),
+    padding: getResponsiveSize(24),
+    width: '100%',
+    maxWidth: getResponsiveSize(400),
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    position: 'relative',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: getResponsiveSize(12),
+    right: getResponsiveSize(12),
+    width: getResponsiveSize(32),
+    height: getResponsiveSize(32),
+    borderRadius: getResponsiveSize(16),
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertIcon: {
+    width: getResponsiveSize(64),
+    height: getResponsiveSize(64),
+    borderRadius: getResponsiveSize(32),
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: getResponsiveSize(16),
+  },
+  alertTitle: {
+    fontSize: getResponsiveSize(20),
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: getResponsiveSize(8),
+  },
+  alertMessage: {
+    fontSize: getResponsiveSize(16),
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: getResponsiveSize(24),
+    marginBottom: getResponsiveSize(20),
+  },
+  alertSpinner: {
+    marginBottom: getResponsiveSize(16),
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: getResponsiveSize(12),
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(20),
+    borderRadius: getResponsiveSize(8),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertButtonPrimary: {
+    backgroundColor: '#FF8800',
+  },
+  alertButtonSecondary: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  alertButtonText: {
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600',
+  },
+  alertButtonTextPrimary: {
+    color: '#fff',
+  },
+  alertButtonTextSecondary: {
+    color: '#666',
   },
 });

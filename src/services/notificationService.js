@@ -75,10 +75,20 @@ class NotificationService {
         // Store new token
         await AsyncStorage.setItem('fcm_token', token);
         
-        // Send to backend if user is logged in
+        // Send to backend if user is logged in (only if token actually changed)
         const userToken = await AsyncStorage.getItem('user_token');
         if (userToken) {
-          await this.sendFCMTokenToBackend(token, userToken);
+          // Check if this is a different token than what we last sent
+          const lastSentToken = await AsyncStorage.getItem('last_sent_fcm_token');
+          if (lastSentToken !== token) {
+            console.log('🔄 NotificationService: New token detected, sending to backend');
+            const success = await this.sendFCMTokenToBackend(token, userToken);
+            if (success) {
+              await AsyncStorage.setItem('last_sent_fcm_token', token);
+            }
+          } else {
+            console.log('ℹ️ NotificationService: Token unchanged, skipping send');
+          }
         }
       });
       
@@ -261,6 +271,13 @@ z
     try {
       console.log('🔔 NotificationService: Sending FCM token to backend...');
       
+      // Check if this token was already sent recently
+      const lastSentToken = await AsyncStorage.getItem('last_sent_fcm_token');
+      if (lastSentToken === fcmToken) {
+        console.log('ℹ️ NotificationService: Token already sent, skipping duplicate');
+        return true;
+      }
+      
       const apiUrl = getApiUrl('/api/notification/save-fcm-token');
       const deviceId = await this.getDeviceId();
       
@@ -280,6 +297,8 @@ z
       
       if (response.ok && result.success) {
         console.log('✅ NotificationService: FCM token sent to backend successfully');
+        // Store the sent token to prevent duplicates
+        await AsyncStorage.setItem('last_sent_fcm_token', fcmToken);
         return true;
       } else {
         console.log('❌ NotificationService: Failed to send FCM token:', result.message);

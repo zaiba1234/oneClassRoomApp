@@ -103,13 +103,7 @@ const CategoryScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       
       <View style={styles.container}>
-        {/* Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="chevron-back" size={24} color="#FF8800" />
-        </TouchableOpacity>
+      
 
         <ScrollView 
           style={styles.scrollView} 

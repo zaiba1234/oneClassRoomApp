@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   Linking,
   PermissionsAndroid,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
@@ -40,8 +42,54 @@ const CourseCertificateDownload = () => {
   const [certificateData, setCertificateData] = useState(null);
   const [isLoadingCertificate, setIsLoadingCertificate] = useState(true);
 
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info', // info, success, error, warning, loading
+    buttons: [],
+    showSpinner: false,
+  });
+
   // Get courseId from route params (coming from EnrollScreen)
   const courseId = route.params?.courseId;
+
+  // Helper functions for custom alert
+  const getAlertColor = useCallback((type) => {
+    switch (type) {
+      case 'success': return '#4CAF50';
+      case 'error': return '#F44336';
+      case 'warning': return '#FF9800';
+      case 'loading': return '#2196F3';
+      default: return '#2196F3';
+    }
+  }, []);
+
+  const getAlertIcon = useCallback((type) => {
+    switch (type) {
+      case 'success': return 'checkmark-circle';
+      case 'error': return 'close-circle';
+      case 'warning': return 'warning';
+      case 'loading': return 'refresh';
+      default: return 'information-circle';
+    }
+  }, []);
+
+  const showCustomAlert = useCallback((title, message, type = 'info', buttons = [], showSpinner = false) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      type,
+      buttons,
+      showSpinner,
+    });
+  }, []);
+
+  const hideCustomAlert = useCallback(() => {
+    setCustomAlert(prev => ({ ...prev, visible: false }));
+  }, []);
 
   // Function to check current permission status
   const checkCurrentPermissions = async () => {
@@ -378,23 +426,37 @@ const CourseCertificateDownload = () => {
         console.log('🔢 Base64 data prepared, length:', base64Data.length);
         
         try {
-          // Use app documents directory directly to avoid permission issues
+          // Try Downloads folder first, then fallback to Documents
           const fileName = `course_certificate_${courseId}.pdf`;
-          const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+          let filePath;
+          let locationMessage;
           
-          console.log('📁 Using app documents directory:', filePath);
-          
-          // Ensure directory exists
-          const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-          const dirExists = await RNFS.exists(dirPath);
-          if (!dirExists) {
-            await RNFS.mkdir(dirPath);
-            console.log('📁 Created directory:', dirPath);
+          // Try Downloads folder first
+          try {
+            filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+            console.log('📁 Trying Downloads directory:', filePath);
+            await RNFS.writeFile(filePath, base64Data, 'base64');
+            locationMessage = 'Downloads folder';
+            console.log('✅ PDF saved to Downloads folder');
+          } catch (downloadsError) {
+            console.log('⚠️ Downloads folder failed, trying External Downloads:', downloadsError.message);
+            // Try External Downloads folder
+            try {
+              filePath = `${RNFS.ExternalDirectoryPath}/Download/${fileName}`;
+              console.log('📁 Trying External Downloads directory:', filePath);
+              await RNFS.writeFile(filePath, base64Data, 'base64');
+              locationMessage = 'Downloads folder (External)';
+              console.log('✅ PDF saved to External Downloads folder');
+            } catch (externalError) {
+              console.log('⚠️ External Downloads failed, using Documents folder:', externalError.message);
+              // Fallback to Documents folder
+              filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+              console.log('📁 Using Documents directory as fallback:', filePath);
+              await RNFS.writeFile(filePath, base64Data, 'base64');
+              locationMessage = 'App Documents folder';
+              console.log('✅ PDF saved to Documents folder');
+            }
           }
-          
-          // Write the PDF file
-          await RNFS.writeFile(filePath, base64Data, 'base64');
-          console.log('✅ PDF saved successfully to:', filePath);
           
           // Check if file exists
           const fileExists = await RNFS.exists(filePath);
@@ -405,46 +467,42 @@ const CourseCertificateDownload = () => {
             const fileStats = await RNFS.stat(filePath);
             console.log('📊 File stats:', fileStats);
             
-            // Location message
-            const locationMessage = 'App Documents folder';
-            
-            // Show success message with file location
-            Alert.alert(
-              'Download Complete! 🎉',
-              `Certificate saved as ${fileName}\nLocation: ${locationMessage}\n\nYou can access it through your file manager.`,
+            // Show beautiful success modal
+            showCustomAlert(
+              'Certificate Downloaded Successfully! 🎓',
+              `Congratulations! Your course certificate has been downloaded.\n\n📄 File: ${fileName}\n📁 Location: ${locationMessage}\n\nYour achievement is now saved and ready to view!`,
+              'success',
               [
-                { text: 'OK' },
+                {
+                  text: 'Done',
+                  onPress: hideCustomAlert,
+                  style: 'primary',
+                },
                 { 
-                  text: 'Open PDF', 
+                  text: 'View PDF', 
                   onPress: async () => {
+                    hideCustomAlert();
                     try {
                       // Try to open the PDF with a PDF viewer app
                       await Linking.openURL(`file://${filePath}`);
                       console.log('🔗 PDF opened successfully');
                     } catch (openError) {
                       console.log('📱 Could not open PDF directly, showing file path');
-                      Alert.alert(
-                        'PDF Location',
-                        `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`
+                      showCustomAlert(
+                        'Certificate Location',
+                        `Your certificate is saved at:\n${filePath}\n\nOpen your file manager to view it.`,
+                        'info',
+                        [
+                          {
+                            text: 'Got it',
+                            onPress: hideCustomAlert,
+                            style: 'primary',
+                          },
+                        ]
                       );
                     }
-                  }
-                },
-                {
-                  text: 'Share File',
-                  onPress: async () => {
-                    try {
-                      // Try to share the file
-                      await Linking.openURL(`file://${filePath}`);
-                      console.log('📤 File shared successfully');
-                    } catch (shareError) {
-                      console.log('📤 Could not share file directly');
-                      Alert.alert(
-                        'File Location',
-                        `PDF saved to:\n${filePath}\n\nYou can find it in your file manager.`
-                      );
-                    }
-                  }
+                  },
+                  style: 'secondary',
                 }
               ]
             );
@@ -514,6 +572,78 @@ const CourseCertificateDownload = () => {
     navigation.goBack();
   };
 
+  // Custom Alert Component
+  const CustomAlert = () => (
+    <Modal
+      visible={customAlert.visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={hideCustomAlert}
+    >
+      <View style={styles.alertOverlay}>
+        <View style={styles.alertContainer}>
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={hideCustomAlert}
+            activeOpacity={0.7}
+          >
+            <Icon name="close" size={getResponsiveSize(20)} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Icon */}
+          <View style={[styles.alertIcon, { backgroundColor: getAlertColor(customAlert.type) + '20' }]}>
+            {customAlert.showSpinner ? (
+              <ActivityIndicator size="large" color={getAlertColor(customAlert.type)} />
+            ) : (
+              <Icon
+                name={getAlertIcon(customAlert.type)}
+                size={getResponsiveSize(40)}
+                color={getAlertColor(customAlert.type)}
+              />
+            )}
+          </View>
+
+          {/* Title */}
+          <Text style={styles.alertTitle}>{customAlert.title}</Text>
+
+          {/* Message */}
+          <Text style={styles.alertMessage}>{customAlert.message}</Text>
+
+          {/* Buttons */}
+          {customAlert.buttons.length > 0 && (
+            <View style={styles.alertButtons}>
+              {customAlert.buttons.map((button, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.alertButton,
+                    button.style === 'primary' && styles.alertButtonPrimary,
+                    button.style === 'secondary' && styles.alertButtonSecondary,
+                    button.style === 'danger' && styles.alertButtonDanger,
+                  ]}
+                  onPress={button.onPress}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.alertButtonText,
+                      button.style === 'primary' && styles.alertButtonTextPrimary,
+                      button.style === 'secondary' && styles.alertButtonTextSecondary,
+                      button.style === 'danger' && styles.alertButtonTextDanger,
+                    ]}
+                  >
+                    {button.text}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
@@ -531,8 +661,16 @@ const CourseCertificateDownload = () => {
         contentContainerStyle={styles.scrollContent} >
         {/* Congratulations Section */}
         <View style={styles.congratulationsContainer}>
-          <Text style={styles.congratulationsText}>Congratulations</Text>
-          <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
+          <Image 
+            source={require('../assests/images/conge.png')} 
+            style={styles.congratulationsImage}
+            resizeMode="contain"
+          />
+          
+          <Text style={styles.congratulationsMessage}>
+            You have successfully completed the course!
+          </Text>
+         
           {/* Dynamic Subcourse Name */}
       
           {certificateData?.subcourseName && (
@@ -544,11 +682,13 @@ const CourseCertificateDownload = () => {
 
         {/* Certificate Image */}
         <View style={styles.certificateContainer}>
-          <Image 
-            source={require('../assests/images/DownloadCertificate.png')} 
-            style={styles.certificateImage}
-            resizeMode="contain"
-          />
+          <View style={styles.certificateImageWrapper}>
+            <Image 
+              source={require('../assests/images/DownloadCertificate.png')} 
+              style={styles.certificateImage}
+              resizeMode="contain"
+            />
+          </View>
         </View>
 
         {/* Course Description */}
@@ -577,6 +717,9 @@ const CourseCertificateDownload = () => {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      {/* Custom Alert Modal */}
+      <CustomAlert />
     </SafeAreaView>
   );
 };
@@ -622,13 +765,18 @@ const styles = StyleSheet.create({
     // paddingTop: getResponsiveSize(40),
     // paddingBottom: getResponsiveSize(10), // Reduced from 30 to 10
   },
-  congratulationsText: {
-    fontSize: getResponsiveSize(36),
-    fontWeight: 'bold',
-    color: '#2285FA',
-    fontStyle: 'italic',
-    // marginBottom: getResponsiveSize(8),
+  congratulationsImage: {
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(80),
+    marginBottom: getResponsiveSize(10),
+  },
+  congratulationsMessage: {
+    fontSize: getResponsiveSize(18),
+    fontWeight: '600',
+    color: '#333',
     textAlign: 'center',
+    marginBottom: getResponsiveSize(15),
+    lineHeight: getResponsiveSize(24),
   },
   congratulationsSubtext: {
     fontSize: getResponsiveSize(16),
@@ -645,11 +793,18 @@ const styles = StyleSheet.create({
   },
   certificateContainer: {
     alignItems: 'center',
-    // marginVertical: getResponsiveSize(10), // Added small margin to control gap
+    marginTop: getResponsiveSize(-40), // Move image up more
+    paddingHorizontal: getResponsiveSize(20), // Add left-right padding
+  },
+  certificateImageWrapper: {
+    width: width - getResponsiveSize(40), // Reduce width to account for padding
+    height: getResponsiveSize(450),
+    borderRadius: getResponsiveSize(15), // Add rounded corners
+    overflow: 'hidden', // This is important for rounded corners to work
   },
   certificateImage: {
-    width: width - getResponsiveSize(-10),
-    height: getResponsiveSize(450),
+    width: '100%',
+    height: '100%',
   },
   descriptionContainer: {
     paddingHorizontal: getResponsiveSize(20),
@@ -688,5 +843,112 @@ const styles = StyleSheet.create({
   },
   downloadButtonDisabled: {
     opacity: 0.7,
+  },
+
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(20),
+  },
+  alertContainer: {
+    backgroundColor: '#fff',
+    borderRadius: getResponsiveSize(20),
+    padding: getResponsiveSize(25),
+    width: '100%',
+    maxWidth: getResponsiveSize(400),
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: getResponsiveSize(10),
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: getResponsiveSize(20),
+    elevation: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: getResponsiveSize(-10),
+    right: getResponsiveSize(8),
+    width: getResponsiveSize(32),
+    height: getResponsiveSize(32),
+    borderRadius: getResponsiveSize(16),
+    backgroundColor: '#FF8800',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: getResponsiveSize(2),
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: getResponsiveSize(4),
+    elevation: 5,
+  },
+  alertIcon: {
+    width: getResponsiveSize(80),
+    height: getResponsiveSize(80),
+    borderRadius: getResponsiveSize(40),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: getResponsiveSize(20),
+  },
+  alertTitle: {
+    fontSize: getResponsiveSize(22),
+    fontWeight: '700',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: getResponsiveSize(12),
+  },
+  alertMessage: {
+    fontSize: getResponsiveSize(16),
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: getResponsiveSize(24),
+    marginBottom: getResponsiveSize(25),
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: getResponsiveSize(12),
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: getResponsiveSize(14),
+    paddingHorizontal: getResponsiveSize(20),
+    borderRadius: getResponsiveSize(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: getResponsiveSize(48),
+  },
+  alertButtonPrimary: {
+    backgroundColor: '#2196F3',
+  },
+  alertButtonSecondary: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  alertButtonDanger: {
+    backgroundColor: '#F44336',
+  },
+  alertButtonText: {
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600',
+  },
+  alertButtonTextPrimary: {
+    color: '#fff',
+  },
+  alertButtonTextSecondary: {
+    color: '#666',
+  },
+  alertButtonTextDanger: {
+    color: '#fff',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   Linking,
   PermissionsAndroid,
   Platform,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
@@ -23,7 +25,6 @@ import { getApiUrl } from '../API/config';
 import RNFS from 'react-native-fs'; // Ensure this is imported at the top
 import { Buffer } from 'buffer'; // Add Buffer polyfill for React Native
 import BackButton from '../Component/BackButton';
-import firebaseNotificationService from '../services/firebaseNotificationService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,192 +42,308 @@ const DownloadCertificateScreen = () => {
   const [certificateData, setCertificateData] = useState(null);
   const [isLoadingCertificate, setIsLoadingCertificate] = useState(true);
   const [isEligibleForCertificate, setIsEligibleForCertificate] = useState(true);
+  const [customAlert, setCustomAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info', // 'info', 'success', 'error', 'warning'
+    buttons: []
+  });
 
   // Get courseId from route params (coming from EnrollScreen)
   const courseId = route.params?.courseId;
 
-  // Function to check current permission status
-  const checkCurrentPermissions = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        console.log('🔍 Checking current permission status...');
+  // Custom Alert Component
+  const CustomAlert = () => (
+    <Modal
+      visible={customAlert.visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+    >
+      <View style={styles.alertOverlay}>
+        <View style={styles.alertContainer}>
+          <View style={[styles.alertIcon, { backgroundColor: getAlertColor(customAlert.type) }]}>
+            <Text style={styles.alertIconText}>
+              {getAlertIcon(customAlert.type)}
+            </Text>
+          </View>
+          <Text style={styles.alertTitle}>{customAlert.title}</Text>
+          <Text style={styles.alertMessage}>{customAlert.message}</Text>
+          <View style={styles.alertButtons}>
+            {customAlert.buttons.map((button, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.alertButton,
+                  button.style === 'primary' && styles.alertButtonPrimary,
+                  button.style === 'secondary' && styles.alertButtonSecondary
+                ]}
+                onPress={() => {
+                  setCustomAlert(prev => ({ ...prev, visible: false }));
+                  if (button.onPress) {
+                    try {
+                      button.onPress();
+                    } catch (error) {
+                      // Optionally, you can use a custom alert or logging mechanism here
+                      setCustomAlert({
+                        visible: true,
+                        title: 'Error',
+                        message: 'An error occurred while handling the alert button.',
+                        type: 'error',
+                        buttons: [{ text: 'OK', style: 'primary' }]
+                      });
+                    }
+                  }
+                }}
+              >
+                <Text style={[
+                  styles.alertButtonText,
+                  button.style === 'primary' && styles.alertButtonTextPrimary,
+                  button.style === 'secondary' && styles.alertButtonTextSecondary
+                ]}>
+                  {button.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
-        if (Platform.Version >= 33) {
-          const readMediaImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
-          const readMediaVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
-          console.log('📱 Current Media Permissions - Images:', readMediaImages, 'Video:', readMediaVideo);
-          return { readMediaImages, readMediaVideo };
-        } else {
-          const writeStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE);
-          const readStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-          console.log('📱 Current Storage Permissions - Write:', writeStorage, 'Read:', readStorage);
-          return { writeStorage, readStorage };
-        }
-      } catch (error) {
-        console.error('❌ Error checking permissions:', error);
-        return null;
-      }
+ 
+  const getAlertColor = (type) => {
+    switch (type) {
+      case 'success': return '#4CAF50';
+      case 'error': return '#F44336';
+      case 'warning': return '#FF9800';
+      default: return '#2196F3';
     }
-    return null;
   };
 
-  // Function to test if we can actually write to downloads directory
-  const testDownloadsAccess = async () => {
-    try {
-      console.log('🔍 Testing downloads directory access...');
+  const getAlertIcon = (type) => {
+    switch (type) {
+      case 'success': return '✓';
+      case 'error': return '✕';
+      case 'warning': return '⚠';
+      default: return 'ℹ';
+    }
+  };
 
-      // Try to create a test file
+  // Safe alert function
+  const showCustomAlert = useCallback((title, message, type = 'info', buttons = []) => {
+    try {
+      setCustomAlert({
+        visible: true,
+        title: title || 'Alert',
+        message: message || '',
+        type,
+        buttons: buttons.length > 0 ? buttons : [{ text: 'OK', style: 'primary' }]
+      });
+    } catch (error) {
+      setCustomAlert({
+        visible: true,
+        title: title || 'Alert',
+        message: message || '',
+        type,
+        buttons: buttons.length > 0 ? buttons : [{ text: 'OK', style: 'primary' }]
+      });
+    }
+  }, []);
+
+  // Function to check current permission status
+  const checkCurrentPermissions = useCallback(async () => {
+    if (Platform.OS !== 'android') {
+      return null;
+    }
+
+    try {
+      if (Platform.Version >= 33) {
+        const readMediaImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+        const readMediaVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
+        return { readMediaImages, readMediaVideo };
+      } else {
+        const writeStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE);
+        const readStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+        return { writeStorage, readStorage };
+      }
+    } catch (error) {
+    
+      return null;
+    }
+  }, []);
+
+  // Function to test if we can actually write to downloads directory
+  const testDownloadsAccess = useCallback(async () => {
+    try {
+      if (!RNFS?.DownloadDirectoryPath) {
+        return false;
+      }
+
       const testFileName = `test_${Date.now()}.txt`;
       const testFilePath = `${RNFS.DownloadDirectoryPath}/${testFileName}`;
 
-      console.log('📁 Test file path:', testFilePath);
-
       // Write a test file
       await RNFS.writeFile(testFilePath, 'test content', 'utf8');
-      console.log('✅ Test file written successfully');
 
       // Check if file exists
       const fileExists = await RNFS.exists(testFilePath);
-      console.log('📋 Test file exists:', fileExists);
 
       if (fileExists) {
         // Delete test file
         await RNFS.unlink(testFilePath);
-        console.log('🗑️ Test file deleted successfully');
         return true;
       }
 
       return false;
     } catch (error) {
-      console.error('❌ Downloads access test failed:', error);
+     
       return false;
     }
-  };
+  }, []);
 
   // Function to request storage permissions
-  const requestStoragePermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        console.log('📱 Checking platform: Android, Version:', Platform.Version);
-        let granted = false;
+  const requestStoragePermission = useCallback(async () => {
+    if (Platform.OS !== 'android') {
+      return true; // iOS doesn't need this permission
+    }
 
-        if (Platform.Version >= 33) {
-       
-          // First check if permissions are already granted
-          const hasImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
-          const hasVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
-          if (hasImages && hasVideo) {
-            console.log('✅ Media permissions already granted');
-            return true;
+    try {
+      let granted = false;
+
+      if (Platform.Version >= 33) {
+        // First check if permissions are already granted
+        const hasImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+        const hasVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
+        if (hasImages && hasVideo) {
+          return true;
+        }
+
+        const readMediaImages = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          {
+            title: 'Media Access Permission',
+            message: 'App needs access to media to download certificates. Please grant this permission.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'Grant',
           }
+        );
 
-          const readMediaImages = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-            {
-              title: 'Media Access Permission',
-              message: 'App needs access to media to download certificates. Please grant this permission.',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'Grant',
-            }
-          );
+        const readMediaVideo = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+          {
+            title: 'Media Access Permission',
+            message: 'App needs access to media to download certificates. Please grant this permission.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'Grant',
+          }
+        );
 
-          const readMediaVideo = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
-            {
-              title: 'Media Access Permission',
-              message: 'App needs access to media to download certificates. Please grant this permission.',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'Grant',
-            }
-          );  
-          granted = (readMediaImages === PermissionsAndroid.RESULTS.GRANTED &&
-            readMediaVideo === PermissionsAndroid.RESULTS.GRANTED);
-          if (!granted) {
-            // Show detailed explanation for Android 13+
-            Alert.alert(
-              'Permission Required for Android 13+',
-              'This app needs media access permissions to download certificates. Please:\n\n1. Go to Settings > Apps > LearningSaint > Permissions\n2. Enable "Photos and videos" permission\n3. Try downloading again',
-              [
-                { text: 'OK' },
-                {
-                  text: 'Open Settings',
-                  onPress: () => {
-                    console.log('🔧 Opening app settings...');
+        granted = (readMediaImages === PermissionsAndroid.RESULTS.GRANTED &&
+          readMediaVideo === PermissionsAndroid.RESULTS.GRANTED);
+
+        if (!granted) {
+          showCustomAlert(
+            'Permission Required',
+            'This app needs media access permissions to download certificates. Please:\n\n1. Go to Settings > Apps > LearningSaint > Permissions\n2. Enable "Photos and videos" permission\n3. Try downloading again',
+            'warning',
+            [
+              { text: 'OK', style: 'secondary' },
+              {
+                text: 'Open Settings',
+                style: 'primary',
+                onPress: () => {
+                  try {
                     Linking.openSettings();
+                  } catch (error) {
+                   null
                   }
                 }
-              ]
-            );
+              }
+            ]
+          );
+        }
+
+      } else if (Platform.Version >= 29) {
+        // Android 10-12
+        const writePermission = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to storage to download certificates',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
           }
+        );
 
-        } else if (Platform.Version >= 29) {
-          // Android 10-12
-          console.log('📱 Android 10-12 detected, requesting storage permissions...');
+        const readPermission = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to storage to download certificates',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
 
-          const writePermission = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-            {
-              title: 'Storage Permission',
-              message: 'App needs access to storage to download certificates',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
+        granted = (writePermission === PermissionsAndroid.RESULTS.GRANTED &&
+          readPermission === PermissionsAndroid.RESULTS.GRANTED);
 
-          const readPermission = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-            {
-              title: 'Storage Permission',
-              message: 'App needs access to storage to download certificates',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
+      } else {
+        // Android 9 and below
+        const writePermission = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission',
+            message: 'App needs access to storage to download certificates',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
 
-          granted = (writePermission === PermissionsAndroid.RESULTS.GRANTED &&
-            readPermission === PermissionsAndroid.RESULTS.GRANTED);
-
-          console.log('📱 Storage Permissions Result - Write:', writePermission, 'Read:', readPermission);
-
-        } else {
-          // Android 9 and below
-          console.log('📱 Android 9 or below detected, requesting legacy storage permissions...');
-
-          const writePermission = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-            {
-              title: 'Storage Permission',
-              message: 'App needs access to storage to download certificates',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
-
-          granted = writePermission === PermissionsAndroid.RESULTS.GRANTED;
-          console.log('📱 Legacy Storage Permission Result:', writePermission);
-        }
-
-        if (granted) {
-          console.log('✅ Storage permissions granted');
-          return true;
-        } else {
-          console.log('❌ Storage permissions denied');
-          return false;
-        }
-      } catch (err) {
-        console.error('❌ Permission request error:', err.message);
-        Alert.alert('Permission Error', 'An error occurred while requesting permissions. Please check logs and try again.');
-        return false;
+        granted = writePermission === PermissionsAndroid.RESULTS.GRANTED;
       }
+
+      if (!granted) {
+        showCustomAlert(
+          'Permission Denied',
+          'Storage permission is required to download certificates. Please grant permission and try again.',
+          'error',
+          [
+            { text: 'OK', style: 'secondary' },
+            {
+              text: 'Open Settings',
+              style: 'primary',
+              onPress: () => {
+                try {
+                  Linking.openSettings();
+                } catch (error) {
+                  null
+                }
+              }
+            }
+          ]
+        );
+      }
+
+      return granted;
+    } catch (error) {
+     
+      showCustomAlert(
+        'Permission Error',
+        'An error occurred while requesting permissions. Please try again.',
+        'error',
+        [{ text: 'OK', style: 'primary' }]
+      );
+      return false;
     }
-    console.log('📱 iOS detected, no permission required');
-    return true; // iOS doesn't need this permission
-  };
+  }, [showCustomAlert]);
 
   // Fetch certificate description data when component mounts
   React.useEffect(() => {
@@ -236,7 +353,12 @@ const DownloadCertificateScreen = () => {
   }, [courseId, token]);
 
   // Function to fetch certificate description from API
-  const fetchCertificateDescription = async () => {
+  const fetchCertificateDescription = useCallback(async () => {
+    if (!courseId || !token) {
+     
+      return;
+    }
+
     try {
       setIsLoadingCertificate(true);
 
@@ -252,69 +374,114 @@ const DownloadCertificateScreen = () => {
       if (response.ok) {
         const result = await response.json();
 
-        if (result.success && result.data) {
+        if (result?.success && result?.data) {
           setCertificateData(result.data);
           setIsEligibleForCertificate(true);
         } else {
-          console.log('❌ API response not successful:', result);
           // Check if it's a completion/enrollment issue
-          if (result.message && result.message.includes('not completed or not enrolled')) {
+          if (result?.message?.includes('not completed or not enrolled')) {
             setIsEligibleForCertificate(false);
-            Alert.alert(
+            showCustomAlert(
               'Certificate Not Available',
               'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
+              'warning',
               [
-                { text: 'OK' },
+                { text: 'OK', style: 'secondary' },
                 {
                   text: 'Go to Course',
+                  style: 'primary',
                   onPress: () => {
-                    navigation.navigate('Enroll', { courseId: courseId });
+                    try {
+                      navigation.navigate('Enroll', { courseId: courseId });
+                    } catch (error) {
+                      null
+                    }
                   }
                 }
               ]
             );
           } else {
             setIsEligibleForCertificate(false);
-            Alert.alert('Error', result.message || 'Failed to fetch certificate details');
+            showCustomAlert(
+              'Error',
+              result?.message || 'Failed to fetch certificate details',
+              'error',
+              [{ text: 'OK', style: 'primary' }]
+            );
           }
         }
       } else {
-        console.log('❌ API call failed with status:', response.status);
         const errorResult = await response.json().catch(() => ({}));
 
         if (response.status === 401) {
-          Alert.alert('Authentication Error', 'Please login again to access certificate details');
+          showCustomAlert(
+            'Authentication Error',
+            'Please login again to access certificate details',
+            'error',
+            [{ text: 'OK', style: 'primary' }]
+          );
         } else if (response.status === 404) {
-          Alert.alert('Certificate Not Found', 'Certificate for this course is not available yet');
+          showCustomAlert(
+            'Certificate Not Found',
+            'Certificate for this course is not available yet',
+            'warning',
+            [{ text: 'OK', style: 'primary' }]
+          );
         } else {
-          Alert.alert('Error', errorResult.message || 'Failed to fetch certificate details');
+          showCustomAlert(
+            'Error',
+            errorResult?.message || 'Failed to fetch certificate details',
+            'error',
+            [{ text: 'OK', style: 'primary' }]
+          );
         }
       }
     } catch (error) {
-      console.error('❌ Fetch certificate description error:', error);
-      Alert.alert('Error', 'Failed to fetch certificate details');
+      
+      showCustomAlert(
+        'Error',
+        'Failed to fetch certificate details. Please check your internet connection and try again.',
+        'error',
+        [{ text: 'OK', style: 'primary' }]
+      );
     } finally {
       setIsLoadingCertificate(false);
     }
-  };
+  }, [courseId, token, navigation, showCustomAlert]);
 
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     try {
       if (!courseId) {
-        Alert.alert('Error', 'Course ID not found');
+        showCustomAlert(
+          'Error',
+          'Course ID not found. Please try again.',
+          'error',
+          [{ text: 'OK', style: 'primary' }]
+        );
         return;
       }
 
       if (!isEligibleForCertificate) {
-        Alert.alert(
+        showCustomAlert(
           'Certificate Not Available',
           'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
+          'warning',
           [
-            { text: 'OK' },
+            { text: 'OK', style: 'secondary' },
             {
               text: 'Go to Course',
+              style: 'primary',
               onPress: () => {
-                navigation.navigate('Enroll', { courseId: courseId });
+                try {
+                  navigation.navigate('Enroll', { courseId: courseId });
+                } catch (error) {
+                  showCustomAlert(
+                    'Navigation Error',
+                    error?.message || 'An error occurred while navigating to the course.',
+                    'error',
+                    [{ text: 'OK', style: 'primary' }]
+                  );
+                }
               }
             }
           ]
@@ -325,164 +492,240 @@ const DownloadCertificateScreen = () => {
       // Request storage permission first
       const hasPermission = await requestStoragePermission();
       if (!hasPermission) {
-        // Show comprehensive permission help for Android 13+
-        if (Platform.OS === 'android' && Platform.Version >= 33) {
-          Alert.alert(
-            'Permission Required for Android 13+',
-            'This app needs media access permissions to download certificates. Please follow these steps:\n\n1. Go to Settings > Apps > LearningSaint > Permissions\n2. Enable "Photos and videos" permission\n3. Also enable "Storage" permission if available\n4. Return to app and try again',
-            [
-              { text: 'OK' },
-              {
-                text: 'Open Settings',
-                onPress: () => {
-                  console.log('🔧 Opening app settings...');
-                  Linking.openSettings();
-                }
-              },
-              {
-                text: 'Try Again',
-                onPress: async () => {
-                  console.log('🔄 Retrying permission request...');
-                  const retryPermission = await requestStoragePermission();
-                  if (retryPermission) {
-                    console.log('✅ Permission granted on retry, proceeding with download...');
-                    handleDownload(); // Recursive call to retry download
-                  }
-                }
-              }
-            ]
-          );
-        } else {
-          // For older Android versions
-          Alert.alert(
-            'Permission Required',
-            'Storage permission is required to download certificates. Please grant permission and try again.',
-            [
-              { text: 'OK' },
-              {
-                text: 'Open Settings',
-                onPress: () => {
-                  console.log('🔧 Opening app settings...');
-                  Linking.openSettings();
-                }
-              },
-              {
-                text: 'Try Again',
-                onPress: async () => {
-                  console.log('🔄 Retrying permission request...');
-                  const retryPermission = await requestStoragePermission();
-                  if (retryPermission) {
-                    console.log('✅ Permission granted on retry, proceeding with download...');
-                    handleDownload(); // Recursive call to retry download
-                  }
-                }
-              }
-            ]
-          );
-        }
         return;
       }
 
       setIsDownloading(true);
-      console.log('🔍 Starting certificate download for courseId:', courseId);
-      console.log('🔑 Token available:', !!token);
-
-      // Show download started notification
       const fileName = `certificate_${courseId}.pdf`;
-      firebaseNotificationService.showDownloadStarted(fileName);
 
-      // API endpoint using config file with subcourseId in URL
-      const apiUrl = getApiUrl(`/api/user/certificate/download-certificate/${courseId}`);
-      console.log('🌐 API URL:', apiUrl);
+      try {
 
-      // Make direct API call with proper headers
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/pdf',
-        },
-      });
+        // API endpoint using config file with subcourseId in URL
+        const apiUrl = getApiUrl(`/api/user/certificate/download-certificate/${courseId}`);
 
-      console.log('📡 API Response Status:', response.status);
-      console.log('📡 API Response Headers:', JSON.stringify([...response.headers.entries()], null, 2));
+        // Make direct API call with proper headers
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/pdf',
+          },
+        });
 
-      if (response.ok) {
-        console.log('✅ API call successful, processing PDF...');
+        if (response.ok) {
+          // Get the response as array buffer (works better in React Native)
+          const arrayBuffer = await response.arrayBuffer();
 
-        // Get the response as array buffer (works better in React Native)
-        const arrayBuffer = await response.arrayBuffer();
-        console.log('📄 ArrayBuffer received, size:', arrayBuffer.byteLength, 'bytes');
+          // Convert array buffer to base64
+          const base64Data = Buffer.from(arrayBuffer).toString('base64');
 
-        // Convert array buffer to base64
-        const base64Data = Buffer.from(arrayBuffer).toString('base64');
-        console.log('🔢 Base64 data prepared, length:', base64Data.length);
+          try {
+            // Try multiple download locations in order of preference
+            let filePath = null;
+            let locationMessage = '';
 
-        try {
-          // First try downloads directory
-          const fileName = `certificate_${courseId}.pdf`;
-          let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+            // First try: External Downloads directory (most accessible)
+            if (RNFS.DownloadDirectoryPath) {
+              try {
+                filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+                await RNFS.writeFile(filePath, base64Data, 'base64');
+                const fileExists = await RNFS.exists(filePath);
+                if (fileExists) {
+                  locationMessage = 'Downloads folder (accessible via file manager)';
+                } else {
+                  filePath = null;
+                }
+              } catch (error) {
+                filePath = null;
+              }
+            }
 
-          console.log('📁 Using app documents directory:', filePath);
+            // Second try: External Storage Downloads
+            if (!filePath && RNFS.ExternalDirectoryPath) {
+              try {
+                filePath = `${RNFS.ExternalDirectoryPath}/Download/${fileName}`;
+                const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+                const dirExists = await RNFS.exists(dirPath);
+                if (!dirExists) {
+                  await RNFS.mkdir(dirPath);
+                }
+                await RNFS.writeFile(filePath, base64Data, 'base64');
+                const fileExists = await RNFS.exists(filePath);
+                if (fileExists) {
+                  locationMessage = 'External Storage/Download folder';
+                } else {
+                  filePath = null;
+                }
+              } catch (error) {
+                filePath = null;
+              }
+            }
 
-          // Ensure directory exists
-          const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
-          const dirExists = await RNFS.exists(dirPath);
-          if (!dirExists) {
-            await RNFS.mkdir(dirPath);
-            console.log('📁 Created directory:', dirPath);
-          }
+            // Third try: Documents directory
+            if (!filePath && RNFS.DocumentDirectoryPath) {
+              try {
+                filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+                await RNFS.writeFile(filePath, base64Data, 'base64');
+                const fileExists = await RNFS.exists(filePath);
+                if (fileExists) {
+                  locationMessage = 'Documents folder';
+                } else {
+                  filePath = null;
+                }
+              } catch (error) {
+                filePath = null;
+              }
+            }
 
-          // Write the PDF file
-          await RNFS.writeFile(filePath, base64Data, 'base64');
-          console.log('✅ PDF saved successfully to:', filePath);
+            if (filePath) {
+              // Get file info
+              const fileStats = await RNFS.stat(filePath);
 
-          // Check if file exists
-          const fileExists = await RNFS.exists(filePath);
-          console.log('📋 File exists check:', fileExists);
-
-          if (fileExists) {
-            // Get file info
-            const fileStats = await RNFS.stat(filePath);
-            console.log('📊 File stats:', fileStats);
-
-            // Determine location message
-            const locationMessage = filePath.includes('Download') ? 'Downloads folder' : 'App Documents folder';
-
-            // Show success message with file location
-            Alert.alert(
-              'Download Complete! 🎉',
-              `Certificate saved as ${fileName}\nLocation: ${locationMessage}`,
-              [
-                { text: 'OK' },
-                {
-                  text: 'Open PDF',
-                  onPress: async () => {
-                    try {
-                      // Try to open the PDF with a PDF viewer app
-                      await Linking.openURL(`file://${filePath}`);
-                      console.log('🔗 PDF opened successfully');
-                    } catch (openError) {
-                      console.log('📱 Could not open PDF directly, showing file path');
-                      Alert.alert(
-                        'PDF Location',
-                        `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`
-                      );
+              // Show success message with file location
+              showCustomAlert(
+                'Download Complete! 🎉',
+                `Certificate saved as ${fileName}\nLocation: ${locationMessage}\n\nFile path: ${filePath}`,
+                'success',
+                [
+                  { text: 'OK', style: 'primary' },
+                  {
+                    text: 'Open PDF',
+                    style: 'secondary',
+                    onPress: async () => {
+                      try {
+                        await Linking.openURL(`file://${filePath}`);
+                      } catch (openError) {
+                       
+                        showCustomAlert(
+                          'PDF Location',
+                          `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`,
+                          'info',
+                          [{ text: 'OK', style: 'primary' }]
+                        );
+                      }
                     }
                   }
-                },
+                ]
+              );
+            } else {
+              throw new Error('Could not save file to any accessible location');
+            }
+          } catch (writeError) {
+           
+
+            // Final fallback: try to save to app's cache directory
+            try {
+              const fallbackFileName = `certificate_${courseId}.pdf`;
+              const fallbackFilePath = `${RNFS.CachesDirectoryPath}/${fallbackFileName}`;
+              await RNFS.writeFile(fallbackFilePath, base64Data, 'base64');
+
+              // Check if fallback file was created
+              const fallbackExists = await RNFS.exists(fallbackFilePath);
+              if (fallbackExists) {
+                showCustomAlert(
+                  'Download Complete! 🎉',
+                  `Certificate saved as ${fallbackFileName}\nLocation: App Cache folder\n\nFile path: ${fallbackFilePath}\n\nNote: This file may not be easily accessible via file manager.`,
+                  'success',
+                  [
+                    { text: 'OK', style: 'primary' },
+                    {
+                      text: 'Open PDF',
+                      style: 'secondary',
+                      onPress: async () => {
+                        try {
+                          await Linking.openURL(`file://${fallbackFilePath}`);
+                        } catch (openError) {
+                          showCustomAlert(
+                            'PDF Location',
+                            `PDF saved to:\n${fallbackFilePath}\n\nUse your file manager to open it.`,
+                            'info',
+                            [{ text: 'OK', style: 'primary' }]
+                          );
+                        }
+                      }
+                    }
+                  ]
+                );
+              } else {
+                throw new Error('Fallback file creation failed');
+              }
+            } catch (finalFallbackError) {
+              showCustomAlert(
+                'Download Failed',
+                'Could not save PDF to any accessible location. Please check your storage permissions and try again.\n\nTroubleshooting:\n1. Check if you have enough storage space\n2. Grant storage permissions to the app\n3. Try restarting the app',
+                'error',
+                [
+                  { text: 'OK', style: 'primary' },
+                  {
+                    text: 'Check Permissions',
+                    style: 'secondary',
+                    onPress: async () => {
+                      try {
+                        await checkCurrentPermissions();
+                      } catch (error) {
+                        showCustomAlert(
+                          'Permission Error',
+                          `Error checking permissions: ${error?.message || 'Unknown error'}`,
+                          'error',
+                          [{ text: 'OK', style: 'primary' }]
+                        );
+                      }
+                    }
+                  }
+                ]
+              );
+            }
+          }
+
+        } else {
+          const errorText = await response.text();
+
+          // Try to parse error response as JSON
+          let errorResult = {};
+          try {
+            errorResult = JSON.parse(errorText);
+          } catch (parseError) {
+            showCustomAlert(
+              'Error',
+              `Could not parse error response as JSON: ${parseError?.message || 'Unknown error'}`,
+              'error',
+              [{ text: 'OK', style: 'primary' }]
+            );
+          }
+
+          if (response.status === 401) {
+            showCustomAlert(
+              'Authentication Error',
+              'Please login again to download certificate',
+              'error',
+              [{ text: 'OK', style: 'primary' }]
+            );
+          } else if (response.status === 404) {
+            showCustomAlert(
+              'Certificate Not Found',
+              'Certificate for this course is not available yet',
+              'warning',
+              [{ text: 'OK', style: 'primary' }]
+            );
+          } else if (errorResult?.message?.includes('not completed or not enrolled')) {
+            showCustomAlert(
+              'Certificate Not Available',
+              'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
+              'warning',
+              [
+                { text: 'OK', style: 'secondary' },
                 {
-                  text: 'Share File',
-                  onPress: async () => {
+                  text: 'Go to Course',
+                  style: 'primary',
+                  onPress: () => {
                     try {
-                      // Try to share the file
-                      await Linking.openURL(`file://${filePath}`);
-                      console.log('📤 File shared successfully');
-                    } catch (shareError) {
-                      console.log('📤 Could not share file directly');
-                      Alert.alert(
-                        'File Location',
-                        `File saved to:\n${filePath}\n\nYou can find it in your file manager.`
+                      navigation.navigate('Enroll', { courseId: courseId });
+                    } catch (error) {
+                      showCustomAlert(
+                        'Navigation Error',
+                        `Could not navigate to the course: ${error?.message || 'Unknown error'}`,
+                        'error',
+                        [{ text: 'OK', style: 'primary' }]
                       );
                     }
                   }
@@ -490,106 +733,60 @@ const DownloadCertificateScreen = () => {
               ]
             );
           } else {
-            throw new Error('File was not created successfully');
-          }
-        } catch (writeError) {
-          console.error('❌ Error writing file:', writeError);
-          console.error('❌ Error details:', writeError.message);
-
-          // Final fallback: try to save to app's cache directory
-          try {
-            const fallbackFileName = `certificate_${courseId}.pdf`;
-            const fallbackFilePath = `${RNFS.CachesDirectoryPath}/${fallbackFileName}`;
-            console.log('🔄 Final fallback: trying cache directory:', fallbackFilePath);
-            await RNFS.writeFile(fallbackFilePath, base64Data, 'base64');
-
-            // Show download completed notification for fallback
-            firebaseNotificationService.showDownloadCompleted(fallbackFileName, fallbackFilePath);
-          } catch (finalFallbackError) {
-            console.error('❌ All fallback methods failed:', finalFallbackError);
-
-            // Show download failed notification
-            firebaseNotificationService.showDownloadFailed(fileName, finalFallbackError.message);
-
-            Alert.alert(
+            showCustomAlert(
               'Download Failed',
-              'Could not save PDF to phone. Please check your storage permissions and try again.',
-              [
-                { text: 'OK' },
-                {
-                  text: 'Check Permissions',
-                  onPress: () => {
-                    const currentPerms = checkCurrentPermissions();
-                    console.log('🔍 Current permissions:', currentPerms);
-                  }
-                }
-              ]
+              errorResult?.message || `Error: ${response.status} - ${response.statusText}`,
+              'error',
+              [{ text: 'OK', style: 'primary' }]
             );
           }
         }
+      } catch (error) {
+        
 
-      } else {
-        console.error('❌ API call failed:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
-
-        // Try to parse error response as JSON
-        let errorResult = {};
-        try {
-          errorResult = JSON.parse(errorText);
-        } catch (parseError) {
-          console.log('Could not parse error response as JSON');
-        }
-
-        if (response.status === 401) {
-          Alert.alert('Authentication Error', 'Please login again to download certificate');
-        } else if (response.status === 404) {
-          Alert.alert('Certificate Not Found', 'Certificate for this course is not available yet');
-        } else if (errorResult.message && errorResult.message.includes('not completed or not enrolled')) {
-          Alert.alert(
-            'Certificate Not Available',
-            'You need to complete the course first before downloading the certificate. Please finish all lessons and then try again.',
-            [
-              { text: 'OK' },
-              {
-                text: 'Go to Course',
-                onPress: () => {
-                  navigation.navigate('Enroll', { courseId: courseId });
-                }
-              }
-            ]
-          );
-        } else {
-          // Show download failed notification
-          firebaseNotificationService.showDownloadFailed(fileName, errorResult.message || `Error: ${response.status} - ${response.statusText}`);
-          Alert.alert('Download Failed', errorResult.message || `Error: ${response.status} - ${response.statusText}`);
-        }
+        showCustomAlert(
+          'Error',
+          'Something went wrong while downloading. Please check your internet connection and try again.',
+          'error',
+          [{ text: 'OK', style: 'primary' }]
+        );
+      } finally {
+        setIsDownloading(false);
       }
     } catch (error) {
-      console.error('💥 Download error:', error);
-      console.error('💥 Error message:', error.message);
-
-      // Show download failed notification
-      firebaseNotificationService.showDownloadFailed(fileName, error.message);
-      Alert.alert('Error', 'Something went wrong while downloading. Please try again.');
+    
+      showCustomAlert(
+        'Error',
+        'An unexpected error occurred. Please try again.',
+        'error',
+        [{ text: 'OK', style: 'primary' }]
+      );
     } finally {
       setIsDownloading(false);
     }
-  };
+  }, [courseId, isEligibleForCertificate, requestStoragePermission, showCustomAlert, navigation, checkCurrentPermissions]);
 
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
+  const handleBackPress = useCallback(() => {
+    try {
+      navigation.goBack();
+    } catch (error) {
+      showCustomAlert(
+        'Navigation Error',
+        error?.message || 'An error occurred while navigating back.',
+        'error',
+        [{ text: 'OK', style: 'primary' }]
+      );
+    }
+  }, [navigation]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <CustomAlert />
 
       {/* Header */}
       <View style={styles.header}>
         <BackButton onPress={handleBackPress} />
-       
-       
       </View>
 
       <ScrollView
@@ -772,5 +969,85 @@ const styles = StyleSheet.create({
     color: '#FF8A00',
     fontSize: getResponsiveSize(16),
     fontWeight: '600',
+  },
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(20),
+  },
+  alertContainer: {
+    backgroundColor: '#fff',
+    borderRadius: getResponsiveSize(16),
+    padding: getResponsiveSize(24),
+    alignItems: 'center',
+    minWidth: getResponsiveSize(280),
+    maxWidth: getResponsiveSize(320),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  alertIcon: {
+    width: getResponsiveSize(60),
+    height: getResponsiveSize(60),
+    borderRadius: getResponsiveSize(30),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: getResponsiveSize(16),
+  },
+  alertIconText: {
+    fontSize: getResponsiveSize(30),
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  alertTitle: {
+    fontSize: getResponsiveSize(20),
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: getResponsiveSize(12),
+  },
+  alertMessage: {
+    fontSize: getResponsiveSize(16),
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: getResponsiveSize(22),
+    marginBottom: getResponsiveSize(24),
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: getResponsiveSize(12),
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(16),
+    borderRadius: getResponsiveSize(8),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertButtonPrimary: {
+    backgroundColor: '#FF8A00',
+  },
+  alertButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#FF8A00',
+  },
+  alertButtonText: {
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600',
+  },
+  alertButtonTextPrimary: {
+    color: '#fff',
+  },
+  alertButtonTextSecondary: {
+    color: '#FF8A00',
   },
 }); 

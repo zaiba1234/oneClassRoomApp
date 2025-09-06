@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,12 @@ import {
   StatusBar,
   SafeAreaView,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
 import BackButton from '../Component/BackButton';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 // Import local assets
 const DefaultAvatar = require('../assests/images/John.png');
@@ -35,11 +37,57 @@ const ReviewScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info', // info, success, error, warning, loading
+    buttons: [],
+    showSpinner: false,
+  });
+  
   // Get user data from Redux
   const { token } = useAppSelector((state) => state.user);
   
   // Get subcourseId from route params
   const subcourseId = route.params?.subcourseId;
+
+  // Helper functions for custom alert
+  const getAlertColor = useCallback((type) => {
+    switch (type) {
+      case 'success': return '#4CAF50';
+      case 'error': return '#F44336';
+      case 'warning': return '#FF9800';
+      case 'loading': return '#2196F3';
+      default: return '#2196F3';
+    }
+  }, []);
+
+  const getAlertIcon = useCallback((type) => {
+    switch (type) {
+      case 'success': return 'checkmark-circle';
+      case 'error': return 'close-circle';
+      case 'warning': return 'warning';
+      case 'loading': return 'refresh';
+      default: return 'information-circle';
+    }
+  }, []);
+
+  const showCustomAlert = useCallback((title, message, type = 'info', buttons = [], showSpinner = false) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      type,
+      buttons,
+      showSpinner,
+    });
+  }, []);
+
+  const hideCustomAlert = useCallback(() => {
+    setCustomAlert(prev => ({ ...prev, visible: false }));
+  }, []);
 
   // Fetch ratings when component mounts
   useEffect(() => {
@@ -73,6 +121,21 @@ const ReviewScreen = ({ navigation, route }) => {
           console.log('✅ ReviewScreen: Ratings fetched successfully:', result.data.data);
           if (Array.isArray(result.data.data)) {
             setReviews(result.data.data);
+            // Show success message for loaded reviews
+            if (result.data.data.length > 0) {
+              showCustomAlert(
+                'Reviews Loaded',
+                `Successfully loaded ${result.data.data.length} review${result.data.data.length === 1 ? '' : 's'}!`,
+                'success',
+                [
+                  {
+                    text: 'Great!',
+                    onPress: hideCustomAlert,
+                    style: 'primary',
+                  },
+                ]
+              );
+            }
           } else {
             console.log('⚠️ ReviewScreen: Ratings data is not an array:', result.data.data);
             setReviews([]);
@@ -97,6 +160,26 @@ const ReviewScreen = ({ navigation, route }) => {
     } catch (error) {
       console.error('💥 ReviewScreen: Error fetching ratings:', error);
       setError(error.message || 'Network error occurred');
+      showCustomAlert(
+        'Error',
+        error.message || 'Network error occurred. Please check your connection and try again.',
+        'error',
+        [
+          {
+            text: 'Retry',
+            onPress: () => {
+              hideCustomAlert();
+              fetchRatings();
+            },
+            style: 'primary',
+          },
+          {
+            text: 'Cancel',
+            onPress: hideCustomAlert,
+            style: 'secondary',
+          },
+        ]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +267,31 @@ const ReviewScreen = ({ navigation, route }) => {
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>Error: {error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchRatings}>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => {
+              showCustomAlert(
+                'Retry',
+                'Would you like to try loading reviews again?',
+                'info',
+                [
+                  {
+                    text: 'Yes, Retry',
+                    onPress: () => {
+                      hideCustomAlert();
+                      fetchRatings();
+                    },
+                    style: 'primary',
+                  },
+                  {
+                    text: 'Cancel',
+                    onPress: hideCustomAlert,
+                    style: 'secondary',
+                  },
+                ]
+              );
+            }}
+          >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -196,7 +303,31 @@ const ReviewScreen = ({ navigation, route }) => {
         <View style={styles.centerContainer}>
           <Text style={styles.emptyText}>No reviews available yet</Text>
           <Text style={styles.emptySubText}>Be the first to review this course!</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={fetchRatings}>
+          <TouchableOpacity 
+            style={styles.refreshButton} 
+            onPress={() => {
+              showCustomAlert(
+                'Refresh Reviews',
+                'Would you like to refresh and check for new reviews?',
+                'info',
+                [
+                  {
+                    text: 'Yes, Refresh',
+                    onPress: () => {
+                      hideCustomAlert();
+                      fetchRatings();
+                    },
+                    style: 'primary',
+                  },
+                  {
+                    text: 'Cancel',
+                    onPress: hideCustomAlert,
+                    style: 'secondary',
+                  },
+                ]
+              );
+            }}
+          >
             <Text style={styles.refreshButtonText}>Refresh</Text>
           </TouchableOpacity>
         </View>
@@ -214,6 +345,78 @@ const ReviewScreen = ({ navigation, route }) => {
     );
   };
 
+  // Custom Alert Component
+  const CustomAlert = () => (
+    <Modal
+      visible={customAlert.visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={hideCustomAlert}
+    >
+      <View style={styles.alertOverlay}>
+        <View style={styles.alertContainer}>
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={hideCustomAlert}
+            activeOpacity={0.7}
+          >
+            <Icon name="close" size={getFontSize(20)} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Icon */}
+          <View style={[styles.alertIcon, { backgroundColor: getAlertColor(customAlert.type) + '20' }]}>
+            {customAlert.showSpinner ? (
+              <ActivityIndicator size="large" color={getAlertColor(customAlert.type)} />
+            ) : (
+              <Icon
+                name={getAlertIcon(customAlert.type)}
+                size={getFontSize(40)}
+                color={getAlertColor(customAlert.type)}
+              />
+            )}
+          </View>
+
+          {/* Title */}
+          <Text style={styles.alertTitle}>{customAlert.title}</Text>
+
+          {/* Message */}
+          <Text style={styles.alertMessage}>{customAlert.message}</Text>
+
+          {/* Buttons */}
+          {customAlert.buttons.length > 0 && (
+            <View style={styles.alertButtons}>
+              {customAlert.buttons.map((button, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.alertButton,
+                    button.style === 'primary' && styles.alertButtonPrimary,
+                    button.style === 'secondary' && styles.alertButtonSecondary,
+                    button.style === 'danger' && styles.alertButtonDanger,
+                  ]}
+                  onPress={button.onPress}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.alertButtonText,
+                      button.style === 'primary' && styles.alertButtonTextPrimary,
+                      button.style === 'secondary' && styles.alertButtonTextSecondary,
+                      button.style === 'danger' && styles.alertButtonTextDanger,
+                    ]}
+                  >
+                    {button.text}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
@@ -227,6 +430,9 @@ const ReviewScreen = ({ navigation, route }) => {
 
       {/* Content */}
       {renderContent()}
+
+      {/* Custom Alert Modal */}
+      <CustomAlert />
     </SafeAreaView>
   );
 };
@@ -366,6 +572,113 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: getFontSize(16),
     fontWeight: 'bold',
+  },
+
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getVerticalSize(20),
+  },
+  alertContainer: {
+    backgroundColor: '#fff',
+    borderRadius: getFontSize(20),
+    padding: getVerticalSize(25),
+    width: '100%',
+    maxWidth: getFontSize(400),
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: getVerticalSize(10),
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: getFontSize(20),
+    elevation: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: getVerticalSize(-10),
+    right: getFontSize(8),
+    width: getFontSize(32),
+    height: getFontSize(32),
+    borderRadius: getFontSize(16),
+    backgroundColor: '#FF8800',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: getVerticalSize(2),
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: getFontSize(4),
+    elevation: 5,
+  },
+  alertIcon: {
+    width: getFontSize(80),
+    height: getFontSize(80),
+    borderRadius: getFontSize(40),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: getVerticalSize(20),
+  },
+  alertTitle: {
+    fontSize: getFontSize(22),
+    fontWeight: '700',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: getVerticalSize(12),
+  },
+  alertMessage: {
+    fontSize: getFontSize(16),
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: getFontSize(24),
+    marginBottom: getVerticalSize(25),
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: getFontSize(12),
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: getVerticalSize(14),
+    paddingHorizontal: getFontSize(20),
+    borderRadius: getFontSize(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: getFontSize(48),
+  },
+  alertButtonPrimary: {
+    backgroundColor: '#2196F3',
+  },
+  alertButtonSecondary: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  alertButtonDanger: {
+    backgroundColor: '#F44336',
+  },
+  alertButtonText: {
+    fontSize: getFontSize(16),
+    fontWeight: '600',
+  },
+  alertButtonTextPrimary: {
+    color: '#fff',
+  },
+  alertButtonTextSecondary: {
+    color: '#666',
+  },
+  alertButtonTextDanger: {
+    color: '#fff',
   },
 });
 
