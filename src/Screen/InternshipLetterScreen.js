@@ -148,7 +148,9 @@ const InternshipLetterScreen = () => {
           // Ensure price is properly formatted
           const courseWithPrice = {
             ...currentCourse,
-            price: currentCourse.price ? `₹${currentCourse.price}.00` : '₹99.00'
+            price: currentCourse.CourseInternshipPrice && currentCourse.CourseInternshipPrice > 0 
+              ? `₹${currentCourse.CourseInternshipPrice}.00` 
+              : '₹99.00'
           };
           
           console.log('💰 InternshipLetterScreen: Course price formatted:', courseWithPrice.price);
@@ -680,9 +682,39 @@ const InternshipLetterScreen = () => {
       console.log('🔄 InternshipLetterScreen: Using RNFS.downloadFile for direct download...');
       
       try {
-        // Use app's documents directory which has proper permissions
-        const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-        console.log('📁 InternshipLetterScreen: Downloading to:', filePath);
+        // First try to save to Downloads folder (accessible via file manager)
+        let filePath = `${RNFS.DownloadDirectoryPath}/${fileName}`;
+        let locationMessage = 'Downloads folder';
+        
+        console.log('📁 InternshipLetterScreen: Trying Downloads directory first:', filePath);
+        
+        try {
+          // Test if we can write to Downloads directory
+          const testFileName = `test_${Date.now()}.txt`;
+          const testFilePath = `${RNFS.DownloadDirectoryPath}/${testFileName}`;
+          
+          // Write a test file
+          await RNFS.writeFile(testFilePath, 'test content', 'utf8');
+          
+          // Check if file exists
+          const fileExists = await RNFS.exists(testFilePath);
+          
+          if (fileExists) {
+            // Delete test file
+            await RNFS.unlink(testFilePath);
+            console.log('✅ InternshipLetterScreen: Downloads directory access confirmed');
+          } else {
+            throw new Error('Cannot write to Downloads directory');
+          }
+        } catch (downloadsError) {
+          console.log('📁 InternshipLetterScreen: Downloads directory failed, trying app documents directory...');
+          
+          // Fallback to app documents directory
+          filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+          locationMessage = 'App Documents folder';
+        }
+        
+        console.log('📁 InternshipLetterScreen: Final download path:', filePath);
         
         const downloadResult = await RNFS.downloadFile({
           fromUrl: downloadUrl,
@@ -707,12 +739,44 @@ const InternshipLetterScreen = () => {
             
             Alert.alert(
               'Download Complete! 🎉',
-              `Your internship letter has been downloaded successfully!\n\nFile: ${fileName}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB\n\nYou can find it in your app's documents folder.`,
+              `Your internship letter has been downloaded successfully!\n\nFile: ${fileName}\nLocation: ${locationMessage}\nSize: ${(fileStats.size / 1024).toFixed(2)} KB\n\nYou can find it in your file manager.`,
               [
                 { 
                   text: 'OK',
                   onPress: () => {
                     console.log('✅ InternshipLetterScreen: Download completed successfully');
+                  }
+                },
+                { 
+                  text: 'Open PDF', 
+                  onPress: async () => {
+                    try {
+                      // Try to open the PDF with a PDF viewer app
+                      await Linking.openURL(`file://${filePath}`);
+                      console.log('🔗 PDF opened successfully');
+                    } catch (openError) {
+                      console.log('📱 Could not open PDF directly, showing file path');
+                      Alert.alert(
+                        'PDF Location',
+                        `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`
+                      );
+                    }
+                  }
+                },
+                {
+                  text: 'Share File',
+                  onPress: async () => {
+                    try {
+                      // Try to share the file
+                      await Linking.openURL(`file://${filePath}`);
+                      console.log('📤 File shared successfully');
+                    } catch (shareError) {
+                      console.log('📤 Could not share file directly');
+                      Alert.alert(
+                        'File Location',
+                        `File saved to:\n${filePath}\n\nYou can find it in your file manager.`
+                      );
+                    }
                   }
                 }
               ]
