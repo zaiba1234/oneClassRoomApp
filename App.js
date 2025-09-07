@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import store from './src/Redux/store';
 
 // Suppress Firebase warnings
@@ -294,9 +295,11 @@ const AppContent = () => {
 
 const App = () => {
   return (
-    <Provider store={store}>
-      <AppContent />
-    </Provider>
+    <SafeAreaProvider>
+      <Provider store={store}>
+        <AppContent />
+      </Provider>
+    </SafeAreaProvider>
   );
 };
 

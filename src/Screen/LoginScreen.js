@@ -71,7 +71,12 @@ const LoginScreen = () => {
         });
       } else {
         console.log('🔥 Firebase Login failed:', result.data.message || 'Failed to send OTP');
-        // You can show an alert or error message here
+        
+        // Handle specific Firebase errors
+        if (result.data?.error === 'missing-client-identifier') {
+          console.log('❌ Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console.');
+          // You can show an alert here
+        }
       }
     } catch (error) {
       console.error('🔥 Firebase Login error:', error);

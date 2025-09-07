@@ -8,22 +8,27 @@ import {
   StatusBar,
   SafeAreaView,
   Switch,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import BackButton from '../Component/BackButton';
 
 const SettingScreen = ({ navigation }) => {
   const [fingerprintEnabled, setFingerprintEnabled] = useState(true);
 
   const handleLanguageSetting = () => {
+    console.log('Language setting pressed');
     // Add language selection logic here
   };
 
   const handleNotificationSetting = () => {
-    // Add notification settings navigation here
+    console.log('Notification setting pressed');
+    navigation.navigate('Notification');
   };
 
   const handleFingerprintToggle = (value) => {
     setFingerprintEnabled(value);
+    console.log('Fingerprint login:', value ? 'enabled' : 'disabled');
   };
 
   return (
@@ -32,12 +37,7 @@ const SettingScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="chevron-back" size={24} color="#FF8800" />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Settings</Text>
         <View style={styles.placeholder} />
       </View>
@@ -47,10 +47,10 @@ const SettingScreen = ({ navigation }) => {
         {/* Language Setting */}
         <TouchableOpacity style={styles.settingCard} onPress={handleLanguageSetting}>
           <View style={styles.settingContent}>
-            <Text style={styles.settingLabel}>Language Setting</Text>
+            <Text style={styles.settingLabel}>Language </Text>
             <View style={styles.settingRight}>
               <Text style={styles.languageValue}>English</Text>
-              <Icon name="chevron-down" size={20} color="#FF8800" />
+           
             </View>
           </View>
         </TouchableOpacity>
@@ -63,19 +63,7 @@ const SettingScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Fingerprint Log In */}
-        <View style={styles.settingCard}>
-          <View style={styles.settingContent}>
-            <Text style={styles.settingLabel}>Fingerprint Log In</Text>
-            <Switch
-              value={fingerprintEnabled}
-              onValueChange={handleFingerprintToggle}
-              trackColor={{ false: '#E0E0E0', true: '#FF8800' }}
-              thumbColor={fingerprintEnabled ? '#FFFFFF' : '#FFFFFF'}
-              ios_backgroundColor="#E0E0E0"
-            />
-          </View>
-        </View>
+        
       </ScrollView>
     </SafeAreaView>
   );
@@ -90,28 +78,17 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 10,
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: Platform.OS === 'ios' ? 10 : 20,
     paddingBottom: 20,
+    marginTop: 0,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#FFF8EF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
+
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',

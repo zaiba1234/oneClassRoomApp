@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -27,12 +28,67 @@ const ProfileScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const nav = useNavigation();
 
+  // Get screen dimensions
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+  // Responsive size function
+  const getResponsiveSize = useCallback((size) => {
+    const baseWidth = 375; // iPhone X width as base
+    return (screenWidth / baseWidth) * size;
+  }, [screenWidth]);
+
   // State for refreshing
   const [refreshing, setRefreshing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info', // info, success, error, warning, loading
+    buttons: [],
+    showSpinner: false,
+  });
+
   // Get user data from Redux
   const { fullName, mobileNumber, _id, userId, profileImageUrl, address, email, token } = useAppSelector((state) => state.user);
+
+  // Helper functions for custom alert
+  const getAlertColor = (type) => {
+    switch (type) {
+      case 'success': return '#4CAF50';
+      case 'error': return '#F44336';
+      case 'warning': return '#FF9800';
+      case 'loading': return '#2196F3';
+      default: return '#2196F3';
+    }
+  };
+
+  const getAlertIcon = (type) => {
+    switch (type) {
+      case 'success': return 'checkmark-circle';
+      case 'error': return 'close-circle';
+      case 'warning': return 'warning';
+      case 'loading': return 'refresh';
+      default: return 'information-circle';
+    }
+  };
+
+  const showCustomAlert = (title, message, type = 'info', buttons = [], showSpinner = false) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      type,
+      buttons,
+      showSpinner,
+    });
+  };
+
+  const hideCustomAlert = () => {
+    setCustomAlert(prev => ({ ...prev, visible: false }));
+  };
 
   const menuItems = [
     {
@@ -43,16 +99,9 @@ const ProfileScreen = ({ navigation }) => {
       screenName: 'PersonalInfo',
       group: 1,
     },
+    
     {
       id: 2,
-      title: 'Invoice History',
-      iconName: 'receipt-outline',
-      iconColor: '#4CAF50',
-      screenName: 'InvoiceHistory',
-      group: 2,
-    },
-    {
-      id: 3,
       title: 'Settings',
       iconName: 'settings-outline',
       iconColor: '#2196F3',
@@ -60,7 +109,7 @@ const ProfileScreen = ({ navigation }) => {
       group: 2,
     },
     {
-      id: 4,
+      id: 3,
       title: 'Privacy and Policy',
       iconName: 'shield-checkmark-outline',
       iconColor: '#4CAF50',
@@ -68,7 +117,7 @@ const ProfileScreen = ({ navigation }) => {
       group: 3,
     },
     {
-      id: 5,
+      id: 4,
       title: 'Terms and Condition',
       iconName: 'document-text-outline',
       iconColor: '#2196F3',
@@ -76,7 +125,7 @@ const ProfileScreen = ({ navigation }) => {
       group: 3,
     },
     {
-      id: 6,
+      id: 5,
       title: 'Contact Us',
       iconName: 'call-outline',
       iconColor: '#FF9800',
@@ -84,7 +133,7 @@ const ProfileScreen = ({ navigation }) => {
       group: 3,
     },
     {
-      id: 7,
+      id: 6,
       title: 'Delete Account',
       iconName: 'trash-outline',
       iconColor: '#FF4444',
@@ -126,58 +175,69 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
+    showCustomAlert(
       'Logout',
       'Are you sure you want to logout?',
+      'warning',
       [
         {
           text: 'Cancel',
-          style: 'cancel',
+          onPress: hideCustomAlert,
+          style: 'secondary',
         },
         {
           text: 'Logout',
-          style: 'destructive',
           onPress: async () => {
+            hideCustomAlert();
             // Clear from storage first, then logout
             await dispatch(clearUserFromStorage());
             dispatch(logout());
             nav.navigate('Login');
           },
+          style: 'danger',
         },
       ]
     );
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
+    showCustomAlert(
+      'Delete ',
       'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
+      'error',
       [
         {
           text: 'Cancel',
-          style: 'cancel',
+          onPress: hideCustomAlert,
+          style: 'secondary',
         },
         {
-          text: 'Delete Account',
-          style: 'destructive',
+          text: 'Delete ',
           onPress: () => {
+            hideCustomAlert();
             // Show second confirmation
-            Alert.alert(
+            showCustomAlert(
               'Final Confirmation',
               'This is your last chance. Are you absolutely sure you want to delete your account?',
+              'error',
               [
                 {
                   text: 'Cancel',
-                  style: 'cancel',
+                  onPress: hideCustomAlert,
+                  style: 'secondary',
                 },
                 {
                   text: 'Yes, Delete Forever',
-                  style: 'destructive',
-                  onPress: deleteAccountAPI,
+                  onPress: () => {
+                    hideCustomAlert();
+                    deleteAccountAPI();
+                  },
+                  style: 'danger',
                 },
               ]
             );
           },
+          style: 'danger',
         },
       ]
     );
@@ -198,24 +258,27 @@ const ProfileScreen = ({ navigation }) => {
         },
       });
 
-      console.log('📡 Delete account response status:', response.status);
+      
 
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Account deleted successfully:', result);
 
-        Alert.alert(
+        showCustomAlert(
           'Account Deleted',
           'Your account has been successfully deleted. We\'re sorry to see you go.',
+          'success',
           [
             {
               text: 'OK',
               onPress: async () => {
+                hideCustomAlert();
                 // Clear user data and navigate to login
                 await dispatch(clearUserFromStorage());
                 dispatch(logout());
                 nav.navigate('Login');
               },
+              style: 'primary',
             },
           ]
         );
@@ -223,18 +286,32 @@ const ProfileScreen = ({ navigation }) => {
         const errorData = await response.json();
         console.error('❌ Delete account failed:', errorData);
 
-        Alert.alert(
+        showCustomAlert(
           'Delete Failed',
           errorData.message || 'Failed to delete account. Please try again later.',
-          [{ text: 'OK' }]
+          'error',
+          [
+            {
+              text: 'OK',
+              onPress: hideCustomAlert,
+              style: 'primary',
+            },
+          ]
         );
       }
     } catch (error) {
-      console.error('💥 Delete account error:', error);
-      Alert.alert(
+    
+      showCustomAlert(
         'Error',
         'Something went wrong while deleting your account. Please check your internet connection and try again.',
-        [{ text: 'OK' }]
+        'error',
+        [
+          {
+            text: 'OK',
+            onPress: hideCustomAlert,
+            style: 'primary',
+          },
+        ]
       );
     } finally {
       setIsDeleting(false);
@@ -302,6 +379,77 @@ const ProfileScreen = ({ navigation }) => {
     </View>
   );
 
+  // Custom Alert Component
+  const CustomAlert = () => (
+    <Modal
+      visible={customAlert.visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={hideCustomAlert}
+    >
+      <View style={styles.alertOverlay}>
+        <View style={styles.alertContainer}>
+          {/* Close button */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={hideCustomAlert}
+            activeOpacity={0.7}
+          >
+            <Icon name="close" size={getResponsiveSize(20)} color="#fff" />
+          </TouchableOpacity>
+
+          {/* Icon */}
+          <View style={[styles.alertIcon, { backgroundColor: getAlertColor(customAlert.type) + '20' }]}>
+            {customAlert.showSpinner ? (
+              <ActivityIndicator size="large" color={getAlertColor(customAlert.type)} />
+            ) : (
+              <Icon
+                name={getAlertIcon(customAlert.type)}
+                size={getResponsiveSize(40)}
+                color={getAlertColor(customAlert.type)}
+              />
+            )}
+          </View>
+
+          {/* Title */}
+          <Text style={styles.alertTitle}>{customAlert.title}</Text>
+
+          {/* Message */}
+          <Text style={styles.alertMessage}>{customAlert.message}</Text>
+
+          {/* Buttons */}
+          {customAlert.buttons.length > 0 && (
+            <View style={styles.alertButtons}>
+              {customAlert.buttons.map((button, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.alertButton,
+                    button.style === 'primary' && styles.alertButtonPrimary,
+                    button.style === 'secondary' && styles.alertButtonSecondary,
+                    button.style === 'danger' && styles.alertButtonDanger,
+                  ]}
+                  onPress={button.onPress}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.alertButtonText,
+                      button.style === 'primary' && styles.alertButtonTextPrimary,
+                      button.style === 'secondary' && styles.alertButtonTextSecondary,
+                      button.style === 'danger' && styles.alertButtonTextDanger,
+                    ]}
+                  >
+                    {button.text}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -319,12 +467,6 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
       </View>
-      {refreshing && (
-        <View style={styles.refreshIndicator}>
-          <ActivityIndicator size="small" color="#FF8800" />
-          <Text style={styles.refreshText}>Refreshing...</Text>
-        </View>
-      )}
 
       {/* Profile Card */}
       <View style={styles.profileCardContainer}>
@@ -362,6 +504,9 @@ const ProfileScreen = ({ navigation }) => {
           })}
         </View>
       </ScrollView>
+
+      {/* Custom Alert Modal */}
+      <CustomAlert />
     </SafeAreaView>
   );
 };
@@ -513,20 +658,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
   },
-  refreshIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  refreshText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#FF8800',
-  },
   destructiveMenuItem: {
     borderLeftWidth: 4,
     borderLeftColor: '#FF4444',
@@ -539,6 +670,114 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-
+  // Custom Alert Styles
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  alertContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 25,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: -10,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FF8800',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  alertIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  alertIconText: {
+    fontSize: 40,
+  },
+  alertTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  alertMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 25,
+  },
+  alertButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  alertButtonPrimary: {
+    backgroundColor: '#2196F3',
+  },
+  alertButtonSecondary: {
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  alertButtonDanger: {
+    backgroundColor: '#F44336',
+  },
+  alertButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  alertButtonTextPrimary: {
+    color: '#fff',
+  },
+  alertButtonTextSecondary: {
+    color: '#666',
+  },
+  alertButtonTextDanger: {
+    color: '#fff',
+  },
 
 });

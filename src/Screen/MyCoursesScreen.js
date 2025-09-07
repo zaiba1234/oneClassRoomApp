@@ -10,7 +10,9 @@ import {
   StatusBar,
   SafeAreaView,
   RefreshControl,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
@@ -18,6 +20,7 @@ import { courseAPI } from '../API/courseAPI';
 const { width, height } = Dimensions.get('window');
 
 const MyCoursesScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [selectedFilter, setSelectedFilter] = useState('All Course');
   const [courseCards, setCourseCards] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -249,6 +252,10 @@ const MyCoursesScreen = ({ navigation }) => {
       {/* Course Cards */}
       <ScrollView 
         style={styles.scrollView} 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 100, 100) : insets.bottom + 100 }
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -330,6 +337,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   courseCardsContainer: {
     paddingHorizontal: 20,

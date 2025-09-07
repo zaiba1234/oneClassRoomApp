@@ -40,6 +40,18 @@ export const sendOTP = async (phoneNumber) => {
   } catch (error) {
     console.error('🔥 Firebase Auth Error (sendOTP):', error);
     
+    // Handle specific Firebase errors
+    if (error.code === 'auth/missing-client-identifier') {
+      return {
+        success: false,
+        data: {
+          message: 'Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console.',
+          error: 'missing-client-identifier',
+          phoneNumber: phoneNumber
+        }
+      };
+    }
+    
     // Fallback to test mode if Firebase fails
     return {
       success: true,

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import HomeScreen from '../Screen/HomeScreen';
 import CategoryScreen from '../Screen/CategoryScreen';
@@ -13,6 +14,8 @@ import ProfileScreen from '../Screen/ProfileScreen';
 const Tab = createBottomTabNavigator();
 
 const BottomTabNavigator = () => {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -44,7 +47,13 @@ const BottomTabNavigator = () => {
         },
         tabBarActiveTintColor: '#fff',
         tabBarInactiveTintColor: '#fff',
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 10) : insets.bottom,
+            height: 80 + (Platform.OS === 'android' ? Math.max(insets.bottom, 10) : insets.bottom),
+          }
+        ],
         tabBarShowLabel: false,
         headerShown: false,
         tabBarItemStyle: {
@@ -76,13 +85,10 @@ export default BottomTabNavigator;
 const styles = StyleSheet.create({
   tabBar: {
     borderTopWidth: 0,
-    elevation: 0,
-    shadowOpacity: 0,
-    height: 80,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    elevation: 8,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: -2 },
+    shadowRadius: 4,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
