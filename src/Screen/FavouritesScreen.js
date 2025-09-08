@@ -11,7 +11,6 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
@@ -24,7 +23,6 @@ const FavouritesScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [togglingFavorites, setTogglingFavorites] = useState(new Set());
-
   // Fetch favorite courses when component mounts
   useEffect(() => {
     if (token) {
@@ -38,15 +36,15 @@ const FavouritesScreen = ({ navigation }) => {
   // Auto-refresh when screen comes into focus (with debouncing)
   useFocusEffect(
     React.useCallback(() => {
-      if (token) {
+      if (token && !refreshing) {
         // Add a small delay to prevent too frequent calls
         const timeoutId = setTimeout(() => {
-          fetchFavoriteCourses();
+          fetchFavoriteCoursesWithoutLoading();
         }, 500);
         
         return () => clearTimeout(timeoutId);
       }
-    }, [token])
+    }, [token, refreshing])
   );
 
   const fetchFavoriteCourses = async () => {
@@ -54,12 +52,10 @@ const FavouritesScreen = ({ navigation }) => {
       setIsLoading(true);
       setError(null);
       
-      console.log('❤️ FavouritesScreen: Fetching favorite courses...');
       const result = await courseAPI.getFavoriteCourses(token);
       
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('✅ FavouritesScreen: Favorite courses fetched successfully:', apiCourses);
         
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => ({
@@ -75,7 +71,6 @@ const FavouritesScreen = ({ navigation }) => {
         
         setFavouriteCourses(transformedCourses);
       } else {
-        console.log('❌ FavouritesScreen: Failed to fetch favorite courses:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch favorite courses');
       }
     } catch (error) {
@@ -86,16 +81,48 @@ const FavouritesScreen = ({ navigation }) => {
     }
   };
 
+  // Separate function for refresh that doesn't trigger initial loading state
+  const fetchFavoriteCoursesWithoutLoading = async () => {
+    try {
+      setError(null);
+      
+      const result = await courseAPI.getFavoriteCourses(token);
+      
+      if (result.success && result.data.success) {
+        const apiCourses = result.data.data;
+        
+        // Transform API data to match existing UI structure
+        const transformedCourses = apiCourses.map((course, index) => ({
+          id: course.id?._id || course.subcourseId || index + 1,
+          title: course.subcourseName || 'Course Title',
+          lessons: `${course.totalLessons || 0} lessons`,
+          rating: course.avgRating ? course.avgRating.toString() : '4.8',
+          price: `₹${course.price || 0}.00`,
+          thumbnail: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Frame1.png'),
+          _id: course.id?._id, // Store the actual _id for navigation
+          isFavorite: true, // All courses in favorites are favorited
+        }));
+        
+        setFavouriteCourses(transformedCourses);
+      } else {
+        setError(result.data?.message || 'Failed to fetch favorite courses');
+      }
+    } catch (error) {
+      setError('Failed to load favorite courses');
+    }
+  };
+
   const handleRefresh = async () => {
+    console.log('🔄 FavouritesScreen: Pull to refresh triggered');
     setRefreshing(true);
-    await fetchFavoriteCourses();
+    await fetchFavoriteCoursesWithoutLoading();
     setRefreshing(false);
+    console.log('✅ FavouritesScreen: Pull to refresh completed');
   };
 
   // Function to toggle favorite status (remove from favorites)
   const toggleFavorite = async (courseId) => {
     try {
-      console.log('❤️ FavouritesScreen: Toggling favorite for courseId:', courseId);
       
       // Check if token exists
       if (!token) {
@@ -111,30 +138,25 @@ const FavouritesScreen = ({ navigation }) => {
       
       // Check if already toggling this course to prevent double calls
       if (togglingFavorites.has(String(courseId))) {
-        console.log('⚠️ FavouritesScreen: Already toggling this course, skipping...');
         return;
       }
       
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
       
-      console.log('🚀 FavouritesScreen: Calling courseAPI.toggleFavorite...');
       const result = await courseAPI.toggleFavorite(token, courseId);
       
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response
         const newFavoriteStatus = result.data.data.isLike;
-        console.log('✅ FavouritesScreen: Favorite toggled successfully! New status:', newFavoriteStatus);
         
         if (!newFavoriteStatus) {
           // Course was removed from favorites, remove it from the list
-          console.log('🗑️ FavouritesScreen: Course removed from favorites, updating list...');
           setFavouriteCourses(prevCourses => 
             prevCourses.filter(course => String(course._id) !== String(courseId))
           );
         }
       } else {
-        console.log('❌ FavouritesScreen: Failed to toggle favorite:', result.data?.message);
       }
     } catch (error) {
       console.error('💥 FavouritesScreen: Error toggling favorite:', error);
@@ -153,7 +175,6 @@ const FavouritesScreen = ({ navigation }) => {
       key={course.id} 
       style={styles.courseCard}
       onPress={() => {
-        console.log('❤️ FavouritesScreen: Navigating to Enroll with courseId:', course._id);
         navigation.navigate('Enroll', { courseId: course._id });
       }}
     >
@@ -188,21 +209,23 @@ const FavouritesScreen = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Favourites  </Text>
-        {refreshing && (
-          <View style={styles.refreshIndicator}>
-            <ActivityIndicator size="small" color="#FF8800" />
-            <Text style={styles.refreshText}>Refreshing...</Text>
-          </View>
-        )}
+        <Text style={styles.headerTitle}>Favourites</Text>
       </View>
 
       {/* Course List */}
       <ScrollView 
         style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            colors={['#FF8800', '#FF9800']} // Android
+            tintColor="#FF8800" // iOS
+            title="Pull to refresh"
+            titleColor="#FF8800"
+          />
         }
       >
         <View style={styles.courseList}>
@@ -252,9 +275,13 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   courseList: {
     paddingHorizontal: 20,
     paddingBottom: 100,
+    minHeight: '100%',
   },
   courseCard: {
     flexDirection: 'row',
@@ -370,20 +397,5 @@ const styles = StyleSheet.create({
   },
   heartButtonLoading: {
     opacity: 0.7,
-  },
-  refreshIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    backgroundColor: '#FF8800',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  refreshText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 5,
   },
 });

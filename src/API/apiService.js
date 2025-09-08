@@ -9,9 +9,6 @@ export const apiService = {
       const headers = getApiHeaders();
       const body = JSON.stringify(data);
       
-      console.log('apiService.post - URL:', url);
-      console.log('apiService.post - Headers:', headers);
-      console.log('apiService.post - Body:', body);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -20,8 +17,6 @@ export const apiService = {
       });
       
       const responseData = await response.json();
-      console.log('apiService.post - Response Status:', response.status);
-      console.log('apiService.post - Response Data:', responseData);
       
       return {
         success: response.ok,

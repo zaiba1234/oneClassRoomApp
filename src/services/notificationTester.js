@@ -11,7 +11,6 @@ class NotificationTester {
 
   // Complete notification system test
   async runCompleteTest() {
-    console.log('🧪 === NOTIFICATION SYSTEM COMPLETE TEST ===');
     this.testResults = [];
 
     try {
@@ -41,16 +40,13 @@ class NotificationTester {
 
   // Test Firebase Status
   async testFirebaseStatus() {
-    console.log('🔥 Testing Firebase Status...');
     
     try {
       const isFirebaseReady = checkFirebaseStatus();
       this.addTestResult('Firebase Status', isFirebaseReady, isFirebaseReady ? 'Firebase is ready' : 'Firebase not initialized');
       
       if (isFirebaseReady) {
-        console.log('✅ Firebase Status: READY');
       } else {
-        console.log('❌ Firebase Status: NOT READY');
       }
     } catch (error) {
       this.addTestResult('Firebase Status', false, `Error: ${error.message}`);
@@ -59,18 +55,14 @@ class NotificationTester {
 
   // Test FCM Token
   async testFCMToken() {
-    console.log('🔑 Testing FCM Token...');
     
     try {
       const fcmToken = await getStoredFCMToken();
       
       if (fcmToken && fcmToken.length > 100) {
         this.addTestResult('FCM Token', true, `Token length: ${fcmToken.length} characters`);
-        console.log('✅ FCM Token: VALID');
-        console.log('🔑 Token Preview:', fcmToken.substring(0, 50) + '...');
       } else {
         this.addTestResult('FCM Token', false, 'No valid FCM token found');
-        console.log('❌ FCM Token: INVALID OR MISSING');
       }
     } catch (error) {
       this.addTestResult('FCM Token', false, `Error: ${error.message}`);
@@ -79,27 +71,21 @@ class NotificationTester {
 
   // Test WebSocket Connection
   async testWebSocketConnection() {
-    console.log('🔌 Testing WebSocket Connection...');
     
     try {
       const status = websocketService.getConnectionStatus();
       
       if (status.isConnected) {
         this.addTestResult('WebSocket Connection', true, `Connected with ID: ${status.socketId}`);
-        console.log('✅ WebSocket: CONNECTED');
-        console.log('🆔 Socket ID:', status.socketId);
       } else {
         this.addTestResult('WebSocket Connection', false, 'Not connected');
-        console.log('❌ WebSocket: NOT CONNECTED');
         
         // Try to reconnect
-        console.log('🔄 Attempting to reconnect...');
         try {
           await websocketService.connect();
           const newStatus = websocketService.getConnectionStatus();
           if (newStatus.isConnected) {
             this.addTestResult('WebSocket Reconnection', true, 'Successfully reconnected');
-            console.log('✅ WebSocket: RECONNECTED');
           } else {
             this.addTestResult('WebSocket Reconnection', false, 'Reconnection failed');
           }
@@ -114,23 +100,18 @@ class NotificationTester {
 
   // Test Notification Service
   async testNotificationService() {
-    console.log('🔔 Testing Notification Service...');
     
     try {
       // Check if notification service is initialized
       if (notificationService.isInitialized) {
         this.addTestResult('Notification Service', true, 'Service is initialized');
-        console.log('✅ Notification Service: INITIALIZED');
       } else {
         this.addTestResult('Notification Service', false, 'Service not initialized');
-        console.log('❌ Notification Service: NOT INITIALIZED');
         
         // Try to initialize
-        console.log('🔄 Attempting to initialize...');
         try {
           await notificationService.initialize();
           this.addTestResult('Notification Service Init', true, 'Successfully initialized');
-          console.log('✅ Notification Service: INITIALIZED');
         } catch (initError) {
           this.addTestResult('Notification Service Init', false, `Init error: ${initError.message}`);
         }
@@ -142,7 +123,6 @@ class NotificationTester {
 
   // Test Backend APIs
   async testBackendAPIs() {
-    console.log('🌐 Testing Backend APIs...');
     
     try {
       // Get user token from AsyncStorage
@@ -151,7 +131,6 @@ class NotificationTester {
       
       if (!userToken) {
         this.addTestResult('Backend APIs', false, 'No user token found - user not logged in');
-        console.log('ℹ️ Backend APIs: SKIPPED (User not logged in)');
         return;
       }
 
@@ -159,10 +138,8 @@ class NotificationTester {
       try {
         const unreadCount = await notificationService.getUnreadCount(userToken);
         this.addTestResult('Unread Count API', true, `Unread count: ${unreadCount}`);
-        console.log('✅ Unread Count API: WORKING');
       } catch (apiError) {
         this.addTestResult('Unread Count API', false, `API error: ${apiError.message}`);
-        console.log('❌ Unread Count API: FAILED');
       }
 
       // Test get notifications API
@@ -170,13 +147,11 @@ class NotificationTester {
         const notifications = await notificationService.getNotifications(userToken, 1, 5);
         if (notifications) {
           this.addTestResult('Get Notifications API', true, `Found ${notifications.notifications?.length || 0} notifications`);
-          console.log('✅ Get Notifications API: WORKING');
         } else {
           this.addTestResult('Get Notifications API', false, 'No response from API');
         }
       } catch (apiError) {
         this.addTestResult('Get Notifications API', false, `API error: ${apiError.message}`);
-        console.log('❌ Get Notifications API: FAILED');
       }
 
     } catch (error) {
@@ -196,18 +171,15 @@ class NotificationTester {
 
   // Show test results
   showTestResults() {
-    console.log('📊 === TEST RESULTS ===');
     
     let successCount = 0;
     let totalCount = this.testResults.length;
     
     this.testResults.forEach((result, index) => {
       const status = result.success ? '✅' : '❌';
-      console.log(`${index + 1}. ${status} ${result.test}: ${result.message}`);
       if (result.success) successCount++;
     });
     
-    console.log(`\n📈 Summary: ${successCount}/${totalCount} tests passed`);
     
     // Show alert with results
     const successRate = Math.round((successCount / totalCount) * 100);
@@ -228,16 +200,11 @@ class NotificationTester {
 
   // Quick status check
   async quickStatusCheck() {
-    console.log('⚡ === QUICK STATUS CHECK ===');
     
     const fcmToken = await getStoredFCMToken();
     const wsStatus = websocketService.getConnectionStatus();
     const firebaseReady = checkFirebaseStatus();
     
-    console.log('🔥 Firebase:', firebaseReady ? 'READY' : 'NOT READY');
-    console.log('🔑 FCM Token:', fcmToken ? `VALID (${fcmToken.length} chars)` : 'MISSING');
-    console.log('🔌 WebSocket:', wsStatus.isConnected ? `CONNECTED (${wsStatus.socketId})` : 'DISCONNECTED');
-    console.log('🔔 Notification Service:', notificationService.isInitialized ? 'INITIALIZED' : 'NOT INITIALIZED');
     
     return {
       firebase: firebaseReady,

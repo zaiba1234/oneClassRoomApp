@@ -112,7 +112,6 @@ const DownloadCertificateScreen = () => {
     </Modal>
   );
 
- 
   const getAlertColor = (type) => {
     switch (type) {
       case 'success': return '#4CAF50';
@@ -198,7 +197,7 @@ const DownloadCertificateScreen = () => {
 
       return false;
     } catch (error) {
-     
+      console.log('Downloads access test failed:', error);
       return false;
     }
   }, []);
@@ -266,48 +265,6 @@ const DownloadCertificateScreen = () => {
             ]
           );
         }
-
-      } else if (Platform.Version >= 29) {
-        // Android 10-12
-        const writePermission = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'App needs access to storage to download certificates',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-
-        const readPermission = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'App needs access to storage to download certificates',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-
-        granted = (writePermission === PermissionsAndroid.RESULTS.GRANTED &&
-          readPermission === PermissionsAndroid.RESULTS.GRANTED);
-
-      } else {
-        // Android 9 and below
-        const writePermission = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-          {
-            title: 'Storage Permission',
-            message: 'App needs access to storage to download certificates',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-
-        granted = writePermission === PermissionsAndroid.RESULTS.GRANTED;
       }
 
       if (!granted) {
@@ -437,7 +394,7 @@ const DownloadCertificateScreen = () => {
         }
       }
     } catch (error) {
-      
+      console.log('Fetch certificate description error:', error);
       showCustomAlert(
         'Error',
         'Failed to fetch certificate details. Please check your internet connection and try again.',
@@ -499,7 +456,6 @@ const DownloadCertificateScreen = () => {
       const fileName = `certificate_${courseId}.pdf`;
 
       try {
-
         // API endpoint using config file with subcourseId in URL
         const apiUrl = getApiUrl(`/api/user/certificate/download-certificate/${courseId}`);
 
@@ -577,7 +533,8 @@ const DownloadCertificateScreen = () => {
               }
             }
 
-            if (filePath) {
+            try {
+              if (filePath) {
               // Get file info
               const fileStats = await RNFS.stat(filePath);
 
@@ -595,7 +552,6 @@ const DownloadCertificateScreen = () => {
                       try {
                         await Linking.openURL(`file://${filePath}`);
                       } catch (openError) {
-                       
                         showCustomAlert(
                           'PDF Location',
                           `PDF saved to:\n${filePath}\n\nUse your file manager to open it.`,
@@ -610,35 +566,63 @@ const DownloadCertificateScreen = () => {
             } else {
               throw new Error('Could not save file to any accessible location');
             }
-          } catch (writeError) {
-           
+            } catch (writeError) {
+              console.log('Error writing file:', writeError);
 
-            // Final fallback: try to save to app's cache directory
-            try {
-              const fallbackFileName = `certificate_${courseId}.pdf`;
-              const fallbackFilePath = `${RNFS.CachesDirectoryPath}/${fallbackFileName}`;
-              await RNFS.writeFile(fallbackFilePath, base64Data, 'base64');
+              // Final fallback: try to save to app's cache directory
+              try {
+                const fallbackFileName = `certificate_${courseId}.pdf`;
+                const fallbackFilePath = `${RNFS.CachesDirectoryPath}/${fallbackFileName}`;
+                await RNFS.writeFile(fallbackFilePath, base64Data, 'base64');
 
-              // Check if fallback file was created
-              const fallbackExists = await RNFS.exists(fallbackFilePath);
-              if (fallbackExists) {
+                // Check if fallback file was created
+                const fallbackExists = await RNFS.exists(fallbackFilePath);
+                if (fallbackExists) {
+                  showCustomAlert(
+                    'Download Complete! 🎉',
+                    `Certificate saved as ${fallbackFileName}\nLocation: App Cache folder\n\nFile path: ${fallbackFilePath}\n\nNote: This file may not be easily accessible via file manager.`,
+                    'success',
+                    [
+                      { text: 'OK', style: 'primary' },
+                      {
+                        text: 'Open PDF',
+                        style: 'secondary',
+                        onPress: async () => {
+                          try {
+                            await Linking.openURL(`file://${fallbackFilePath}`);
+                          } catch (openError) {
+                            showCustomAlert(
+                              'PDF Location',
+                              `PDF saved to:\n${fallbackFilePath}\n\nUse your file manager to open it.`,
+                              'info',
+                              [{ text: 'OK', style: 'primary' }]
+                            );
+                          }
+                        }
+                      }
+                    ]
+                  );
+                } else {
+                  throw new Error('Fallback file creation failed');
+                }
+              } catch (finalFallbackError) {
                 showCustomAlert(
-                  'Download Complete! 🎉',
-                  `Certificate saved as ${fallbackFileName}\nLocation: App Cache folder\n\nFile path: ${fallbackFilePath}\n\nNote: This file may not be easily accessible via file manager.`,
-                  'success',
+                  'Download Failed',
+                  'Could not save PDF to any accessible location. Please check your storage permissions and try again.\n\nTroubleshooting:\n1. Check if you have enough storage space\n2. Grant storage permissions to the app\n3. Try restarting the app',
+                  'error',
                   [
                     { text: 'OK', style: 'primary' },
                     {
-                      text: 'Open PDF',
+                      text: 'Check Permissions',
                       style: 'secondary',
                       onPress: async () => {
                         try {
-                          await Linking.openURL(`file://${fallbackFilePath}`);
-                        } catch (openError) {
+                          await checkCurrentPermissions();
+                        } catch (error) {
                           showCustomAlert(
-                            'PDF Location',
-                            `PDF saved to:\n${fallbackFilePath}\n\nUse your file manager to open it.`,
-                            'info',
+                            'Permission Error',
+                            `Error checking permissions: ${error?.message || 'Unknown error'}`,
+                            'error',
                             [{ text: 'OK', style: 'primary' }]
                           );
                         }
@@ -646,37 +630,12 @@ const DownloadCertificateScreen = () => {
                     }
                   ]
                 );
-              } else {
-                throw new Error('Fallback file creation failed');
               }
-            } catch (finalFallbackError) {
-              showCustomAlert(
-                'Download Failed',
-                'Could not save PDF to any accessible location. Please check your storage permissions and try again.\n\nTroubleshooting:\n1. Check if you have enough storage space\n2. Grant storage permissions to the app\n3. Try restarting the app',
-                'error',
-                [
-                  { text: 'OK', style: 'primary' },
-                  {
-                    text: 'Check Permissions',
-                    style: 'secondary',
-                    onPress: async () => {
-                      try {
-                        await checkCurrentPermissions();
-                      } catch (error) {
-                        showCustomAlert(
-                          'Permission Error',
-                          `Error checking permissions: ${error?.message || 'Unknown error'}`,
-                          'error',
-                          [{ text: 'OK', style: 'primary' }]
-                        );
-                      }
-                    }
-                  }
-                ]
-              );
             }
+          } catch (writeError) {
+            console.log('Error writing file:', writeError);
+            throw new Error('Could not save file to any accessible location');
           }
-
         } else {
           const errorText = await response.text();
 
@@ -733,17 +692,11 @@ const DownloadCertificateScreen = () => {
               ]
             );
           } else {
-            showCustomAlert(
-              'Download Failed',
-              errorResult?.message || `Error: ${response.status} - ${response.statusText}`,
-              'error',
-              [{ text: 'OK', style: 'primary' }]
-            );
+            throw new Error('Could not save file to any accessible location');
           }
         }
       } catch (error) {
-        
-
+        console.log('Download error:', error);
         showCustomAlert(
           'Error',
           'Something went wrong while downloading. Please check your internet connection and try again.',
@@ -754,7 +707,6 @@ const DownloadCertificateScreen = () => {
         setIsDownloading(false);
       }
     } catch (error) {
-    
       showCustomAlert(
         'Error',
         'An unexpected error occurred. Please try again.',
@@ -941,7 +893,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
-  },
+  }, 
   gradientButton: {
     paddingVertical: getResponsiveSize(18),
     alignItems: 'center',

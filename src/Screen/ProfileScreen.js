@@ -14,6 +14,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
+  Linking,
+  Clipboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -170,7 +172,7 @@ const ProfileScreen = ({ navigation }) => {
         handleDeleteAccount();
         break;
       default:
-        console.log('Screen not implemented yet');
+        // console.log('Screen not implemented yet');
     }
   };
 
@@ -202,9 +204,9 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleDeleteAccount = () => {
     showCustomAlert(
-      'Delete ',
-      'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
-      'error',
+      'Delete Account',
+      'To delete your account, you will be redirected to our website where you can complete the account deletion process.\n\nThis is required by Google Play Store policy to ensure proper account deletion procedures.',
+      'warning',
       [
         {
           text: 'Cancel',
@@ -212,30 +214,10 @@ const ProfileScreen = ({ navigation }) => {
           style: 'secondary',
         },
         {
-          text: 'Delete ',
+          text: 'Go to Web',
           onPress: () => {
             hideCustomAlert();
-            // Show second confirmation
-            showCustomAlert(
-              'Final Confirmation',
-              'This is your last chance. Are you absolutely sure you want to delete your account?',
-              'error',
-              [
-                {
-                  text: 'Cancel',
-                  onPress: hideCustomAlert,
-                  style: 'secondary',
-                },
-                {
-                  text: 'Yes, Delete Forever',
-                  onPress: () => {
-                    hideCustomAlert();
-                    deleteAccountAPI();
-                  },
-                  style: 'danger',
-                },
-              ]
-            );
+            openDeleteAccountWebPage();
           },
           style: 'danger',
         },
@@ -243,10 +225,103 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
+  const openDeleteAccountWebPage = async () => {
+    try {
+      // Show loading alert
+      showCustomAlert(
+        'Opening Website',
+        'Redirecting you to our website...',
+        'loading',
+        [],
+        true
+      );
+
+      const url = 'https://www.learningsaint.com/privacy-policy';
+      const supported = await Linking.canOpenURL(url);
+      
+      if (supported) {
+        await Linking.openURL(url);
+        // Hide loading alert after successful redirect
+        setTimeout(() => {
+          hideCustomAlert();
+        }, 1000);
+      } else {
+        hideCustomAlert();
+        showCustomAlert(
+          'Error',
+          'Unable to open the website. Please visit https://www.learningsaint.com/privacy-policy manually to delete your account.',
+          'error',
+          [
+            {
+              text: 'Copy URL',
+              onPress: () => {
+                Clipboard.setString('https://www.learningsaint.com/privacy-policy');
+                hideCustomAlert();
+                showCustomAlert(
+                  'URL Copied',
+                  'The website URL has been copied to your clipboard. You can paste it in your browser.',
+                  'success',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: hideCustomAlert,
+                      style: 'primary',
+                    },
+                  ]
+                );
+              },
+              style: 'primary',
+            },
+            {
+              text: 'OK',
+              onPress: hideCustomAlert,
+              style: 'secondary',
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      hideCustomAlert();
+      showCustomAlert(
+        'Error',
+        'Unable to open the website. Please visit https://www.learningsaint.com/privacy-policy manually to delete your account.',
+        'error',
+        [
+          {
+            text: 'Copy URL',
+            onPress: () => {
+              Clipboard.setString('https://www.learningsaint.com/privacy-policy');
+              hideCustomAlert();
+              showCustomAlert(
+                'URL Copied',
+                'The website URL has been copied to your clipboard. You can paste it in your browser.',
+                'success',
+                [
+                  {
+                    text: 'OK',
+                    onPress: hideCustomAlert,
+                    style: 'primary',
+                  },
+                ]
+              );
+            },
+            style: 'primary',
+          },
+          {
+            text: 'OK',
+            onPress: hideCustomAlert,
+            style: 'secondary',
+          },
+        ]
+      );
+    }
+  };
+
   const deleteAccountAPI = async () => {
     try {
       setIsDeleting(true);
-      console.log('🗑️ Starting account deletion process...');
+      // console.log('🗑️ Starting account deletion process...');
 
       const apiUrl = getApiUrl('/api/user/profile/delete-profile');
 
@@ -262,7 +337,7 @@ const ProfileScreen = ({ navigation }) => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Account deleted successfully:', result);
+        // console.log('✅ Account deleted successfully:', result);
 
         showCustomAlert(
           'Account Deleted',
@@ -320,12 +395,12 @@ const ProfileScreen = ({ navigation }) => {
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
-    console.log('🔄 ProfileScreen: Pull-to-refresh triggered');
+    // console.log('🔄 ProfileScreen: Pull-to-refresh triggered');
     setRefreshing(true);
 
     // Simulate refresh delay and refresh user data
     setTimeout(() => {
-      console.log('✅ ProfileScreen: Pull-to-refresh completed');
+      // console.log('✅ ProfileScreen: Pull-to-refresh completed');
       setRefreshing(false);
     }, 1000);
   };
@@ -494,7 +569,14 @@ const ProfileScreen = ({ navigation }) => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            colors={['#FF8800', '#FF9800']} // Android
+            tintColor="#FF8800" // iOS
+            title="Pull to refresh"
+            titleColor="#FF8800"
+          />
         }
       >
         <View style={styles.menuContainer}>

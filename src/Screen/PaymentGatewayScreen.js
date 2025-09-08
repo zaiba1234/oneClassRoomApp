@@ -71,12 +71,10 @@ const PaymentGatewayScreen = ({ navigation }) => {
   };
 
   const handleAddCard = () => {
-    console.log('Add card clicked');
     // Navigate to add card screen
   };
 
   const handleConfirmPayment = () => {
-    console.log('Confirm payment clicked');
     // Navigate to payment processing or success screen
     navigation.navigate('PaymentSuccessful');
   };

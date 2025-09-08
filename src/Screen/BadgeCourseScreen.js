@@ -31,25 +31,16 @@ const BadgeCourseScreen = () => {
   const courseName = route.params?.courseName;
 
   // Debug logging
-  console.log('🔍 BadgeCourseScreen: Route params received:', route.params);
-  console.log('🔍 BadgeCourseScreen: courseId:', courseId);
-  console.log('🔍 BadgeCourseScreen: courseName:', courseName);
 
   const handleContinue = () => {
-    console.log('🚀 BadgeCourseScreen: Continue button pressed');
-    console.log('�� BadgeCourseScreen: courseId before navigation:', courseId);
-    console.log('🆔 BadgeCourseScreen: courseName before navigation:', courseName);
-    console.log('🔍 BadgeCourseScreen: Full route params:', JSON.stringify(route.params, null, 2));
     
     if (!courseId) {
-      console.log('❌ BadgeCourseScreen: courseId is undefined! Cannot navigate to FeedbackScreen');
       Alert.alert('Error', 'Course ID not found. Please go back and try again.');
       return;
     }
     
     // Pass courseId as subcourseId to FeedbackScreen
     const navigationParams = { subcourseId: courseId };
-    console.log('📤 BadgeCourseScreen: Navigating to FeedbackScreen with params:', JSON.stringify(navigationParams, null, 2));
     
     navigation.navigate('Feedback', navigationParams);
   };

@@ -29,61 +29,105 @@ const RegisterScreen = ({ route }) => {
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState(route.params?.mobileNumber || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationId, setVerificationId] = useState(route.params?.verificationId || '');
 
-  // Debug: Log received mobile number
+  // Debug: Log received mobile number and auto-send OTP for unregistered users
   React.useEffect(() => {
-    console.log('📱 RegisterScreen: Received mobile number from route:', route.params?.mobileNumber);
-    console.log('📱 RegisterScreen: Phone number state set to:', phoneNumber);
+    console.log('🔥 RegisterScreen: Mobile number received:', route.params?.mobileNumber);
+    console.log('🔥 RegisterScreen: Current phone number state:', phoneNumber);
+    
+    // If we have a mobile number from route params and it's different from current state,
+    // update the phone number state
+    if (route.params?.mobileNumber && route.params.mobileNumber !== phoneNumber) {
+      setPhoneNumber(route.params.mobileNumber);
+    }
+    
+    // Auto-send OTP when RegisterScreen loads for unregistered users
+    // This ensures they get OTP immediately when redirected from LoginScreen
+    // Only send OTP if we don't already have a verificationId from VerificationScreen
+    if (route.params?.mobileNumber && !route.params?.verificationId) {
+      console.log('🔥 RegisterScreen: Auto-sending OTP for unregistered user...');
+      handleAutoSendOTP(route.params.mobileNumber);
+    } else if (route.params?.verificationId) {
+      console.log('🔥 RegisterScreen: Using verificationId from VerificationScreen:', route.params.verificationId);
+      setVerificationId(route.params.verificationId);
+    }
   }, [route.params?.mobileNumber, phoneNumber]);
+
+  // Function to auto-send OTP for unregistered users
+  const handleAutoSendOTP = async (mobileNumber) => {
+    try {
+      console.log('🔥 RegisterScreen: Sending OTP to:', mobileNumber);
+      const otpResult = await authAPI.sendOTP(mobileNumber);
+      
+      if (otpResult.success) {
+        console.log('🔥 RegisterScreen: OTP sent successfully, verificationId:', otpResult.data.verificationId);
+        // Store the verification ID for later use
+        setVerificationId(otpResult.data.verificationId);
+      } else {
+        console.log('🔥 RegisterScreen: Failed to send OTP:', otpResult.message);
+      }
+    } catch (error) {
+      console.error('🔥 RegisterScreen: Error sending OTP:', error);
+    }
+  };
 
   const handleRegister = async () => {
     if (!fullName.trim() || !phoneNumber) {
-      console.log('Please fill all fields');
+      console.log('Please enter both full name and mobile number');
       return;
     }
 
     setIsLoading(true);
-    console.log('🔥 Firebase RegisterScreen: Starting registration process...');
-    console.log('🔥 Firebase RegisterScreen: Full Name:', fullName.trim());
-    console.log('🔥 Firebase RegisterScreen: Phone Number:', phoneNumber);
     
     try {
       // First, register the user in the backend
-      console.log('🔥 Firebase RegisterScreen: Registering user in backend...');
+      console.log('🔥 RegisterScreen: Registering user in backend...');
       const registerResult = await authAPI.register(fullName.trim(), phoneNumber);
-      console.log('🔥 Firebase RegisterScreen: Register result:', registerResult);
+      
+      console.log('🔥 RegisterScreen: Backend registration result:', registerResult);
       
       if (registerResult.success) {
-        // After successful registration, send OTP using Firebase
-        console.log('🔥 Firebase RegisterScreen: Registration successful, sending OTP via Firebase...');
-        const otpResult = await authAPI.sendOTP(phoneNumber);
-        console.log('🔥 Firebase RegisterScreen: OTP send result:', otpResult);
+        // Store user data in Redux
+        dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
         
-        if (otpResult.success) {
-          // Store user data in Redux
-          dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
+        // Check if we already have a verificationId (from auto-send OTP)
+        let finalVerificationId = verificationId;
+        
+        if (!finalVerificationId) {
+          // If no verificationId, send OTP using Firebase
+          console.log('🔥 RegisterScreen: No existing verificationId, sending new OTP...');
+          const otpResult = await authAPI.sendOTP(phoneNumber);
           
-          // Registration successful, navigate to verification with verificationId
-          console.log('✅ Firebase RegisterScreen: OTP sent successfully, navigating to verification');
-          console.log('🔥 Firebase RegisterScreen: Verification ID:', otpResult.data.verificationId);
+          console.log('🔥 RegisterScreen: OTP send result:', otpResult);
           
-          navigation.navigate('Verify', { 
-            mobileNumber: phoneNumber, 
-            fullName: fullName.trim(),
-            verificationId: otpResult.data.verificationId,
-            isFromRegister: true  // Flag to indicate this is from register flow
-          });
+          if (otpResult.success) {
+            finalVerificationId = otpResult.data.verificationId;
+          } else {
+            console.log('🔥 RegisterScreen: Failed to send OTP:', otpResult.message || 'Unknown error');
+            setIsLoading(false);
+            return;
+          }
         } else {
-          console.log('❌ Firebase RegisterScreen: OTP send failed:', otpResult.data?.message);
-          console.log('❌ Firebase RegisterScreen: Full error response:', otpResult);
-        }                                   
+          console.log('🔥 RegisterScreen: Using existing verificationId:', finalVerificationId);
+        }
+        
+        // Registration successful, navigate to verification with verificationId
+        console.log('🔥 RegisterScreen: Navigating to verification screen...');
+        navigation.navigate('Verify', { 
+          mobileNumber: phoneNumber, 
+          fullName: fullName.trim(),
+          verificationId: finalVerificationId,
+          isFromRegister: true  // Flag to indicate this is from register flow
+        });
+                                   
       } else {
-        console.log('❌ Firebase RegisterScreen: Registration failed:', registerResult.data?.message);
-        console.log('❌ Firebase RegisterScreen: Full error response:', registerResult);
+        console.log('🔥 RegisterScreen: Backend registration failed:', registerResult.message || 'Unknown error');
+        // You can show an alert here for registration failure
       }
     } catch (error) {
       console.error('💥 Firebase RegisterScreen: Registration error:', error);
-      console.log('💥 Firebase RegisterScreen: Network error. Please try again.');
+      // You can show an alert here for network/other errors
     } finally {
       setIsLoading(false);
     }

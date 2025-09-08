@@ -6,20 +6,16 @@ let firebaseAuth = null;
 
 try {
   firebaseAuth = auth();
-  console.log('✅ Firebase Auth initialized successfully');
 } catch (error) {
-  console.log('⚠️ Firebase Auth initialization failed:', error.message);
   firebaseAuth = null;
 }
 
 // Send OTP to phone number
 export const sendOTP = async (phoneNumber) => {
   try {
-    console.log('🔥 Firebase Auth: Sending OTP to:', phoneNumber);
     
     // Check if Firebase Auth is available
     if (!firebaseAuth) {
-      console.log('⚠️ Firebase Auth not available, using test mode');
       return {
         success: true,
         data: {
@@ -44,8 +40,19 @@ export const sendOTP = async (phoneNumber) => {
   } catch (error) {
     console.error('🔥 Firebase Auth Error (sendOTP):', error);
     
+    // Handle specific Firebase errors
+    if (error.code === 'auth/missing-client-identifier') {
+      return {
+        success: false,
+        data: {
+          message: 'Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console.',
+          error: 'missing-client-identifier',
+          phoneNumber: phoneNumber
+        }
+      };
+    }
+    
     // Fallback to test mode if Firebase fails
-    console.log('⚠️ Firebase failed, using test mode fallback');
     return {
       success: true,
       data: {
@@ -60,11 +67,9 @@ export const sendOTP = async (phoneNumber) => {
 // Verify OTP
 export const verifyOTP = async (verificationId, otp, phoneNumber) => {
   try {
-    console.log('🔥 Firebase Auth: Verifying OTP:', otp, 'for:', phoneNumber);
     
     // Check if Firebase Auth is available or if it's test mode
     if (!firebaseAuth || verificationId === 'test-verification-id') {
-      console.log('⚠️ Using test mode for OTP verification');
       return {
         success: true,
         data: {
@@ -97,7 +102,6 @@ export const verifyOTP = async (verificationId, otp, phoneNumber) => {
     console.error('🔥 Firebase Auth Error (verifyOTP):', error);
     
     // Fallback to test mode if Firebase fails
-    console.log('⚠️ Firebase failed, using test mode fallback');
     return {
       success: true,
       data: {
@@ -115,7 +119,6 @@ export const verifyOTP = async (verificationId, otp, phoneNumber) => {
 // Register user with backend
 export const registerUser = async (phoneNumber, userData = {}) => {
   try {
-    console.log('🔥 Firebase Auth: Registering user:', phoneNumber);
     
     const response = await fetch(getApiUrl(ENDPOINTS.REGISTER), {
       method: 'POST',
@@ -129,7 +132,6 @@ export const registerUser = async (phoneNumber, userData = {}) => {
     });
 
     const result = await response.json();
-    console.log('🔥 Firebase Auth: Register response:', result);
     
     return result;
   } catch (error) {
@@ -146,7 +148,6 @@ export const registerUser = async (phoneNumber, userData = {}) => {
 // Login user with backend
 export const loginUser = async (phoneNumber, userData = {}) => {
   try {
-    console.log('🔥 Firebase Auth: Logging in user:', phoneNumber);
     
     const response = await fetch(getApiUrl(ENDPOINTS.LOGIN), {
       method: 'POST',
@@ -159,7 +160,6 @@ export const loginUser = async (phoneNumber, userData = {}) => {
     });
 
     const result = await response.json();
-    console.log('🔥 Firebase Auth: Login response:', result);
     
     return result;
   } catch (error) {
@@ -176,11 +176,9 @@ export const loginUser = async (phoneNumber, userData = {}) => {
 // Resend OTP
 export const resendOTP = async (phoneNumber) => {
   try {
-    console.log('🔥 Firebase Auth: Resending OTP to:', phoneNumber);
     
     // Check if Firebase Auth is available
     if (!firebaseAuth) {
-      console.log('⚠️ Firebase Auth not available, using test mode');
       return {
         success: true,
         data: {
@@ -206,7 +204,6 @@ export const resendOTP = async (phoneNumber) => {
     console.error('🔥 Firebase Auth Error (resendOTP):', error);
     
     // Fallback to test mode if Firebase fails
-    console.log('⚠️ Firebase failed, using test mode fallback');
     return {
       success: true,
       data: {

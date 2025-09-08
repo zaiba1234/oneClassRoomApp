@@ -23,28 +23,22 @@ const initFirebase = () => {
     // Check if already initialized
     const apps = getApps();
     if (apps.length > 0) {
-      console.log('✅ Firebase: Using existing app');
       firebaseApp = apps[0];
       return firebaseApp;
     }
     
     // Initialize new app only once
-    console.log('🔥 Firebase: Initializing new app');
     firebaseApp = initializeApp(firebaseConfig);
-    console.log('✅ Firebase: App initialized successfully');
     return firebaseApp;
   } catch (error) {
     if (error.code === 'app/duplicate-app') {
-      console.log('✅ Firebase: App already exists, getting it');
       try {
         firebaseApp = getApp();
         return firebaseApp;
       } catch (getError) {
-        console.log('❌ Firebase: Error getting existing app');
         return null;
       }
     } else {
-      console.log('❌ Firebase: Init error:', error.message);
       return null;
     }
   }
@@ -60,14 +54,11 @@ export const requestUserPermission = async () => {
       const authStatus = await messaging().requestPermission();
       const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
                      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-      console.log('🔔 iOS Permission:', enabled);
       return enabled;
     } else {
-      console.log('🔔 Android: Permission handled automatically');
       return true;
     }
   } catch (error) {
-    console.log('❌ Permission error:', error.message);
     return false;
   }
 };
@@ -75,14 +66,11 @@ export const requestUserPermission = async () => {
 // Simple FCM token generation (using modern API)
 export const getFCMToken = async () => {
   try {
-    console.log('🔔 Getting FCM token...');
     
     // Use existing Firebase app
     if (!firebaseApp) {
-      console.log('🔄 Getting Firebase app...');
       firebaseApp = getApp();
       if (!firebaseApp) {
-        console.log('❌ Firebase not available');
         return null;
       }
     }
@@ -90,28 +78,21 @@ export const getFCMToken = async () => {
     // Request permission
     const hasPermission = await requestUserPermission();
     if (!hasPermission) {
-      console.log('❌ No permission');
       return null;
     }
     
     // Get token using modern API (no warnings)
     const messagingInstance = getMessaging(firebaseApp);
     const token = await getToken(messagingInstance);
-    console.log('✅ FCM Token generated:', token ? 'SUCCESS' : 'FAILED');
     
     if (token) {
       // Show the actual token in console
-      console.log('🔑 FCM Token Value:', token);
-      console.log('📏 Token Length:', token.length);
-      console.log('👀 Token Preview:', token.substring(0, 50) + '...');
       
       await AsyncStorage.setItem(FCM_TOKEN_KEY, token);
-      console.log('💾 Token stored in AsyncStorage');
     }
     
     return token;
   } catch (error) {
-    console.log('❌ FCM Token error:', error.message);
     return null;
   }
 };
@@ -129,11 +110,9 @@ export const getStoredFCMToken = async () => {
 // Initialize messaging
 export const initializeFirebaseMessaging = async () => {
   try {
-    console.log('🚀 Initializing Firebase messaging...');
     const token = await getFCMToken();
     return token;
   } catch (error) {
-    console.log('❌ Messaging init error:', error.message);
     return null;
   }
 };
@@ -143,11 +122,9 @@ export const onMessageReceived = (callback) => {
   try {
     const messagingInstance = getMessaging(firebaseApp);
     return messagingInstance.onMessage((remoteMessage) => {
-      console.log('📨 Message received');
       if (callback) callback(remoteMessage);
     });
   } catch (error) {
-    console.log('❌ Message listener error:', error.message);
     return null;
   }
 };
@@ -157,19 +134,16 @@ export const onTokenRefresh = (callback) => {
   try {
     const messagingInstance = getMessaging(firebaseApp);
     return messagingInstance.onTokenRefresh((token) => {
-      console.log('🔄 Token refreshed');
       AsyncStorage.setItem(FCM_TOKEN_KEY, token);
       if (callback) callback(token);
     });
   } catch (error) {
-    console.log('❌ Token refresh error:', error.message);
     return null;
   }
 };
 
 // Background message handler
 export const onBackgroundMessage = async (remoteMessage) => {
-  console.log('📨 Background message:', remoteMessage);
 };
 
 // Note: Background handler is now registered in index.js at top level
@@ -224,7 +198,6 @@ export const sendFCMTokenToBackend = async (token, userToken) => {
     
     return success;
   } catch (error) {
-    console.log('❌ Backend send error:', error.message);
     return false;
   }
 };
@@ -234,18 +207,11 @@ export const displayFCMToken = async () => {
   try {
     const token = await getStoredFCMToken();
     if (token) {
-      console.log('🎯 FCM Token Details:');
-      console.log('🔑 Full Token:', token);
-      console.log('📏 Token Length:', token.length);
-      console.log('👀 Token Preview:', token.substring(0, 50) + '...');
-      console.log('💾 Storage Key:', FCM_TOKEN_KEY);
       return token;
     } else {
-      console.log('❌ No FCM token found in storage');
       return null;
     }
   } catch (error) {
-    console.log('❌ Error displaying FCM token:', error.message);
     return null;
   }
 };

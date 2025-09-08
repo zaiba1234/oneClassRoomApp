@@ -16,7 +16,6 @@ const SplashScreen = ({ navigation }) => {
   useEffect(() => {
     // Load user data from storage when component mounts
     const initializeApp = async () => {
-      console.log('🚀 SplashScreen: Initializing app...');
       
       // First load user data from storage
       await dispatch(loadUserFromStorage());
@@ -47,7 +46,6 @@ const SplashScreen = ({ navigation }) => {
     const timer = setTimeout(() => {
       if (isLoading) {
         // Still loading, wait a bit more
-        console.log('⏳ SplashScreen: Still loading user data, waiting...');
         return;
       }
       
@@ -59,8 +57,8 @@ const SplashScreen = ({ navigation }) => {
           console.log('✅ SplashScreen: User is authenticated and existing, navigating to Home');
           navigation.replace('Home');
         }
+        navigation.replace('Home');
       } else {
-        console.log('❌ SplashScreen: User is not authenticated, navigating to OnBoard');
         navigation.replace('OnBoard');
       }
     }, 3000); // 3 seconds total
@@ -74,14 +72,11 @@ const SplashScreen = ({ navigation }) => {
       const timer = setTimeout(() => {
         if (isAuthenticated) {
           if (isNewUser) {
-            console.log('✅ SplashScreen: User authenticated and new, navigating to Category');
             navigation.replace('Category');
           } else {
-            console.log('✅ SplashScreen: User authenticated and existing, navigating to Home');
             navigation.replace('Home');
           }
         } else {
-          console.log('❌ SplashScreen: User not authenticated, navigating to OnBoard');
           navigation.replace('OnBoard');
         }
       }, 500); // Small delay to ensure smooth transition

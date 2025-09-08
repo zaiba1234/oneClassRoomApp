@@ -39,11 +39,9 @@ const SubCourseScreen = ({ navigation, route }) => {
 
   // Fetch subcourse data when component mounts
   useEffect(() => {
-    console.log('🚀 SubCourseScreen: Component mounted with route params:', { courseId, courseName });
     if (token && courseId) {
       fetchSubcourseData();
     } else {
-      console.log('⚠️ SubCourseScreen: Missing token or courseId, using fallback data');
       setIsLoadingSubcourses(false);
     }
   }, [token, courseId]);
@@ -51,7 +49,6 @@ const SubCourseScreen = ({ navigation, route }) => {
   // Show completion popup when course is completed
   useEffect(() => {
     if (courseData?.isCourseCompleted) {
-      console.log('🎯 SubCourseScreen: Course completed! Showing completion popup...');
       setShowCompletionPopup(true);
     }
   }, [courseData?.isCourseCompleted]);
@@ -66,8 +63,6 @@ const SubCourseScreen = ({ navigation, route }) => {
       }
       setSubcourseError(null);
 
-      console.log('📚 SubCourseScreen: Fetching subcourses for course ID:', courseId);
-      console.log('🔑 SubCourseScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
 
       const result = await courseAPI.getSubcoursesByCourseId(token, courseId);
 
@@ -81,13 +76,9 @@ const SubCourseScreen = ({ navigation, route }) => {
        
         // Transform API data to match existing UI structure
         const transformedSubcourses = apiData.subcourses.map((subcourse, index) => {
-          console.log(`📚 SubCourseScreen: Subcourse ${index + 1} - ${subcourse.subcourseName}`);
-          console.log(`🖼️ SubCourseScreen: Thumbnail URL: ${subcourse.thumbnailImageUrl || 'No image URL'}`);
           
           const thumbnailImage = subcourse.thumbnailImageUrl ? { uri: subcourse.thumbnailImageUrl } : require('../assests/images/Frame1.png');
           
-          console.log(`🖼️ SubCourseScreen: Final image object:`, thumbnailImage);
-          console.log(`🖼️ SubCourseScreen: Image type: ${subcourse.thumbnailImageUrl ? 'URI' : 'require'}`);
 
           return {
             id: subcourse._id || index + 1,
@@ -100,13 +91,9 @@ const SubCourseScreen = ({ navigation, route }) => {
           };
         });
 
-        console.log('🔄 SubCourseScreen: Transformed subcourses:', transformedSubcourses);
-        console.log('🔄 SubCourseScreen: Number of transformed subcourses:', transformedSubcourses.length);
         setSubcourses(transformedSubcourses);
 
       } else {
-        console.log('❌ SubCourseScreen: Failed to fetch subcourse data:', result.data?.message);
-        console.log('❌ SubCourseScreen: API response:', result);
         setSubcourseError(result.data?.message || 'Failed to fetch subcourses');
         // Keep existing subcourse data if API fails
       }
@@ -127,7 +114,6 @@ const SubCourseScreen = ({ navigation, route }) => {
 
   // Function to handle refresh
   const handleRefresh = () => {
-    console.log('🔄 SubCourseScreen: Pull to refresh triggered');
     fetchSubcourseData(true);
   };
 
@@ -136,45 +122,34 @@ const SubCourseScreen = ({ navigation, route }) => {
     try {
       // Check if token exists
       if (!token) {
-        console.log('❌ SubCourseScreen: No token available for toggle favorite');
         return;
       }
       
       // Check if courseId exists
       if (!courseId) {
-        console.log('❌ SubCourseScreen: No courseId provided for toggle favorite');
         return;
       }
       
       // Check if already toggling this course to prevent double calls
       if (togglingFavorites.has(String(courseId))) {
-        console.log('⏳ SubCourseScreen: Already toggling favorite for course:', courseId);
         return;
       }
       
-      console.log('❤️ SubCourseScreen: Starting toggle favorite for course:', courseId);
-      console.log('❤️ SubCourseScreen: Current favorite status:', currentFavoriteStatus);
-      console.log('❤️ SubCourseScreen: Action will be:', currentFavoriteStatus ? 'REMOVE from favorites' : 'ADD to favorites');
       
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
       
-      console.log('📡 SubCourseScreen: Calling toggleFavorite API...');
       const result = await courseAPI.toggleFavorite(token, courseId);
-      console.log('📡 SubCourseScreen: Toggle favorite API response:', result);
       
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response
         const newFavoriteStatus = result.data.data.isLike;
-        console.log('✅ SubCourseScreen: Toggle successful! New favorite status:', newFavoriteStatus);
-        console.log('✅ SubCourseScreen: Action completed:', newFavoriteStatus ? 'ADDED to favorites' : 'REMOVED from favorites');
         
         // Update the course in the local state
         setSubcourses(prevCourses => {
           const updatedCourses = prevCourses.map(course => {
             // Convert both IDs to strings for comparison to handle type mismatches
             if (String(course.id) === String(courseId)) {
-              console.log('🔄 SubCourseScreen: Updating course in local state:', course.title, 'isLike:', newFavoriteStatus);
               return { ...course, isLike: newFavoriteStatus };
             }
             return course;
@@ -183,7 +158,6 @@ const SubCourseScreen = ({ navigation, route }) => {
         });
         
       } else {
-        console.log('❌ SubCourseScreen: Toggle favorite failed:', result.data?.message || 'Unknown error');
       }
     } catch (error) {
       console.error('💥 SubCourseScreen: Error during toggle favorite:', error);
@@ -194,7 +168,6 @@ const SubCourseScreen = ({ navigation, route }) => {
         newSet.delete(String(courseId));
         return newSet;
       });
-      console.log('🏁 SubCourseScreen: Toggle favorite process completed for course:', courseId);
     }
   };
 
@@ -202,12 +175,8 @@ const SubCourseScreen = ({ navigation, route }) => {
   const displaySubcourses = subcourses;
   const displayCourseName = courseData?.courseName || courseName || 'Course';
 
-  console.log('🔄 SubCourseScreen: Using subcourses:', 'API data only');
-  console.log('🔄 SubCourseScreen: Display course name:', displayCourseName);
-  console.log('🔄 SubCourseScreen: Number of display subcourses:', displaySubcourses.length);
 
   const renderCourseCard = (course) => {
-    console.log(`💖 SubCourseScreen: Rendering course card for "${course.title}" - isLike: ${course.isLike}, ID: ${course.id}`);
     
     return (
       <TouchableOpacity 
@@ -228,9 +197,6 @@ const SubCourseScreen = ({ navigation, route }) => {
               togglingFavorites.has(String(course.id)) && styles.heartButtonLoading
             ]} 
             onPress={() => {
-              console.log(`💖 SubCourseScreen: Heart button pressed for "${course.title}" (ID: ${course.id})`);
-              console.log(`💖 SubCourseScreen: Current isLike status: ${course.isLike}`);
-              console.log(`💖 SubCourseScreen: Will ${course.isLike ? 'REMOVE from' : 'ADD to'} favorites`);
               toggleFavorite(course.id, course.isLike);
             }}
             disabled={togglingFavorites.has(String(course.id))}
@@ -319,8 +285,6 @@ const SubCourseScreen = ({ navigation, route }) => {
               <TouchableOpacity 
                 style={styles.modalButton}
                 onPress={() => {
-                  console.log('📜 SubCourseScreen: Get Internship Letter clicked');
-                  console.log('📜 SubCourseScreen: Passing courseId (not subcourseId):', courseId);
                   setShowCompletionPopup(false);
                   // Navigate to internship letter screen with course ID (not subcourse ID)
                   navigation.navigate('Internship', { courseId: courseId });
@@ -332,7 +296,6 @@ const SubCourseScreen = ({ navigation, route }) => {
               <TouchableOpacity 
                 style={styles.modalButton}
                 onPress={() => {
-                  console.log('🏆 SubCourseScreen: Get Course Certificate clicked');
                   setShowCompletionPopup(false);
                   // Navigate to course certificate download screen
                   navigation.navigate('CourseCertificate', { courseId: courseId });

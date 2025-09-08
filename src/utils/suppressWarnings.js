@@ -31,19 +31,16 @@ const suppressFirebaseWarnings = () => {
     'Warning: Each child in a list should have a unique "key" prop'
   ]);
 
-  console.log('🔇 Firebase and other warnings suppressed');
 };
 
 // Suppress all warnings (use with caution)
 const suppressAllWarnings = () => {
   LogBox.ignoreAllLogs(true);
-  console.log('🔇 All warnings suppressed');
 };
 
 // Enable warnings again
 const enableWarnings = () => {
   LogBox.ignoreAllLogs(false);
-  console.log('🔊 Warnings enabled');
 };
 
 // Suppress only Firebase warnings
@@ -54,7 +51,6 @@ const suppressOnlyFirebaseWarnings = () => {
     'Please use `getApp()` instead',
     'Method called was `getToken`. Please use `getToken()` instead'
   ]);
-  console.log('🔇 Only Firebase warnings suppressed');
 };
 
 export {

@@ -1,3 +1,6 @@
+// Code by Sonu
+
+
 import { useNavigation } from '@react-navigation/native';
 import React, { useRef, useState, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
@@ -48,20 +51,10 @@ const VerificationScreen = ({ route }) => {
 
   // Test Redux dispatch to verify it's working
   useEffect(() => {
-    console.log('🧪 VerificationScreen: Testing Redux dispatch...');
-    console.log('🧪 VerificationScreen: setUserData action available:', !!setUserData);
-    console.log('🧪 VerificationScreen: saveUserToStorage action available:', !!saveUserToStorage);
     
     // Debug: Log which flow we're in
-    console.log('🔄 VerificationScreen: Flow detection:');
-    console.log('🔄 VerificationScreen: isFromLogin:', isFromLogin);
-    console.log('🔄 VerificationScreen: isFromRegister:', isFromRegister);
-    console.log('🔄 VerificationScreen: isEmailVerification:', isEmailVerification);
-    console.log('🔄 VerificationScreen: mobileNumber:', mobileNumber);
-    console.log('🔄 VerificationScreen: fullName:', fullName);
     
     // Test dispatch - only run once
-    console.log('✅ VerificationScreen: Redux actions are available and ready');
   }, []);
 
   // Timer effect for resend OTP
@@ -112,11 +105,9 @@ const VerificationScreen = ({ route }) => {
 
   const handleResendOTP = async () => {
     if (isResending || resendTimer > 0) {
-      console.log('⚠️ VerificationScreen: Resend OTP blocked - timer active or already resending');
       return;
     }
 
-    console.log('🔄 VerificationScreen: Starting resend OTP...');
     
     // For email verification, we need to resend email OTP, not mobile OTP
     if (isEmailVerification) {
@@ -176,16 +167,13 @@ const VerificationScreen = ({ route }) => {
       }
     } else {
       // Mobile OTP resend (existing logic)
-      console.log('📱 VerificationScreen: Mobile number for resend:', mobileNumber);
       
       setIsResending(true);
       
       try {
         const result = await authAPI.resendOTP(mobileNumber);
-        console.log('🔥 Firebase VerificationScreen: Resend OTP API response:', result);
         
         if (result.success) {
-          console.log('✅ Firebase VerificationScreen: OTP resent successfully!');
           // Reset timer to 45 seconds
           setResendTimer(45);
           // Clear OTP fields
@@ -193,7 +181,6 @@ const VerificationScreen = ({ route }) => {
           // Focus on first OTP field
           otpRefs.current[0]?.focus();
         } else {
-          console.log('❌ Firebase VerificationScreen: Resend OTP failed:', result.data?.message);
         }
       } catch (error) {
         console.error('💥 Firebase VerificationScreen: Resend OTP error:', error);
@@ -205,13 +192,8 @@ const VerificationScreen = ({ route }) => {
 
   const handleVerifyEmailOTP = async () => {
     const otpString = otp.join('');
-    console.log('📧 VerificationScreen: Starting email OTP verification...');
-    console.log('📧 VerificationScreen: OTP entered:', otpString);
-    console.log('📧 VerificationScreen: Email from route:', email);
-    console.log('📧 VerificationScreen: Token from route:', route.params?.token ? `${route.params.token.substring(0, 20)}...` : 'No token');
     
     if (otpString.length !== 6) {
-      console.log('❌ VerificationScreen: OTP incomplete, length:', otpString.length);
       return;
     }
 
@@ -222,7 +204,6 @@ const VerificationScreen = ({ route }) => {
     }
 
     setIsLoading(true);
-    console.log('🔄 VerificationScreen: Loading started, calling verify-emailOtp API...');
     
     try {
       // Call verify-emailOtp API with correct endpoint and headers
@@ -238,23 +219,18 @@ const VerificationScreen = ({ route }) => {
         })
       });
 
-      console.log('📡 VerificationScreen: Response status:', response.status);
-      console.log('📡 VerificationScreen: Response headers:', response.headers);
       
       // Check if response is ok before parsing JSON
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('❌ VerificationScreen: API error response:', errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       let result;
       try {
         result = await response.json();
-        console.log('📡 VerificationScreen: Email OTP verification response:', result);
       } catch (parseError) {
         console.error('💥 VerificationScreen: JSON parse error:', parseError);
-        console.log('📡 VerificationScreen: Raw response text:', await response.text());
         throw new Error('Invalid response from server. Please try again.');
       }
       
@@ -274,14 +250,13 @@ const VerificationScreen = ({ route }) => {
             {
               text: 'OK',
               onPress: () => {
-                // Navigate back to PersonalInfoScreen
-                navigation.navigate('PersonalInfo');
+                // Navigate back to PersonalInfoScreen and replace the verification screen
+                navigation.replace('PersonalInfo', { isFromEmailVerification: true });
               }
             }
           ]
         );
       } else {
-        console.log('❌ VerificationScreen: Email OTP verification failed:', result.message);
         Alert.alert('Error', result.message || 'Failed to verify email OTP');
       }
     } catch (error) {
@@ -289,68 +264,47 @@ const VerificationScreen = ({ route }) => {
       Alert.alert('Error', 'Failed to verify email OTP. Please try again.');
     } finally {
       setIsLoading(false);
-      console.log('🔄 VerificationScreen: Loading finished');
     }
   };
 
   const handleVerifyOTP = async () => {
     const otpString = otp.join('');
-    console.log('🔥 Firebase VerificationScreen: Starting OTP verification...');
-    console.log('🔥 Firebase VerificationScreen: OTP entered:', otpString);
-    console.log('🔥 Firebase VerificationScreen: Mobile number from route:', mobileNumber);
-    console.log('🔥 Firebase VerificationScreen: Verification ID:', verificationId);
-    console.log('🔥 Firebase VerificationScreen: Flow - isFromLogin:', isFromLogin, 'isFromRegister:', isFromRegister);
     
     if (otpString.length !== 6) {
-      console.log('❌ Firebase VerificationScreen: OTP incomplete, length:', otpString.length);
       return;
     }
 
     setIsLoading(true);
-    console.log('🔄 Firebase VerificationScreen: Loading started, calling Firebase verifyOTP...');
     
     try {
       // Use the appropriate API based on the flow
       let result;
       if (isFromRegister) {
-        console.log('🔄 Firebase VerificationScreen: Using register flow verification...');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       } else if (isFromLogin) {
-        console.log('🔄 Firebase VerificationScreen: Using login flow verification...');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       } else {
-        console.log('🔄 Firebase VerificationScreen: Using default verification...');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       }
       
-      console.log('📡 Firebase VerificationScreen: verifyOTP API response:', result);
      
       
       
       if (result.success) {
-        console.log('✅ VerificationScreen: OTP verification successful!');
-        console.log('📋 VerificationScreen: Full API response data:', result.data);
         
         // Store token in Redux if available
         // Note: API response structure is result.data.data.token (nested)
         const token = result.data?.data?.token || result.data?.token;
         
         if (token) {
-          console.log('🔑 VerificationScreen: Token received from API!');
-          console.log('🔑 VerificationScreen: Token value:', token);
           
           // After storing token, fetch user profile
           try {
-            console.log('👤 VerificationScreen: Starting to fetch user profile with token...');
-            console.log('🔑 VerificationScreen: Using token for profile API call...');
             
             const profileResult = await profileAPI.getUserProfile(token);
-            console.log('📡 VerificationScreen: Profile API response:', profileResult);
             
             if (profileResult.success && profileResult.data.success) {
               const userData = profileResult.data.data;
-              console.log('🎉 VerificationScreen: User profile data received successfully!');
-              console.log('👤 VerificationScreen: Full user data:', userData);
               
               // Store complete user data in Redux and save to storage
               console.log('🔄 VerificationScreen: About to dispatch setUserData with complete profile...');
@@ -375,15 +329,11 @@ const VerificationScreen = ({ route }) => {
               };
               
               dispatch(setUserData(completeUserData));
-              console.log('✅ VerificationScreen: Complete user data stored in Redux successfully!');
               
               // Save to storage
               dispatch(saveUserToStorage(completeUserData));
-              console.log('💾 VerificationScreen: User data saved to storage successfully!');
               
             } else {
-              console.log('❌ VerificationScreen: Profile API failed:', profileResult.data?.message);
-              console.log('🔄 VerificationScreen: Falling back to route params...');
               
               // Fallback to route params if profile fetch fails
               const fallbackUserData = {
@@ -393,17 +343,14 @@ const VerificationScreen = ({ route }) => {
               };
               
               if (fullName) {
-                console.log('📝 VerificationScreen: Fallback - storing fullName from route params:', fullName);
                 fallbackUserData.fullName = fullName;
               }
               
               dispatch(setUserData(fallbackUserData));
               dispatch(saveUserToStorage(fallbackUserData));
-              console.log('💾 VerificationScreen: Fallback user data saved to storage!');
             }
           } catch (profileError) {
             console.error('💥 VerificationScreen: Error fetching user profile:', profileError);
-            console.log('🔄 VerificationScreen: Falling back to route params due to profile error...');
             
             // Fallback to route params if profile fetch fails
             const fallbackUserData = {
@@ -413,17 +360,13 @@ const VerificationScreen = ({ route }) => {
             };
             
             if (fullName) {
-              console.log('📝 VerificationScreen: Fallback - storing fullName from route params:', fullName);
               fallbackUserData.fullName = fullName;
             }
             
             dispatch(setUserData(fallbackUserData));
             dispatch(saveUserToStorage(fallbackUserData));
-            console.log('💾 VerificationScreen: Fallback user data saved to storage!');
           }
         } else {
-          console.log('⚠️ VerificationScreen: No token received from API, using route params only');
-          console.log('⚠️ VerificationScreen: API response data:', result.data);
           
           // No token, use route params only
           const fallbackUserData = {
@@ -431,11 +374,9 @@ const VerificationScreen = ({ route }) => {
           };
           
           if (fullName) {
-            console.log('📝 VerificationScreen: Storing fullName from route params:', fullName);
             fallbackUserData.fullName = fullName;
           }
           if (mobileNumber) {
-            console.log('📱 VerificationScreen: Storing mobileNumber from route params:', mobileNumber);
             fallbackUserData.mobileNumber = mobileNumber;
           }
           
@@ -450,13 +391,10 @@ const VerificationScreen = ({ route }) => {
         const userState = store.getState().user;
         const isNewUser = userState.isNewUser;
         
-        console.log('🆕 VerificationScreen: User isNewUser status:', isNewUser);
         
         if (isNewUser) {
-          console.log('🏠 VerificationScreen: New user detected, navigating to Category screen...');
           navigation.navigate('Category');
         } else {
-          console.log('🏠 VerificationScreen: Existing user, navigating to Home screen...');
           navigation.navigate('Home');
         }
       } else {
@@ -477,8 +415,11 @@ const VerificationScreen = ({ route }) => {
                 onPress: () => {
                  
                   
-                  // Navigate to Register screen with mobile number
-                  navigation.navigate('Register', { mobileNumber: mobileNumber });
+                  // Navigate to Register screen with mobile number and verificationId
+                  navigation.navigate('Register', { 
+                    mobileNumber: mobileNumber,
+                    verificationId: verificationId 
+                  });
                  
                 }
               }
@@ -486,17 +427,14 @@ const VerificationScreen = ({ route }) => {
           );
          
         } else {
-          console.log('❌ VerificationScreen: Error message does not match registration check');
           // Show error message for other failures
           Alert.alert('Error', result.message || 'OTP verification failed. Please try again.');
         }
       }
     } catch (error) {
       console.error('💥 VerificationScreen: OTP verification error:', error);
-      console.log('❌ VerificationScreen: Network error occurred');
     } finally {
       setIsLoading(false);
-      console.log('🔄 VerificationScreen: Loading finished');
     }
   };
 

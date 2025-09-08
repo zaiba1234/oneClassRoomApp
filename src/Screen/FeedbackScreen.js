@@ -38,9 +38,6 @@ const FeedbackScreen = () => {
   const { token } = useAppSelector((state) => state.user);
 
   // Debug logging
-  console.log('🔍 FeedbackScreen: Route params received:', route.params);
-  console.log('🔍 FeedbackScreen: subcourseId:', subcourseId);
-  console.log('🔍 FeedbackScreen: token available:', !!token);
 
   const handleStarPress = (selectedRating) => {
     setRating(selectedRating);
@@ -48,15 +45,11 @@ const FeedbackScreen = () => {
 
   const handleContinue = async () => {
     try {
-      console.log('🚀 FeedbackScreen: Continue button pressed with rating:', rating);
-      console.log('🆔 FeedbackScreen: Subcourse ID:', subcourseId);
-      console.log('🔍 FeedbackScreen: Route params full:', JSON.stringify(route.params, null, 2));
       
       // Try to get subcourseId from different sources
       let finalSubcourseId = subcourseId;
       
       if (!finalSubcourseId) {
-        console.log('⚠️ FeedbackScreen: subcourseId is undefined, trying to get from navigation state...');
         // Try to get from navigation state or go back to get the ID
         Alert.alert(
           'Missing Course ID',
@@ -72,7 +65,6 @@ const FeedbackScreen = () => {
       }
       
       if (!token) {
-        console.log('❌ FeedbackScreen: No token available');
         Alert.alert('Error', 'Please login again to submit rating.');
         return;
       }
@@ -80,18 +72,11 @@ const FeedbackScreen = () => {
       setIsSubmitting(true);
       
       // Call the rating API
-      console.log('📡 FeedbackScreen: Calling submitRating API...');
-      console.log('📡 FeedbackScreen: API call details:');
-      console.log('  - Token:', token ? token.substring(0, 30) + '...' : 'No token');
-      console.log('  - SubcourseId:', finalSubcourseId);
-      console.log('  - Rating:', rating);
       
       const result = await courseAPI.submitRating(token, finalSubcourseId, rating);
       
-      console.log('📡 FeedbackScreen: API response:', JSON.stringify(result, null, 2));
       
       if (result.success && result.data.success) {
-        console.log('✅ FeedbackScreen: Rating submitted successfully!');
         Alert.alert(
           'Success! 🎉',
           'Thank you for your feedback!',
@@ -100,7 +85,6 @@ const FeedbackScreen = () => {
               text: 'Continue',
               onPress: () => {
                 // Navigate back to EnrollScreen with completed flag
-                console.log('🚀 FeedbackScreen: Navigating back to EnrollScreen with completed flag...');
                 navigation.navigate('Enroll', { 
                   courseId: finalSubcourseId,
                   isCompleted: true, // Pass completed flag
@@ -111,7 +95,6 @@ const FeedbackScreen = () => {
           ]
         );
       } else {
-        console.log('❌ FeedbackScreen: Failed to submit rating:', result.data?.message);
         Alert.alert('Error', result.data?.message || 'Failed to submit rating. Please try again.');
       }
       
@@ -124,7 +107,6 @@ const FeedbackScreen = () => {
   };
 
   const handleSkip = () => {
-    console.log('⏭️ FeedbackScreen: Skip button pressed');
     // Navigate back to EnrollScreen with completed flag (even when skipping)
     navigation.navigate('Enroll', { 
       courseId: subcourseId,

@@ -96,7 +96,6 @@ const ReviewScreen = ({ navigation, route }) => {
     if (subcourseId && token) {
       fetchRatings();
     } else {
-      console.log('❌ ReviewScreen: Missing required data - subcourseId:', subcourseId, 'token:', !!token);
       setError('Missing subcourse ID or authentication token');
       setIsLoading(false);
     }
@@ -107,18 +106,14 @@ const ReviewScreen = ({ navigation, route }) => {
       setIsLoading(true);
       setError(null);
       
-      console.log('ReviewScreen xxx', subcourseId);
-      console.log('🔑 ReviewScreen: Using token:', token ? token.substring(0, 30) + '...' : 'No token');
       
       const result = await courseAPI.getSubcourseRatings(token, subcourseId);
       
-      console.log('📡 ReviewScreen: API result:', JSON.stringify(result, null, 2));
       
       // Handle different response structures
       if (result.success) {
         if (result.data && result.data.success) {
           // Standard success response
-          console.log('✅ ReviewScreen: Ratings fetched successfully:', result.data.data);
           if (Array.isArray(result.data.data)) {
             setReviews(result.data.data);
             // Show success message for loaded reviews
@@ -137,24 +132,18 @@ const ReviewScreen = ({ navigation, route }) => {
               );
             }
           } else {
-            console.log('⚠️ ReviewScreen: Ratings data is not an array:', result.data.data);
             setReviews([]);
           }
         } else if (result.data && Array.isArray(result.data)) {
           // Direct array response
-          console.log('✅ ReviewScreen: Ratings fetched successfully (direct array):', result.data);
           setReviews(result.data);
         } else if (result.data && result.data.data && Array.isArray(result.data.data)) {
           // Nested data array response
-          console.log('✅ ReviewScreen: Ratings fetched successfully (nested data):', result.data.data);
           setReviews(result.data.data);
         } else {
-          console.log('❌ ReviewScreen: Unexpected response structure:', result.data);
           setError('Unexpected response format from server');
         }
       } else {
-        console.log('❌ ReviewScreen: Failed to fetch ratings:', result.data?.message);
-        console.log('❌ ReviewScreen: Full result:', result);
         setError(result.data?.message || 'Failed to fetch ratings');
       }
     } catch (error) {
@@ -190,8 +179,6 @@ const ReviewScreen = ({ navigation, route }) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
 
-    console.log('⭐ ReviewScreen: Rendering stars for rating:', rating);
-    console.log('⭐ ReviewScreen: Full stars:', fullStars, 'Has half star:', hasHalfStar);
 
     // Full stars
     for (let i = 0; i < fullStars; i++) {
@@ -213,7 +200,6 @@ const ReviewScreen = ({ navigation, route }) => {
 
     // Empty stars - use empty star emoji
     const emptyStars = 5 - Math.ceil(rating);
-    console.log('⭐ ReviewScreen: Empty stars to show:', emptyStars);
     for (let i = 0; i < emptyStars; i++) {
       stars.push(
         <Text key={`empty-${i}`} style={styles.emptyStarIcon}>
@@ -222,12 +208,10 @@ const ReviewScreen = ({ navigation, route }) => {
       );
     }
 
-    console.log('⭐ ReviewScreen: Total stars rendered:', stars.length);
     return stars;
   };
 
   const handleReviewPress = (review) => {
-    console.log('Review clicked:', review.fullName);
     // Navigate to review detail screen if needed
     // navigation.navigate('ReviewDetail', { review });
   };

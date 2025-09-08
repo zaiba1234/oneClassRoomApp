@@ -10,7 +10,9 @@ import {
   StatusBar,
   SafeAreaView,
   RefreshControl,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
@@ -18,6 +20,7 @@ import { courseAPI } from '../API/courseAPI';
 const { width, height } = Dimensions.get('window');
 
 const MyCoursesScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [selectedFilter, setSelectedFilter] = useState('All Course');
   const [courseCards, setCourseCards] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,15 +47,12 @@ const MyCoursesScreen = ({ navigation }) => {
       
       switch (filter) {
         case 'All Course':
-          console.log('📚 MyCoursesScreen: Fetching purchased subcourses...');
           result = await courseAPI.getPurchasedSubcourses(token);
           break;
         case 'In Progress':
-          console.log('📚 MyCoursesScreen: Fetching in-progress subcourses...');
           result = await courseAPI.getInProgressSubcourses(token);
           break;
         case 'Completed':
-          console.log('📚 MyCoursesScreen: Fetching completed subcourses...');
           result = await courseAPI.getCompletedSubcourses(token);
           break;
         default:
@@ -60,7 +60,6 @@ const MyCoursesScreen = ({ navigation }) => {
       }
 
       if (result.success && result.data.success) {
-        console.log('✅ MyCoursesScreen: Successfully fetched courses for filter:', filter);
         
         // Transform API data to match the existing UI structure
         const transformedCourses = result.data.data.map((course, index) => ({
@@ -73,7 +72,6 @@ const MyCoursesScreen = ({ navigation }) => {
           subcourseId: course.subcourseId,
         }));
 
-        console.log('🔄 MyCoursesScreen: Transformed courses:', transformedCourses);
         setCourseCards(transformedCourses);
       } else {
         console.log('❌ MyCoursesScreen: Failed to fetch courses:', result.data?.message);
@@ -98,11 +96,9 @@ const MyCoursesScreen = ({ navigation }) => {
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
-    console.log('🔄 MyCoursesScreen: Pull-to-refresh triggered');
     setRefreshing(true);
     try {
       await fetchCourses(selectedFilter);
-      console.log('✅ MyCoursesScreen: Pull-to-refresh completed');
     } catch (error) {
       console.error('💥 MyCoursesScreen: Error during pull-to-refresh:', error);
     } finally {
@@ -183,7 +179,6 @@ const MyCoursesScreen = ({ navigation }) => {
       key={course.id} 
       style={styles.courseCard}
       onPress={() => {
-        console.log('Course clicked:', course.title);
         if (course.progress === 100) {
           navigation.navigate('Enroll', { courseId: course.subcourseId });
         } else {
@@ -217,11 +212,6 @@ const MyCoursesScreen = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Courses</Text>
       </View>
-      {refreshing && (
-        <View style={styles.refreshIndicator}>
-          <Text style={styles.refreshText}>Refreshing...</Text>
-        </View>
-      )}
 
       {/* Filter Buttons */}
       <View style={styles.filterContainer}>
@@ -249,13 +239,19 @@ const MyCoursesScreen = ({ navigation }) => {
       {/* Course Cards */}
       <ScrollView 
         style={styles.scrollView} 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 100, 100) : insets.bottom + 100 }
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={['#2285FA']}
-            tintColor="#2285FA"
+            colors={['#FF8800', '#FF9800']} // Android
+            tintColor="#FF8800" // iOS
+            title="Pull to refresh"
+            titleColor="#FF8800"
           />
         }
       >
@@ -330,6 +326,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   courseCardsContainer: {
     paddingHorizontal: 20,
@@ -429,7 +428,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 8,
     paddingHorizontal: 15,
-    backgroundColor: '#2285FA',
+    backgroundColor: '#FF8800',
     borderRadius: 8,
   },
   retryButtonText: {
@@ -442,20 +441,5 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     fontSize: 16,
     color: '#666',
-  },
-  refreshIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  refreshText: {
-    fontSize: 14,
-    color: '#2285FA',
-    fontWeight: '600',
   },
 });

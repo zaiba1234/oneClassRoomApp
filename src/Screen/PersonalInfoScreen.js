@@ -31,11 +31,13 @@ const getResponsiveSize = (size) => {
   return Math.round(size * scale);
 };
 
-const PersonalInfoScreen = ({ navigation }) => {
+const PersonalInfoScreen = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
   const { fullName, mobileNumber, token, profileImageUrl, address, email } = useAppSelector((state) => state.user);
+  
+  // Check if user came from email verification
+  const isFromEmailVerification = route.params?.isFromEmailVerification || false;
 
-  console.log('🔄 PersonalInfoScreen: Initial Redux state:', { fullName, mobileNumber, token, profileImageUrl, address, email });
 
   const [name, setName] = useState(fullName || '');
   const [userAddress, setUserAddress] = useState(address || '');
@@ -44,6 +46,7 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [profileImage, setProfileImage] = useState(profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png'));
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isWaitingForToken, setIsWaitingForToken] = useState(true);
   
   // Custom Modal State
   const [customAlert, setCustomAlert] = useState({
@@ -55,7 +58,6 @@ const PersonalInfoScreen = ({ navigation }) => {
     showSpinner: false
   });
 
-  console.log('🔄 PersonalInfoScreen: Initial local state:', { name, userAddress, userEmail, phone });
 
   // Custom Modal Component
   const CustomAlert = () => (
@@ -165,47 +167,66 @@ const PersonalInfoScreen = ({ navigation }) => {
     }
   }, []);
 
-  // Fetch user profile data on component mount
+  // Custom back button handler
+  const handleBackPress = useCallback(() => {
+    if (isFromEmailVerification) {
+      // If user came from email verification, go to Home instead of back to verification
+      navigation.navigate('Home');
+    } else {
+      // Normal back navigation
+      navigation.goBack();
+    }
+  }, [navigation, isFromEmailVerification]);
+
+  // Fetch user profile data when token is available
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
+    if (token) {
+      // console.log('🔄 PersonalInfoScreen: Token available, fetching profile...');
+      setIsWaitingForToken(false);
+      fetchUserProfile();
+    } else {
+      // console.log('⏳ PersonalInfoScreen: No token yet, waiting for user data to load...');
+      setIsWaitingForToken(true);
+      setIsLoadingProfile(false);
+    }
+  }, [token]);
 
   // Update local state when Redux state changes
   useEffect(() => {
-    console.log('🔄 PersonalInfoScreen: Redux state changed:');
-    console.log('🔄 PersonalInfoScreen: fullName:', fullName);
-    console.log('🔄 PersonalInfoScreen: mobileNumber:', mobileNumber);
-    console.log('🔄 PersonalInfoScreen: address:', address);
-    console.log('🔄 PersonalInfoScreen: email:', email);
-    console.log('🔄 PersonalInfoScreen: profileImageUrl:', profileImageUrl);
+    // console.log('🔄 PersonalInfoScreen: Redux state changed:');
+    // console.log('🔄 PersonalInfoScreen: fullName:', fullName);
+    // console.log('🔄 PersonalInfoScreen: mobileNumber:', mobileNumber);
+    // console.log('🔄 PersonalInfoScreen: address:', address);
+    // console.log('🔄 PersonalInfoScreen: email:', email);
+    // console.log('🔄 PersonalInfoScreen: profileImageUrl:', profileImageUrl);
     
     if (fullName !== undefined) {
-      console.log('📝 PersonalInfoScreen: Setting name from Redux:', fullName);
+      // console.log('📝 PersonalInfoScreen: Setting name from Redux:', fullName);
       setName(fullName);
     }
     if (mobileNumber !== undefined) {
-      console.log('📱 PersonalInfoScreen: Setting phone from Redux:', mobileNumber);
+      // console.log('📱 PersonalInfoScreen: Setting phone from Redux:', mobileNumber);
       setPhone(mobileNumber);
     }
     if (address !== undefined) {
-      console.log('🏠 PersonalInfoScreen: Setting address from Redux:', address);
+      // console.log('🏠 PersonalInfoScreen: Setting address from Redux:', address);
       setUserAddress(address);
     }
     if (email !== undefined) {
-      console.log('📧 PersonalInfoScreen: Updating email from Redux:', email);
-      console.log('📧 PersonalInfoScreen: Current userEmail state:', userEmail);
+      // console.log('📧 PersonalInfoScreen: Updating email from Redux:', email);
+      // console.log('📧 PersonalInfoScreen: Current userEmail state:', userEmail);
       setUserEmail(email);
-      console.log('📧 PersonalInfoScreen: Email state updated to:', email);
+      // console.log('📧 PersonalInfoScreen: Email state updated to:', email);
     }
     if (profileImageUrl) {
-      console.log('🖼️ PersonalInfoScreen: Setting profile image from Redux:', profileImageUrl);
+      // console.log('🖼️ PersonalInfoScreen: Setting profile image from Redux:', profileImageUrl);
       setProfileImage({ uri: profileImageUrl });
     }
   }, [fullName, mobileNumber, address, email, profileImageUrl]);
 
   const fetchUserProfile = async () => {
     if (!token) {
-      console.log('❌ PersonalInfoScreen: No token available for profile fetch');
+      // console.log('❌ PersonalInfoScreen: No token available for profile fetch');
       setIsLoadingProfile(false);
       showCustomAlert(
         'Authentication Required',
@@ -225,49 +246,49 @@ const PersonalInfoScreen = ({ navigation }) => {
 
     try {
       setIsLoadingProfile(true);
-      console.log('🔄 PersonalInfoScreen: Starting profile fetch...');
-      console.log('🔄 PersonalInfoScreen: Using token:', token ? `${token.substring(0, 20)}...` : 'No token');
+      // console.log('🔄 PersonalInfoScreen: Starting profile fetch...');
+      // console.log('🔄 PersonalInfoScreen: Using token:', token ? `${token.substring(0, 20)}...` : 'No token');
       
       const result = await profileAPI.getUserProfile(token);
       
-      console.log('📡 PersonalInfoScreen: Profile API response received:');
-      console.log('📡 PersonalInfoScreen: result.success:', result.success);
-      console.log('📡 PersonalInfoScreen: result.status:', result.status);
-      console.log('📡 PersonalInfoScreen: result.data:', result.data);
-      console.log('📡 PersonalInfoScreen: result.data.success:', result.data?.success);
-      console.log('📡 PersonalInfoScreen: result.data.data:', result.data?.data);
+      // console.log('📡 PersonalInfoScreen: Profile API response received:');
+      // console.log('📡 PersonalInfoScreen: result.success:', result.success);
+      // console.log('📡 PersonalInfoScreen: result.status:', result.status);
+      // console.log('📡 PersonalInfoScreen: result.data:', result.data);
+      // console.log('📡 PersonalInfoScreen: result.data.success:', result.data?.success);
+      // console.log('📡 PersonalInfoScreen: result.data.data:', result.data?.data);
 
       if (result.success && result.data.success) {
         const profileData = result.data.data;
-        console.log('✅ PersonalInfoScreen: Profile data fetched successfully:');
-        console.log('✅ PersonalInfoScreen: profileData:', profileData);
-        console.log('✅ PersonalInfoScreen: profileData.email:', profileData.email);
-        console.log('✅ PersonalInfoScreen: profileData.fullName:', profileData.fullName);
-        console.log('✅ PersonalInfoScreen: profileData.address:', profileData.address);
-        console.log('✅ PersonalInfoScreen: profileData.mobileNumber:', profileData.mobileNumber);
+        // console.log('✅ PersonalInfoScreen: Profile data fetched successfully:');
+        // console.log('✅ PersonalInfoScreen: profileData:', profileData);
+        // console.log('✅ PersonalInfoScreen: profileData.email:', profileData.email);
+        // console.log('✅ PersonalInfoScreen: profileData.fullName:', profileData.fullName);
+        // console.log('✅ PersonalInfoScreen: profileData.address:', profileData.address);
+        // console.log('✅ PersonalInfoScreen: profileData.mobileNumber:', profileData.mobileNumber);
 
         // Update Redux store with fetched data
-        console.log('🔄 PersonalInfoScreen: Updating Redux store with profile data...');
+        // console.log('🔄 PersonalInfoScreen: Updating Redux store with profile data...');
         dispatch(setProfileData(profileData));
 
         // Update local state
-        console.log('🔄 PersonalInfoScreen: Updating local state...');
+        // console.log('🔄 PersonalInfoScreen: Updating local state...');
         setName(profileData.fullName || '');
         setPhone(profileData.mobileNumber || '+91');
         setUserAddress(profileData.address || '');
         setUserEmail(profileData.email || '');
-        console.log('📧 PersonalInfoScreen: Set userEmail to:', profileData.email || '');
+        // console.log('📧 PersonalInfoScreen: Set userEmail to:', profileData.email || '');
         
         if (profileData.profileImageUrl) {
           setProfileImage({ uri: profileData.profileImageUrl });
-          console.log('🖼️ PersonalInfoScreen: Set profile image to:', profileData.profileImageUrl);
+          // console.log('🖼️ PersonalInfoScreen: Set profile image to:', profileData.profileImageUrl);
         }
       } else {
-        console.log('❌ PersonalInfoScreen: Failed to fetch profile:');
-        console.log('❌ PersonalInfoScreen: result.success:', result.success);
-        console.log('❌ PersonalInfoScreen: result.data.success:', result.data?.success);
-        console.log('❌ PersonalInfoScreen: Error message:', result.data?.message);
-        console.log('❌ PersonalInfoScreen: Full result:', result);
+        // console.log('❌ PersonalInfoScreen: Failed to fetch profile:');
+        // console.log('❌ PersonalInfoScreen: result.success:', result.success);
+        // console.log('❌ PersonalInfoScreen: result.data.success:', result.data?.success);
+        // console.log('❌ PersonalInfoScreen: Error message:', result.data?.message);
+        // console.log('❌ PersonalInfoScreen: Full result:', result);
         
         showCustomAlert(
           'Profile Load Error',
@@ -313,15 +334,15 @@ const PersonalInfoScreen = ({ navigation }) => {
       );
     } finally {
       setIsLoadingProfile(false);
-      console.log('🔄 PersonalInfoScreen: Profile fetch completed');
+      // console.log('🔄 PersonalInfoScreen: Profile fetch completed');
     }
   };
 
   const testNetworkConnectivity = async () => {
     try {
-      console.log('PersonalInfoScreen - Testing network connectivity...');
+      // console.log('PersonalInfoScreen - Testing network connectivity...');
       const testUrl = getApiUrl('/api/user/profile/get-profile');
-      console.log('PersonalInfoScreen - Test URL:', testUrl);
+      // console.log('PersonalInfoScreen - Test URL:', testUrl);
 
       const response = await fetch(testUrl, {
         method: 'GET',
@@ -330,8 +351,8 @@ const PersonalInfoScreen = ({ navigation }) => {
         },
       });
 
-      console.log('PersonalInfoScreen - Test response status:', response.status);
-      console.log('PersonalInfoScreen - Test response ok:', response.ok);
+      // console.log('PersonalInfoScreen - Test response status:', response.status);
+      // console.log('PersonalInfoScreen - Test response ok:', response.ok);
 
       return response.ok;
     } catch (error) {
@@ -342,17 +363,17 @@ const PersonalInfoScreen = ({ navigation }) => {
 
   const testBasicConnectivity = async () => {
     try {
-      console.log('PersonalInfoScreen - Testing basic connectivity...');
+      // console.log('PersonalInfoScreen - Testing basic connectivity...');
 
       // Test with a simple GET request first
       const baseUrl = getApiUrl('').replace('/api/user/profile/get-profile', '');
-      console.log('PersonalInfoScreen - Base URL:', baseUrl);
+      // console.log('PersonalInfoScreen - Base URL:', baseUrl);
 
       const response = await fetch(baseUrl, {
         method: 'GET',
       });
 
-      console.log('PersonalInfoScreen - Basic connectivity test status:', response.status);
+      // console.log('PersonalInfoScreen - Basic connectivity test status:', response.status);
       return true;
     } catch (error) {
       console.error('PersonalInfoScreen - Basic connectivity test failed:', error);
@@ -400,9 +421,9 @@ const PersonalInfoScreen = ({ navigation }) => {
 
     try {
       setIsLoading(true);
-      console.log('📧 PersonalInfoScreen: Starting email verification...');
-      console.log('📧 PersonalInfoScreen: Email to verify:', userEmail);
-      console.log('📧 PersonalInfoScreen: Using token:', token ? `${token.substring(0, 20)}...` : 'No token');
+      // console.log('📧 PersonalInfoScreen: Starting email verification...');
+      // console.log('📧 PersonalInfoScreen: Email to verify:', userEmail);
+      // console.log('📧 PersonalInfoScreen: Using token:', token ? `${token.substring(0, 20)}...` : 'No token');
 
       // Call send-emailotp API with correct endpoint and headers
       const response = await fetch(getApiUrl('/api/auth/send-emailotp'), {
@@ -416,13 +437,13 @@ const PersonalInfoScreen = ({ navigation }) => {
         })
       });
 
-      console.log('📡 PersonalInfoScreen: Response status:', response.status);
-      console.log('📡 PersonalInfoScreen: Response headers:', response.headers);
+      // console.log('📡 PersonalInfoScreen: Response status:', response.status);
+      // console.log('📡 PersonalInfoScreen: Response headers:', response.headers);
 
       // Check if response is ok before parsing JSON
       if (!response.ok) {
         const errorText = await response.text();
-        console.log('❌ PersonalInfoScreen: API error response:', errorText);
+        // console.log('❌ PersonalInfoScreen: API error response:', errorText);
         
         let errorTitle = 'Verification Failed';
         let errorMessage = 'Unable to send verification email. Please try again.';
@@ -456,10 +477,10 @@ const PersonalInfoScreen = ({ navigation }) => {
       let result;
       try {
         result = await response.json();
-        console.log('📡 PersonalInfoScreen: Send email OTP response:', result);
+        // console.log('📡 PersonalInfoScreen: Send email OTP response:', result);
       } catch (parseError) {
         console.error('💥 PersonalInfoScreen: JSON parse error:', parseError);
-        console.log('📡 PersonalInfoScreen: Raw response text:', await response.text());
+        // console.log('📡 PersonalInfoScreen: Raw response text:', await response.text());
         showCustomAlert(
           'Data Error',
           'Received invalid response from server. Please try again.',
@@ -473,7 +494,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       }
 
       if (result.success) {
-        console.log('✅ PersonalInfoScreen: Email OTP sent successfully!');
+        // console.log('✅ PersonalInfoScreen: Email OTP sent successfully!');
         showCustomAlert(
           'OTP Sent Successfully! 📧',
           `A verification code has been sent to ${userEmail}. Please check your email and enter the code to verify your email address.`,
@@ -498,7 +519,7 @@ const PersonalInfoScreen = ({ navigation }) => {
           ]
         );
       } else {
-        console.log('❌ PersonalInfoScreen: Failed to send email OTP:', result.message);
+        // console.log('❌ PersonalInfoScreen: Failed to send email OTP:', result.message);
         showCustomAlert(
           'Verification Failed',
           result.message || 'Failed to send verification email. Please try again.',
@@ -611,19 +632,19 @@ const PersonalInfoScreen = ({ navigation }) => {
         email: userEmail,
       };
 
-      console.log('PersonalInfoScreen - About to call updateUserProfile with:', {
-        token: token ? `${token.substring(0, 20)}...` : 'No token',
-        profileData: profileData,
-        profileImageType: typeof profileImage,
-        profileImageKeys: profileImage ? Object.keys(profileImage) : 'No profileImage'
-      });
+      // console.log('PersonalInfoScreen - About to call updateUserProfile with:', {
+      //   token: token ? `${token.substring(0, 20)}...` : 'No token',
+      //   profileData: profileData,
+      //   profileImageType: typeof profileImage,
+      //   profileImageKeys: profileImage ? Object.keys(profileImage) : 'No profileImage'
+      // });
 
       const result = await profileAPI.updateUserProfile(token, profileData);
 
-      console.log('PersonalInfoScreen - updateUserProfile result:', result);
+      // console.log('PersonalInfoScreen - updateUserProfile result:', result);
 
       if (result.success && result.data.success) {
-        console.log('Profile updated successfully:', result.data);
+        // console.log('Profile updated successfully:', result.data);
 
         // Update Redux store with new data
         dispatch(setProfileData({
@@ -639,12 +660,12 @@ const PersonalInfoScreen = ({ navigation }) => {
           [{ text: 'OK', style: 'primary' }]
         );
       } else {
-        console.log('Failed to update profile:', result.data?.message);
-        console.log('Full result:', result);
+        // console.log('Failed to update profile:', result.data?.message);
+        // console.log('Full result:', result);
 
         // Try updating without image if the full update failed
         if (profileData.profileImageUrl && profileData.profileImageUrl.uri) {
-          console.log('PersonalInfoScreen - Trying update without image...');
+          // console.log('PersonalInfoScreen - Trying update without image...');
           const fallbackProfileData = {
             address: userAddress,
             email: userEmail,
@@ -758,9 +779,9 @@ const PersonalInfoScreen = ({ navigation }) => {
 
     launchCamera(options, (response) => {
       if (response.didCancel) {
-        console.log('User cancelled camera');
+        // console.log('User cancelled camera');
       } else if (response.error) {
-        console.log('Camera Error: ', response.error);
+        // console.log('Camera Error: ', response.error);
         showCustomAlert(
           'Camera Error',
           response.error.message || 'Unable to access camera. Please check camera permissions.',
@@ -797,9 +818,9 @@ const PersonalInfoScreen = ({ navigation }) => {
 
     launchImageLibrary(options, (response) => {
       if (response.didCancel) {
-        console.log('User cancelled gallery');
+        // console.log('User cancelled gallery');
       } else if (response.error) {
-        console.log('Gallery Error: ', response.error);
+        // console.log('Gallery Error: ', response.error);
         showCustomAlert(
           'Gallery Error',
           response.error.message || 'Unable to access gallery. Please check storage permissions.',
@@ -825,18 +846,20 @@ const PersonalInfoScreen = ({ navigation }) => {
     });
   };
 
-  if (isLoadingProfile) {
+  if (isLoadingProfile || isWaitingForToken) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <View style={styles.header}>
-          <BackButton onPress={() => navigation.goBack()} />
+          <BackButton onPress={handleBackPress} />
           <Text style={styles.headerTitle}>Personal Info</Text>
          
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FF8800" />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <Text style={styles.loadingText}>
+            {isWaitingForToken ? 'Loading user data...' : 'Loading profile...'}
+          </Text>
         </View>
         <CustomAlert />
       </SafeAreaView>
@@ -849,7 +872,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       <CustomAlert />
       {/* Header */}
       <View style={styles.header}>
-        <BackButton onPress={() => navigation.goBack()} />
+        <BackButton onPress={handleBackPress} />
         <Text style={styles.headerTitle}>Personal Info</Text>
         <View style={{ width: 32 }} />
       </View>

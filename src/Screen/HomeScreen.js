@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,10 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
+  Platform,
+  Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector, useAppDispatch } from '../Redux/hooks';
@@ -37,6 +40,7 @@ const getResponsiveSize = (size) => {
 const HomeScreen = () => {
   const navigation=useNavigation();
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
   const [selectedFilter, setSelectedFilter] = useState('All Course');
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
 
@@ -83,6 +87,16 @@ const HomeScreen = () => {
   // Ref to track loading timeout
   const loadingTimeoutRef = useRef(null);
 
+  // Memoize carousel content to prevent unnecessary re-renders
+  const carouselContent = useMemo(() => {
+    const hasBannerContent = bannerData.recentSubcourse || 
+                           bannerData.recentPurchasedSubcourse || 
+                           (bannerData.promos && bannerData.promos.length > 0);
+    const hasFeaturedContent = featuredCourses.length > 0;
+    
+    return { hasBannerContent, hasFeaturedContent };
+  }, [bannerData, featuredCourses]);
+
   // Fetch course data when component mounts or token changes
   useEffect(() => {
     // Initialize data regardless of token status for better UX
@@ -101,7 +115,6 @@ const HomeScreen = () => {
           fetchBannerData()
         ]);
       } catch (error) {
-        console.log('HomeScreen: Error during initialization:', error);
         // Continue with fallback data even if some APIs fail
       }
     };
@@ -120,7 +133,7 @@ const HomeScreen = () => {
             // Note: Course states will be updated by the fetchUserFavoriteCourses function
             // No need to manually update here as it causes infinite loop
           } catch (error) {
-            console.error('Error refreshing favorites:', error);
+            // Handle error silently
           }
         };
         
@@ -166,7 +179,7 @@ const HomeScreen = () => {
 
       return () => clearInterval(interval);
     }
-  }, [featuredCourses.length, bannerData.recentSubcourse, bannerData.recentPurchasedSubcourse, bannerData.promos]);
+  }, [featuredCourses.length, bannerData]);
 
   // Function to fetch featured courses from API
   const fetchFeaturedCourses = async () => {
@@ -178,7 +191,6 @@ const HomeScreen = () => {
       
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
-        console.log('🏠 HomeScreen: Featured courses API data:', apiCourses);
         
         // Transform API data to match existing UI structure
         const transformedFeaturedCourses = apiCourses.slice(0, 3).map((course, index) => {
@@ -196,7 +208,6 @@ const HomeScreen = () => {
           };
         });
         
-        console.log('🏠 HomeScreen: Transformed featured courses:', transformedFeaturedCourses);
         setFeaturedCourses(transformedFeaturedCourses);
         
       } else {
@@ -219,7 +230,6 @@ const HomeScreen = () => {
       
       // Set a timeout to prevent infinite loading
       loadingTimeoutRef.current = setTimeout(() => {
-        console.log('⏰ HomeScreen: Course loading timeout, stopping loader');
         setIsLoadingCourses(false);
       }, 10000); // 10 second timeout
       
@@ -250,16 +260,25 @@ const HomeScreen = () => {
         });
         
         setCourseCards(transformedCourses);
-        console.log('✅ HomeScreen: Course data loaded successfully');
         
       } else {
-        setCourseError(result.data?.message || 'Failed to fetch courses');
-        console.log('❌ HomeScreen: Failed to fetch courses:', result.data?.message);
+        const errorMessage = result.data?.message || 'Failed to fetch courses';
+        setCourseError(errorMessage);
+        Alert.alert(
+          'Error Loading Courses',
+          errorMessage,
+          [{ text: 'OK' }]
+        );
         // Keep existing course data if API fails
       }
     } catch (error) {
-      setCourseError(error.message || 'Network error occurred');
-      console.error('💥 HomeScreen: Error fetching courses:', error);
+      const errorMessage = error.message || 'Network error occurred';
+      setCourseError(errorMessage);
+      Alert.alert(
+        'Network Error',
+        'Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
       // Keep existing course data if error occurs
     } finally {
       // Clear timeout if it exists
@@ -358,7 +377,6 @@ const HomeScreen = () => {
       setBannerError(null);
       
       const apiUrl = getApiUrl(ENDPOINTS.HOMEPAGE_BANNER);
-      console.log('🏠 HomeScreen: Fetching banner from URL:', apiUrl);
       
       // Prepare headers - include token if available, but don't require it
       const headers = {
@@ -367,31 +385,21 @@ const HomeScreen = () => {
       
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
-        console.log('🏠 HomeScreen: Using token for banner request');
-      } else {
-        console.log('🏠 HomeScreen: No token available for banner request');
       }
       
-      console.log('🏠 HomeScreen: Banner request headers:', headers);
       
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers,
       });
       
-      console.log('🏠 HomeScreen: Banner response status:', response.status);
       
       if (response.ok) {
         const result = await response.json();
         
         if (result.success && result.data) {
-          console.log('🏠 HomeScreen: Banner data fetched successfully:', result.data);
-          console.log('🏠 HomeScreen: Banner data details - recentSubcourse:', result.data.recentSubcourse);
-          console.log('🏠 HomeScreen: Banner data details - recentPurchasedSubcourse:', result.data.recentPurchasedSubcourse);
-          console.log('🏠 HomeScreen: Banner data details - promos:', result.data.promos);
           setBannerData(result.data);
         } else {
-          console.log('❌ HomeScreen: Banner API response not successful:', result);
           // Set fallback banner data for new users
           const fallbackData = {
             recentSubcourse: null,
@@ -403,11 +411,9 @@ const HomeScreen = () => {
               }
             ]
           };
-          console.log('🏠 HomeScreen: Setting fallback banner data:', fallbackData);
           setBannerData(fallbackData);
         }
       } else {
-        console.log('❌ HomeScreen: Banner API call failed:', response.status, response.statusText);
         // Set fallback banner data when API fails
         setBannerData({
           recentSubcourse: null,
@@ -421,7 +427,6 @@ const HomeScreen = () => {
         });
       }
     } catch (error) {
-      console.log('❌ HomeScreen: Banner fetch error:', error);
       // Set fallback banner data when network error occurs
       setBannerData({
         recentSubcourse: null,
@@ -444,12 +449,10 @@ const HomeScreen = () => {
       // Debounce: Only fetch if at least 2 seconds have passed since last fetch
       const now = Date.now();
       if (now - lastFetchTimeRef.current < 2000) {
-        console.log('⏱️ HomeScreen: Skipping favorite fetch - too soon since last fetch');
         return;
       }
       
       lastFetchTimeRef.current = now;
-      console.log('❤️ HomeScreen: Fetching favorite courses...');
       
       const result = await courseAPI.getFavoriteCourses(token);
 
@@ -479,14 +482,11 @@ const HomeScreen = () => {
           }))
         );
         
-        console.log('✅ HomeScreen: Favorite courses updated successfully');
       } else {
         setUserFavoriteCourses(new Set()); // Set empty set on failure
-        console.log('❌ HomeScreen: Failed to fetch favorite courses');
       }
     } catch (error) {
       setUserFavoriteCourses(new Set()); // Set empty set on error
-      console.error('💥 HomeScreen: Error fetching favorite courses:', error);
     }
   };
 
@@ -497,15 +497,12 @@ const HomeScreen = () => {
 
       if (result.success && result.data.success) {
         const profileData = result.data.data;
-        console.log('HomeScreen: Profile data fetched:', profileData);
         
         // Update Redux store with fresh profile data
         dispatch(setProfileData(profileData));
-      } else {
-        console.log('HomeScreen: Failed to fetch profile:', result.data?.message);
       }
     } catch (error) {
-      console.error('HomeScreen: Error fetching profile:', error);
+      // Handle error silently
     }
   };
 
@@ -575,7 +572,6 @@ const HomeScreen = () => {
         fetchBannerData()
       ]);
     } catch (error) {
-      console.log('HomeScreen: Error during refresh:', error);
       // Continue even if some refreshes fail
     } finally {
       setRefreshing(false);
@@ -587,11 +583,21 @@ const HomeScreen = () => {
     try {
       // Check if token exists
       if (!token) {
+        Alert.alert(
+          'Login Required',
+          'Please login to add courses to favorites.',
+          [{ text: 'OK' }]
+        );
         return;
       }
       
       // Check if courseId exists
       if (!courseId) {
+        Alert.alert(
+          'Error',
+          'Course information not available.',
+          [{ text: 'OK' }]
+        );
         return;
       }
       
@@ -643,9 +649,19 @@ const HomeScreen = () => {
           return updatedFeatured;
         });
         
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to update favorite status. Please try again.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      // Handle error silently
+      Alert.alert(
+        'Network Error',
+        'Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       // Remove loading state for this course
       setTogglingFavorites(prev => {
@@ -656,12 +672,8 @@ const HomeScreen = () => {
     }
   };
 
-  // Removed empty useEffect that was not doing anything useful
 
-  // Removed problematic useEffect hooks that were causing infinite loops
-  // Course state updates are now handled directly in fetchUserFavoriteCourses function
-
-  // Filter courses when search keyword changes (removed courseCards dependency to prevent loops)
+  // Filter courses when search keyword changes
   useEffect(() => {
     if (searchKeyword.trim()) {
       searchCourses(searchKeyword);
@@ -669,7 +681,7 @@ const HomeScreen = () => {
       setFilteredCourses([]);
       setIsSearching(false);
     }
-  }, [searchKeyword]); // Removed courseCards dependency to prevent infinite loops
+  }, [searchKeyword]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -880,15 +892,25 @@ const HomeScreen = () => {
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notification')}>
-            <NotificationBadge size={24} color="#000000" showBadge={true} />
+            <NotificationBadge 
+              size={26} 
+              color="#FF8800" 
+              showBadge={true} 
+              iconName="notifications"
+              badgeColor="#FF4444"
+              variant="modern"
+            />
           </TouchableOpacity>
-          
-
-         
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 100, 100) : insets.bottom + 100 }
+        ]}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -948,19 +970,10 @@ const HomeScreen = () => {
               <Text style={styles.carouselErrorText}>Error loading content</Text>
             </View>
           ) : (() => {
-            // Check if we have any content to show
-            const hasBannerContent = bannerData.recentSubcourse || 
-                                   bannerData.recentPurchasedSubcourse || 
-                                   (bannerData.promos && bannerData.promos.length > 0);
-            const hasFeaturedContent = featuredCourses.length > 0;
-            
-            console.log('🏠 HomeScreen: Carousel render check - bannerData:', bannerData);
-            console.log('🏠 HomeScreen: Carousel render check - hasBannerContent:', hasBannerContent);
-            console.log('🏠 HomeScreen: Carousel render check - hasFeaturedContent:', hasFeaturedContent);
-            console.log('🏠 HomeScreen: Carousel render check - featuredCourses:', featuredCourses);
+            // Use memoized content to prevent unnecessary re-renders
+            const { hasBannerContent, hasFeaturedContent } = carouselContent;
             
             if (!hasBannerContent && !hasFeaturedContent) {
-              console.log('🏠 HomeScreen: No content available, showing default banner');
               // Instead of showing empty message, show a default banner
               return (
                 <>
@@ -1000,7 +1013,7 @@ const HomeScreen = () => {
               );
             }
             
-            console.log('🏠 HomeScreen: Content available, rendering carousel');
+            // Content available, rendering carousel
             
             return (
             <>
@@ -1291,27 +1304,28 @@ const styles = StyleSheet.create({
   notificationButton: {
     width: getResponsiveSize(50),
     height: getResponsiveSize(50),
-    borderRadius: getResponsiveSize(10),
-    backgroundColor: '#F0F8FF',
+    borderRadius: getResponsiveSize(12),
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  notificationIcon: {
-    width: getResponsiveSize(30),
-    height: getResponsiveSize(30),
-  },
-
-  refreshButton: {
-    width: getResponsiveSize(40),
-    height: getResponsiveSize(40),
-    borderRadius: getResponsiveSize(20),
-    backgroundColor: '#F0F8FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: getResponsiveSize(10),
+    // Add beautiful shadow and elevation
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    // Add subtle border
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -1383,11 +1397,6 @@ const styles = StyleSheet.create({
     borderRadius: getResponsiveSize(20),
     padding: getResponsiveSize(20),
     justifyContent: 'space-between',
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity: 0.15,
-    // shadowRadius: 8,
-    // elevation: 8,
   },
   carouselContent: {
     flexDirection: 'row',
@@ -1550,7 +1559,10 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#FF88001A',
     shadowColor: '#000000',
-  
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   courseCardImage: {
     width: getResponsiveSize(70),
@@ -1604,10 +1616,6 @@ const styles = StyleSheet.create({
   },
   heartButtonLoading: {
     opacity: 0.7, // Make it look disabled
-  },
-  heartIcon: {
-    width: getResponsiveSize(20),
-    height: getResponsiveSize(20),
   },
   coursePrice: {
     fontSize: getResponsiveSize(16),
@@ -1724,15 +1732,4 @@ const styles = StyleSheet.create({
     color: '#FF0000',
     textAlign: 'center',
   },
-  carouselEmptyContainer: {
-    height: getResponsiveSize(200),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  carouselEmptyText: {
-    fontSize: getResponsiveSize(18),
-    color: '#666',
-    textAlign: 'center',
-  },
-  // Removed unused refresh indicator styles
 });

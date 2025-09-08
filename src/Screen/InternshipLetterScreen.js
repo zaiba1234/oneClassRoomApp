@@ -14,7 +14,9 @@ import {
   ActivityIndicator,
   Linking,
   Modal,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import RNFS from 'react-native-fs';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -26,7 +28,6 @@ import { courseAPI } from '../API/courseAPI';
 import { RAZORPAY_KEY_ID } from '../config/env';
 import RazorpayCheckout from 'react-native-razorpay';
 
-console.log('✅ InternshipLetterScreen: Direct Razorpay import successful');
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ const getResponsiveSize = (size) => {
 
 const InternshipLetterScreen = () => {
   console.log('🚀 InternshipLetterScreen: Component initialized');
+  const insets = useSafeAreaInsets();
   
   // Suppress all console errors to prevent red error warnings
   const originalConsoleError = console.error;
@@ -180,6 +182,22 @@ const InternshipLetterScreen = () => {
     }
   }, [route.params?.uploadStatus]);
 
+  // Monitor courseData changes
+  useEffect(() => {
+    console.log('🔄 InternshipLetterScreen: courseData changed:', JSON.stringify(courseData, null, 2));
+    if (courseData) {
+      console.log('🔄 InternshipLetterScreen: courseData.price:', courseData.price);
+      console.log('🔄 InternshipLetterScreen: courseData.price type:', typeof courseData.price);
+    }
+  }, [courseData]);
+
+  // Test price formatting logic
+  useEffect(() => {
+    const testPrice = 88;
+    const formattedPrice = testPrice ? `₹${testPrice}.00` : '₹99.00';
+    console.log('🧪 InternshipLetterScreen: Test price formatting - Input:', testPrice, 'Output:', formattedPrice);
+  }, []);
+
   // Function to fetch course details
   const fetchCourseDetails = async () => {
     console.log('📚 InternshipLetterScreen: fetchCourseDetails called');
@@ -194,6 +212,7 @@ const InternshipLetterScreen = () => {
       if (result.success && result.data.success) {
         console.log('✅ InternshipLetterScreen: API call successful');
         const courseDetails = result.data.data;
+        console.log('📚 InternshipLetterScreen: Full API response:', JSON.stringify(result, null, 2));
         console.log('📚 InternshipLetterScreen: Course details received:', JSON.stringify(courseDetails, null, 2));
         
         if (courseDetails) {
@@ -207,18 +226,45 @@ const InternshipLetterScreen = () => {
             uploadStatus: courseDetails.uploadStatus
           };
           
+          // Debug: Check if price is being set correctly
+          console.log('🔍 InternshipLetterScreen: Debug price formatting:');
+          console.log('  - courseDetails.price:', courseDetails.price);
+          console.log('  - typeof courseDetails.price:', typeof courseDetails.price);
+          console.log('  - courseWithPrice.price:', courseWithPrice.price);
+          
+          console.log('💰 InternshipLetterScreen: Raw price from API:', courseDetails.price, 'Type:', typeof courseDetails.price);
           console.log('💰 InternshipLetterScreen: Course price formatted:', courseWithPrice.price);
           console.log('📝 InternshipLetterScreen: Course name:', courseWithPrice.courseName);
+          console.log('📝 InternshipLetterScreen: Course description:', courseWithPrice.description);
+          console.log('📝 InternshipLetterScreen: Upload status:', courseWithPrice.uploadStatus);
           setCourseData(courseWithPrice);
         } else {
           console.log('❌ InternshipLetterScreen: Course details not found in API response');
         }
       } else {
         console.log('❌ InternshipLetterScreen: API call failed:', result.data?.message || result.message);
+        showCustomAlert(
+          'Failed to Load Course Details',
+          result.data?.message || 'Unable to load course information. Please try again.',
+          'error',
+          [
+            { text: 'Retry', onPress: () => { hideCustomAlert(); fetchCourseDetails(); } },
+            { text: 'Cancel', onPress: hideCustomAlert }
+          ]
+        );
       }
     } catch (error) {
       // Suppress console errors to prevent red error warnings
       console.log('💥 InternshipLetterScreen: Error in fetchCourseDetails:', error);
+      showCustomAlert(
+        'Network Error',
+        'Unable to load course details. Please check your internet connection and try again.',
+        'error',
+        [
+          { text: 'Retry', onPress: () => { hideCustomAlert(); fetchCourseDetails(); } },
+          { text: 'Cancel', onPress: hideCustomAlert }
+        ]
+      );
     } finally {
       console.log('📚 InternshipLetterScreen: Setting isLoadingCourse to false');
       setIsLoadingCourse(false);
@@ -967,6 +1013,15 @@ const InternshipLetterScreen = () => {
             'error',
             [{ text: 'OK', onPress: hideCustomAlert }]
           );
+          // Suppress console errors to prevent red error warnings
+          console.log('💥 InternshipLetterScreen: Linking error:', linkingError);
+          hideCustomAlert();
+          showCustomAlert(
+            'Download Error',
+            'Unable to download the file. Please try again later.',
+            'error',
+            [{ text: 'OK', onPress: hideCustomAlert }]
+          );
         }
       }
       
@@ -994,6 +1049,7 @@ const InternshipLetterScreen = () => {
     isLoadingCourse,
     isRefreshing
   });
+  console.log('🎨 InternshipLetterScreen: courseData for rendering:', JSON.stringify(courseData, null, 2));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1017,9 +1073,11 @@ const InternshipLetterScreen = () => {
       </View>
 
       <ScrollView 
-        
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 100, 100) : insets.bottom + 100 }
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -1148,6 +1206,8 @@ const InternshipLetterScreen = () => {
           }
           
           // Default: Show payment button
+          console.log('🔍 InternshipLetterScreen: Button rendering - courseData:', JSON.stringify(courseData, null, 2));
+          console.log('🔍 InternshipLetterScreen: Button rendering - courseData?.price:', courseData?.price);
           return (
             <TouchableOpacity 
               style={[styles.downloadButton, (isRequesting || isLoadingCourse || !courseData) && styles.downloadButtonDisabled]}
@@ -1164,7 +1224,7 @@ const InternshipLetterScreen = () => {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.downloadButtonText}>
-                  {isRequesting ? 'Processing...' : `Get Internship Letter  - ${courseData?.price || '₹0.00'}`}
+                  {isRequesting ? 'Processing...' : `Get Internship Letter - ${courseData?.price || '₹00.00'}`}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1349,6 +1409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: getResponsiveSize(20),
     paddingBottom: getResponsiveSize(30),
     backgroundColor: '#fff',
+    marginBottom: Platform.OS === 'android' ? 20 : 0, // Add extra margin for Android
   },
   downloadButton: {
     borderRadius: getResponsiveSize(12),

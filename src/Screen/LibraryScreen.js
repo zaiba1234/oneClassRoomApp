@@ -37,11 +37,9 @@ const LibraryScreen = ({ navigation }) => {
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
-    console.log('🔄 LibraryScreen: Pull-to-refresh triggered');
     setRefreshing(true);
     try {
       await fetchCourseData();
-      console.log('✅ LibraryScreen: Pull-to-refresh completed');
     } catch (error) {
       console.error('💥 LibraryScreen: Error during pull-to-refresh:', error);
     } finally {
@@ -65,13 +63,9 @@ const LibraryScreen = ({ navigation }) => {
 
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
-          console.log(`🖼️ LibraryScreen: Course ${index + 1} - ${course.courseName}`);
-          console.log(`🖼️ LibraryScreen: CoverImageUrl: ${course.CoverImageUrl || 'No image URL'}`);
           
           const courseImage = course.CoverImageUrl ? { uri: course.CoverImageUrl } : require('../assests/images/Frame1.png');
           
-          console.log(`🖼️ LibraryScreen: Final image object:`, courseImage);
-          console.log(`🖼️ LibraryScreen: Image type: ${course.CoverImageUrl ? 'URI' : 'require'}`);
 
           return {
             id: course._id || index + 1,
@@ -81,12 +75,9 @@ const LibraryScreen = ({ navigation }) => {
           };
         });
 
-        console.log('🔄 LibraryScreen: Transformed courses:', transformedCourses);
         setLibraryCourses(transformedCourses);
 
       } else {
-        console.log('❌ LibraryScreen: Failed to fetch course data:', result.data?.message);
-        console.log('❌ LibraryScreen: API response:', result);
         setCourseError(result.data?.message || 'Failed to fetch courses');
         // Keep existing course data if API fails
       }
@@ -109,9 +100,6 @@ const LibraryScreen = ({ navigation }) => {
         source={course.image} 
         style={styles.libraryCardImage} 
         resizeMode="cover"
-        onLoad={() => console.log('✅ Image loaded successfully for:', course.title)}
-        onError={(error) => console.log('❌ Image failed to load for:', course.title, 'Error:', error.nativeEvent.error)}
-        onLoadStart={() => console.log('🔄 Image loading started for:', course.title)}
       />
       <View style={styles.libraryCardContent}>
         <Text style={styles.libraryCardTitle}>{course.title}</Text>
@@ -127,22 +115,22 @@ const LibraryScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Library </Text>
-       
+        <Text style={styles.headerTitle}>Library</Text>
       </View>
-      {refreshing && (
-        <View style={styles.refreshIndicator}>
-          <ActivityIndicator size="small" color="#007BFF" />
-          <Text style={styles.refreshText}>Refreshing...</Text>
-        </View>
-      )}
 
       {/* Library Cards */}
       <ScrollView 
         style={styles.scrollView} 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            colors={['#FF8800', '#FF9800']} // Android
+            tintColor="#FF8800" // iOS
+            title="Pull to refresh"
+            titleColor="#FF8800"
+          />
         }
       >
         <View style={styles.libraryCardsContainer}>
@@ -265,7 +253,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#007BFF',
+    backgroundColor: '#FF8800',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -285,19 +273,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
-  },
-  refreshIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    backgroundColor: '#f0f0f0',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  refreshText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#007BFF',
   },
 });
