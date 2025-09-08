@@ -40,6 +40,7 @@ class NotificationService {
     try {
       // Note: Background handler is now registered in index.js at top level
       // This is required for React Native Firebase to work properly
+      console.log('📨 Background handler setup completed in index.js');
     } catch (error) {
       console.error('❌ NotificationService: Background handler setup failed:', error);
     }
@@ -48,13 +49,15 @@ class NotificationService {
   // Setup foreground message handler
   setupForegroundHandler() {
     try {
-      const messagingInstance = getMessaging(getFirebaseApp());
-      this.foregroundMessageHandler = messagingInstance.onMessage(async (remoteMessage) => {
+      // Use the messaging instance directly
+      this.foregroundMessageHandler = messaging().onMessage(async (remoteMessage) => {
+        console.log('📱 Foreground message received:', remoteMessage);
         
         // Handle foreground notification
         await this.handleForegroundNotification(remoteMessage);
       });
       
+      console.log('✅ Foreground message handler setup completed');
     } catch (error) {
       console.error('❌ NotificationService: Foreground handler setup failed:', error);
     }
@@ -63,8 +66,9 @@ class NotificationService {
   // Setup token refresh handler
   setupTokenRefreshHandler() {
     try {
-      const messagingInstance = getMessaging(getFirebaseApp());
-      messagingInstance.onTokenRefresh(async (token) => {
+      // Use the messaging instance directly
+      messaging().onTokenRefresh(async (token) => {
+        console.log('🔄 FCM Token refreshed:', token);
         
         // Store new token
         await AsyncStorage.setItem('fcm_token', token);
@@ -76,6 +80,7 @@ class NotificationService {
         }
       });
       
+      console.log('✅ Token refresh handler setup completed');
     } catch (error) {
       console.error('❌ NotificationService: Token refresh handler setup failed:', error);
     }

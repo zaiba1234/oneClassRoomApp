@@ -12,7 +12,7 @@ import notificationService from './src/services/notificationService';
 
 // Register background message handler - MUST be at top level
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-  console.log('📨 Background message received in index.js:', remoteMessage);
+  console.log('📨 Background message received in index.js:', JSON.stringify(remoteMessage, null, 2));
   
   try {
     // Initialize notification service if not already done
