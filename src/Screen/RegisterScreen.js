@@ -36,25 +36,36 @@ const RegisterScreen = ({ route }) => {
 
   const handleRegister = async () => {
     if (!fullName.trim() || !phoneNumber) {
+      console.log('❌ RegisterScreen: Missing full name or phone number');
       return;
     }
 
     setIsLoading(true);
     
     try {
+      console.log('🔥 RegisterScreen: Starting registration process...');
+      console.log('📱 RegisterScreen: Phone number:', phoneNumber);
+      console.log('👤 RegisterScreen: Full name:', fullName.trim());
+      
       // First, register the user in the backend
       const registerResult = await authAPI.register(fullName.trim(), phoneNumber);
+      console.log('📡 RegisterScreen: Backend registration result:', registerResult);
       
       if (registerResult.success) {
+        console.log('✅ RegisterScreen: Backend registration successful, sending OTP...');
+        
         // After successful registration, send OTP using Firebase
         const otpResult = await authAPI.sendOTP(phoneNumber);
+        console.log('📡 RegisterScreen: Firebase OTP result:', otpResult);
         
         if (otpResult.success) {
+          console.log('✅ RegisterScreen: OTP sent successfully!');
+          
           // Store user data in Redux
           dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
           
           // Registration successful, navigate to verification with verificationId
-          
+          console.log('🚀 RegisterScreen: Navigating to Verify screen...');
           navigation.navigate('Verify', { 
             mobileNumber: phoneNumber, 
             fullName: fullName.trim(),
@@ -62,11 +73,16 @@ const RegisterScreen = ({ route }) => {
             isFromRegister: true  // Flag to indicate this is from register flow
           });
         } else {
+          console.log('❌ RegisterScreen: OTP sending failed:', otpResult.data?.message);
+          // You can show an alert here for OTP sending failure
         }                                   
       } else {
+        console.log('❌ RegisterScreen: Backend registration failed:', registerResult.data?.message);
+        // You can show an alert here for registration failure
       }
     } catch (error) {
-      console.error('💥 Firebase RegisterScreen: Registration error:', error);
+      console.error('💥 RegisterScreen: Registration error:', error);
+      // You can show an alert here for general errors
     } finally {
       setIsLoading(false);
     }

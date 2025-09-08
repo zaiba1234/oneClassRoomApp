@@ -18,6 +18,7 @@ import { getFCMTokenService } from './src/services/fcmTokenService';
 import { testFCMTokenGeneration, getFCMTokenInfo, testFirebaseConfig } from './src/services/fcmTest';
 import websocketService from './src/services/websocketService';
 import notificationService from './src/services/notificationService';
+import notificationChannelService from './src/services/notificationChannelService';
 import websocketNotificationHandler from './src/services/websocketNotificationHandler';
 import notificationTester from './src/services/notificationTester';
 import SplashScreen from './src/Screen/SplashScreen';
@@ -89,6 +90,10 @@ const AppContent = () => {
     const initNotifications = async () => {
       try {
         console.log('🔔 App: Initializing notification system...');
+        
+        // Initialize notification channel service first (for Android)
+        await notificationChannelService.initialize();
+        console.log('✅ App: Notification channel service initialized!');
         
         // Initialize notification service
         await notificationService.initialize();

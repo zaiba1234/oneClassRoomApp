@@ -689,6 +689,13 @@ const VerificationScreen = ({ route }) => {
 
   // Test Redux dispatch to verify it's working
   useEffect(() => {
+    console.log('🔥 VerificationScreen: Component mounted');
+    console.log('📱 VerificationScreen: Mobile number:', mobileNumber);
+    console.log('👤 VerificationScreen: Full name:', fullName);
+    console.log('🆔 VerificationScreen: Verification ID:', verificationId);
+    console.log('📝 VerificationScreen: Is from register:', isFromRegister);
+    console.log('📝 VerificationScreen: Is from login:', isFromLogin);
+    console.log('📧 VerificationScreen: Is email verification:', isEmailVerification);
     
     // Debug: Log which flow we're in
     
@@ -743,9 +750,13 @@ const VerificationScreen = ({ route }) => {
 
   const handleResendOTP = async () => {
     if (isResending || resendTimer > 0) {
+      console.log('⚠️ handleResendOTP: Resend blocked - timer active or already resending');
       return;
     }
 
+    console.log('🔥 handleResendOTP: Starting OTP resend process...');
+    console.log('📱 handleResendOTP: Mobile number:', mobileNumber);
+    console.log('📧 handleResendOTP: Is email verification:', isEmailVerification);
     
     // For email verification, we need to resend email OTP, not mobile OTP
     if (isEmailVerification) {
@@ -796,13 +807,17 @@ const VerificationScreen = ({ route }) => {
       }
     } else {
       // Mobile OTP resend (existing logic)
+      console.log('📱 handleResendOTP: Mobile OTP resend flow');
       
       setIsResending(true);
       
       try {
+        console.log('📡 handleResendOTP: Calling authAPI.resendOTP...');
         const result = await authAPI.resendOTP(mobileNumber);
+        console.log('📡 handleResendOTP: Resend result:', result);
         
         if (result.success) {
+          console.log('✅ handleResendOTP: OTP resent successfully!');
           // Reset timer to 45 seconds
           setResendTimer(45);
           // Clear OTP fields
@@ -810,6 +825,7 @@ const VerificationScreen = ({ route }) => {
           // Focus on first OTP field
           otpRefs.current[0]?.focus();
         } else {
+          console.log('❌ handleResendOTP: OTP resend failed:', result.data?.message);
         }
       } catch (error) {
         console.error('💥 Firebase VerificationScreen: Resend OTP error:', error);
@@ -897,8 +913,16 @@ const VerificationScreen = ({ route }) => {
     const otpString = otp.join('');
     
     if (otpString.length !== 6) {
+      console.log('❌ handleVerifyOTP: OTP length invalid:', otpString.length);
       return;
     }
+
+    console.log('🔥 handleVerifyOTP: Starting OTP verification...');
+    console.log('📱 handleVerifyOTP: Mobile number:', mobileNumber);
+    console.log('🔢 handleVerifyOTP: OTP:', otpString);
+    console.log('🆔 handleVerifyOTP: Verification ID:', verificationId);
+    console.log('📝 handleVerifyOTP: Is from register:', isFromRegister);
+    console.log('📝 handleVerifyOTP: Is from login:', isFromLogin);
 
     setIsLoading(true);
     
@@ -906,12 +930,17 @@ const VerificationScreen = ({ route }) => {
       // Use the appropriate API based on the flow
       let result;
       if (isFromRegister) {
+        console.log('📡 handleVerifyOTP: Using register flow verification...');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       } else if (isFromLogin) {
+        console.log('📡 handleVerifyOTP: Using login flow verification...');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       } else {
+        console.log('📡 handleVerifyOTP: Using default flow verification...');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       }
+      
+      console.log('📡 handleVerifyOTP: Verification result:', result);
       
      
       
@@ -1025,23 +1054,8 @@ const VerificationScreen = ({ route }) => {
             result.message?.includes('not verified') ||
             result.message?.includes('User not found')) {
         
-          
-          Alert.alert(
-            'Mobile Number Not Registered',
-            'This mobile number is not registered. Please complete your registration.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                 
-                  
-                  // Navigate to Register screen with mobile number
-                  navigation.navigate('Register', { mobileNumber: mobileNumber });
-                 
-                }
-              }
-            ]
-          );
+          // Direct navigation to Register screen without alert
+          navigation.navigate('Register', { mobileNumber: mobileNumber });
          
         } else {
           // Show error message for other failures

@@ -14,6 +14,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Modal,
+  Linking,
+  Clipboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -40,6 +42,7 @@ const ProfileScreen = ({ navigation }) => {
   // State for refreshing
   const [refreshing, setRefreshing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
 
   // Custom alert state
   const [customAlert, setCustomAlert] = useState({
@@ -201,9 +204,10 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleDeleteAccount = () => {
+    setPrivacyPolicyAccepted(false); // Reset checkbox state
     showCustomAlert(
-      'Delete ',
-      'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost. ',
       'error',
       [
         {
@@ -214,28 +218,169 @@ const ProfileScreen = ({ navigation }) => {
         {
           text: 'Delete ',
           onPress: () => {
-            hideCustomAlert();
-            // Show second confirmation
-            showCustomAlert(
-              'Final Confirmation',
-              'This is your last chance. Are you absolutely sure you want to delete your account?',
-              'error',
-              [
-                {
-                  text: 'Cancel',
-                  onPress: hideCustomAlert,
-                  style: 'secondary',
-                },
-                {
-                  text: 'Yes, Delete Forever',
-                  onPress: () => {
-                    hideCustomAlert();
-                    deleteAccountAPI();
+            if (privacyPolicyAccepted) {
+              hideCustomAlert();
+              // Show second confirmation
+              showCustomAlert(
+                'Final Confirmation',
+                'This is your last chance. Are you absolutely sure you want to delete your account?',
+                'error',
+                [
+                  {
+                    text: 'Cancel',
+                    onPress: hideCustomAlert,
+                    style: 'secondary',
                   },
-                  style: 'danger',
-                },
-              ]
-            );
+                  {
+                    text: 'Yes, Delete Forever',
+                    onPress: () => {
+                      hideCustomAlert();
+                      deleteAccountAPI();
+                    },
+                    style: 'danger',
+                  },
+                ]
+              );
+            } else {
+              // Show error that checkbox must be checked
+              showCustomAlert(
+                'Acceptance Required',
+                'Please accept the privacy policy by checking the checkbox to proceed with account deletion.',
+                'error',
+                [
+                  {
+                    text: 'OK',
+                    onPress: hideCustomAlert,
+                    style: 'primary',
+                  },
+                ]
+              );
+            }
+          },
+          style: 'danger',
+        },
+      ]
+    );
+  };
+
+
+
+  const openPrivacyPolicyPage = async () => {
+    try {
+      const privacyPolicyUrl = 'https://onerupeeclassroom.learningsaint.com/delete';
+      console.log('🔗 Attempting to open URL:', privacyPolicyUrl);
+      
+      const supported = await Linking.canOpenURL(privacyPolicyUrl);
+      console.log('🔗 URL supported:', supported);
+      
+      if (supported) {
+        await Linking.openURL(privacyPolicyUrl);
+        console.log('✅ URL opened successfully');
+      } else {
+        showCustomAlert(
+          'Error',
+          'Unable to open the privacy policy page. Please visit the page manually.',
+          'error',
+          [
+            {
+              text: 'Copy URL',
+              onPress: () => {
+                Clipboard.setString(privacyPolicyUrl);
+                hideCustomAlert();
+                showCustomAlert(
+                  'URL Copied',
+                  'The privacy policy URL has been copied to your clipboard.',
+                  'success',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: hideCustomAlert,
+                      style: 'primary',
+                    },
+                  ]
+                );
+              },
+              style: 'primary',
+            },
+            {
+              text: 'OK',
+              onPress: hideCustomAlert,
+              style: 'secondary',
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error opening URL:', error);
+      console.error('❌ Error details:', error.message);
+      showCustomAlert(
+        'Error',
+        `Unable to open the privacy policy page. Error: ${error.message || 'Unknown error'}`,
+        'error',
+        [
+          {
+            text: 'Copy URL',
+            onPress: () => {
+              const privacyPolicyUrl = 'https://onerupeeclassroom.learningsaint.com/delete';
+              Clipboard.setString(privacyPolicyUrl);
+              hideCustomAlert();
+              showCustomAlert(
+                'URL Copied',
+                'The privacy policy URL has been copied to your clipboard.',
+                'success',
+                [
+                  {
+                    text: 'OK',
+                    onPress: hideCustomAlert,
+                    style: 'primary',
+                  },
+                ]
+              );
+            },
+            style: 'primary',
+          },
+          {
+            text: 'OK',
+            onPress: hideCustomAlert,
+            style: 'secondary',
+          },
+        ]
+      );
+    }
+  };
+
+  const showPrivacyPolicyAcceptanceModal = () => {
+    showCustomAlert(
+      'Privacy Policy Acceptance',
+      'Please confirm that you have read and understood our privacy policy regarding account deletion.',
+      'info',
+      [
+        {
+          text: 'Cancel',
+          onPress: hideCustomAlert,
+          style: 'secondary',
+        },
+        {
+          text: 'Accept & Delete',
+          onPress: () => {
+            if (privacyPolicyAccepted) {
+              hideCustomAlert();
+              deleteAccountAPI();
+            } else {
+              // Show error that checkbox must be checked
+              showCustomAlert(
+                'Acceptance Required',
+                'Please accept the privacy policy by checking the checkbox to proceed with account deletion.',
+                'error',
+                [
+                  {
+                    text: 'OK',
+                    onPress: hideCustomAlert,
+                    style: 'primary',
+                  },
+                ]
+              );
+            }
           },
           style: 'danger',
         },
@@ -416,6 +561,43 @@ const ProfileScreen = ({ navigation }) => {
 
           {/* Message */}
           <Text style={styles.alertMessage}>{customAlert.message}</Text>
+
+          {/* Privacy Policy Checkbox - Only show for delete account and privacy policy modals */}
+          {(customAlert.title === 'Delete Account' || customAlert.title === 'Privacy Policy Confirmation' || customAlert.title === 'Privacy Policy Acceptance') && (
+            <View style={styles.checkboxContainer}>
+              <View style={styles.checkbox}>
+                <TouchableOpacity
+                  style={styles.checkboxTop}
+                  onPress={() => setPrivacyPolicyAccepted(!privacyPolicyAccepted)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.checkboxBox,
+                    privacyPolicyAccepted && styles.checkboxBoxChecked
+                  ]}>
+                    {privacyPolicyAccepted && (
+                      <Icon name="checkmark" size={16} color="#fff" />
+                    )}
+                  </View>
+                  <Text style={styles.checkboxText}>
+                    I have read and accept the privacy policy
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.checkboxBottom}
+                  onPress={() => {
+                    hideCustomAlert();
+                    openPrivacyPolicyPage();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.privacyPolicyLink}>
+                    Read Privacy Policy
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           {/* Buttons */}
           {customAlert.buttons.length > 0 && (
@@ -778,6 +960,52 @@ const styles = StyleSheet.create({
   },
   alertButtonTextDanger: {
     color: '#fff',
+  },
+
+  // Checkbox Styles
+  checkboxContainer: {
+    marginVertical: 20,
+    paddingHorizontal: 10,
+  },
+  checkbox: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkboxTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  checkboxBottom: {
+    alignItems: 'center',
+  },
+  checkboxBox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxBoxChecked: {
+    backgroundColor: '#FF8800',
+    borderColor: '#FF8800',
+  },
+  checkboxText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  privacyPolicyLink: {
+    fontSize: 14,
+    color: '#FF8800',
+    lineHeight: 20,
+    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
 
 });
