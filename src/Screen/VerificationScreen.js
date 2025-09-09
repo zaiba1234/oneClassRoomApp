@@ -405,26 +405,11 @@ const VerificationScreen = ({ route }) => {
             result.message?.includes('not verified') ||
             result.message?.includes('User not found')) {
         
-          
-          Alert.alert(
-            'Mobile Number Not Registered',
-            'This mobile number is not registered. Please complete your registration.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                 
-                  
-                  // Navigate to Register screen with mobile number and verificationId
-                  navigation.navigate('Register', { 
-                    mobileNumber: mobileNumber,
-                    verificationId: verificationId 
-                  });
-                 
-                }
-              }
-            ]
-          );
+          // Navigate directly to Register screen with mobile number and verificationId
+          navigation.navigate('Register', { 
+            mobileNumber: mobileNumber,
+            verificationId: verificationId 
+          });
          
         } else {
           // Show error message for other failures

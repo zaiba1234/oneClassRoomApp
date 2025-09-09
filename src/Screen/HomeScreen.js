@@ -27,6 +27,7 @@ import { setProfileData } from '../Redux/userSlice';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import { useFocusEffect } from '@react-navigation/native';
 import NotificationBadge from '../Component/NotificationBadge';
+import Svg, { Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
@@ -80,6 +81,9 @@ const HomeScreen = () => {
 
   // State for refreshing
   const [refreshing, setRefreshing] = useState(false);
+  
+  // State for notification count (you can replace this with actual notification data)
+  const [hasNotifications, setHasNotifications] = useState(true); // Set to true for testing
   
   // Ref to track last fetch time to prevent too frequent API calls
   const lastFetchTimeRef = useRef(0);
@@ -892,14 +896,55 @@ const HomeScreen = () => {
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notification')}>
-            <NotificationBadge 
-              size={26} 
-              color="#FF8800" 
-              showBadge={true} 
-              iconName="notifications"
-              badgeColor="#FF4444"
-              variant="modern"
-            />
+            <View style={{ position: 'relative' }}>
+              {hasNotifications ? (
+                // Notification icon with badge
+                <>
+                  <Svg width={26} height={26} viewBox="0 0 19 20" fill="none">
+                    <Path 
+                      fillRule="evenodd" 
+                      clipRule="evenodd" 
+                      d="M16.3236 6.82292C15.902 6.93836 15.4582 7 15 7C12.2386 7 10 4.76142 10 2C10 1.65782 10.0344 1.32366 10.0999 1.00079C10.0666 1.00027 10.0333 1 10 1C6.77095 1 4.05382 3.49085 3.67964 6.79403L3.33476 9.8385C3.24906 10.595 2.94246 11.3069 2.45549 11.88C1.42209 13.0964 2.26081 15 3.83014 15H16.1699C17.7392 15 18.5779 13.0964 17.5445 11.88C17.0575 11.3069 16.7509 10.595 16.6652 9.8385L16.3236 6.82292Z" 
+                      fill="#006C99"
+                    />
+                    <Path 
+                      d="M10 19C11.3565 19 12.5147 18.1992 12.9721 17.0715C12.9912 17.0245 13 16.974 13 16.9233C13 16.6895 12.8105 16.5 12.5767 16.5H7.42329C7.18951 16.5 7 16.6895 7 16.9233C7 16.974 7.00883 17.0245 7.02789 17.0715C7.48526 18.1992 8.64347 19 10 19Z" 
+                      fill="#006C99"
+                    />
+                  </Svg>
+                  {/* Notification badge */}
+                  <View style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -1,
+                    backgroundColor: '#FF8800',
+                    borderRadius: 6,
+                    width: 12,
+                    height: 12,
+                  }} />
+                </>
+              ) : (
+                // NotificationNone icon without badge
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                  <Path 
+                    fillRule="evenodd" 
+                    clipRule="evenodd" 
+                    d="M18.3236 9.82292C17.902 9.93836 17.4582 10 17 10C14.2386 10 12 7.76142 12 5C12 4.65782 12.0344 4.32366 12.0999 4.00079C12.0666 4.00027 12.0333 4 12 4C8.77095 4 6.05382 6.49085 5.67964 9.79403L5.33476 12.8385C5.24906 13.595 4.94246 14.3069 4.45549 14.88C3.42209 16.0964 4.26081 18 5.83014 18H18.1699C19.7392 18 20.5779 16.0964 19.5445 14.88C19.0575 14.3069 18.7509 13.595 18.6652 12.8385L18.3236 9.82292Z" 
+                    fill="#006C99"
+                  />
+                  <Path 
+                    fillRule="evenodd" 
+                    clipRule="evenodd" 
+                    d="M5.67636 9.82292C6.09795 9.93836 6.54178 10 7 10C9.76142 10 12 7.76142 12 5C12 4.65782 11.9656 4.32366 11.9001 4.00079C11.9334 4.00027 11.9667 4 12 4C15.2291 4 17.9462 6.49085 18.3204 9.79403L18.6652 12.8385C18.7509 13.595 19.0575 14.3069 19.5445 14.88C20.5779 16.0964 19.7392 18 18.1699 18H5.83013C4.26081 18 3.42208 16.0964 4.45549 14.88C4.94246 14.3069 5.24906 13.595 5.33476 12.8385L5.67636 9.82292Z" 
+                    fill="#006C99"
+                  />
+                  <Path 
+                    d="M12 22C13.3565 22 14.5147 21.1992 14.9721 20.0715C14.9912 20.0245 15 19.974 15 19.9233C15 19.6895 14.8105 19.5 14.5767 19.5H9.42329C9.18951 19.5 9 19.6895 9 19.9233C9 19.974 9.00883 20.0245 9.02789 20.0715C9.48526 21.1992 10.6435 22 12 22Z" 
+                    fill="#006C99"
+                  />
+                </Svg>
+              )}
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -1305,21 +1350,17 @@ const styles = StyleSheet.create({
     width: getResponsiveSize(50),
     height: getResponsiveSize(50),
     borderRadius: getResponsiveSize(12),
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#006C991A',
     justifyContent: 'center',
     alignItems: 'center',
     // Add beautiful shadow and elevation
-    shadowColor: '#000',
+    // shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    // Add subtle border
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+   
+   
   },
   scrollView: {
     flex: 1,

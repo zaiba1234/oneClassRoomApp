@@ -1,7 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, StyleSheet, Image, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import HomeScreen from '../Screen/HomeScreen';
 import CategoryScreen from '../Screen/CategoryScreen';
@@ -9,58 +8,47 @@ import MyCoursesScreen from '../Screen/MyCoursesScreen';
 import LibraryScreen from '../Screen/LibraryScreen';
 import FavouritesScreen from '../Screen/FavouritesScreen';
 import ProfileScreen from '../Screen/ProfileScreen';
-
+import Bottom1Icon from '../assests/icons/Bottom1.js';
+import Bottom2Icon from '../assests/icons/Bottom2.js';
+import Bottom3Icon from '../assests/icons/Bottom3.js';
+import Bottom4Icon from '../assests/icons/Bottom4.js';
+import Bottom5Icon from '../assests/icons/Bottom5.js';
 
 const Tab = createBottomTabNavigator();
 
 const BottomTabNavigator = () => {
-  const insets = useSafeAreaInsets();
-  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
-          let iconSource;
+          let IconComponent;
 
-          if (route.name === 'HomeTab') {
-            iconSource = require('../assests/icons/main.png');
+          if (route.name === 'Home') {
+            IconComponent = Bottom1Icon;
           } else if (route.name === 'Courses') {
-            iconSource = require('../assests/icons/courses.png');
+            IconComponent = Bottom2Icon;
           } else if (route.name === 'Programs') {
-            iconSource = require('../assests/icons/home.png');
+            IconComponent = Bottom3Icon;
           } else if (route.name === 'Favorites') {
-            iconSource = require('../assests/icons/heart.png');
+            IconComponent = Bottom4Icon;
           } else if (route.name === 'Profile') {
-            iconSource = require('../assests/icons/user.png');
+            IconComponent = Bottom5Icon;
           }
 
           return (
-            <Image 
-              source={iconSource} 
-              style={[
-                styles.tabIcon,
-                { tintColor: color }
-              ]}
-              resizeMode="contain"
+            <IconComponent 
+              width={28} 
+              height={28} 
+              color={focused ? '#FFFFFF' : '#fff'}
+              filled={focused}
             />
           );
         },
         tabBarActiveTintColor: '#fff',
         tabBarInactiveTintColor: '#fff',
-        tabBarStyle: [
-          styles.tabBar,
-          {
-            paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 10) : insets.bottom,
-            height: 80 + (Platform.OS === 'android' ? Math.max(insets.bottom, 10) : insets.bottom),
-          }
-        ],
+        tabBarStyle: styles.tabBar,
         tabBarShowLabel: false,
         headerShown: false,
-        tabBarItemStyle: {
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingVertical: 5,
-        },
         tabBarBackground: () => (
           <LinearGradient
             colors={['#FF8800', '#FFB800']}
@@ -71,7 +59,7 @@ const BottomTabNavigator = () => {
         ),
       })}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Courses" component={MyCoursesScreen} />
       <Tab.Screen name="Programs" component={LibraryScreen} />
       <Tab.Screen name="Favorites" component={FavouritesScreen} />
@@ -85,26 +73,22 @@ export default BottomTabNavigator;
 const styles = StyleSheet.create({
   tabBar: {
     borderTopWidth: 0,
-    elevation: 8,
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: -2 },
-    shadowRadius: 4,
+    elevation: 0,
+    shadowOpacity: 0,
+    height: 100,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
-    paddingTop: 10,
-    paddingBottom: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingTop: 16,
   },
   tabBarGradient: {
     flex: 1,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
-  tabIcon: {
-    width: 24,
-    height: 24,
-    alignSelf: 'center',
-  },
+
 });
