@@ -292,6 +292,23 @@ const VerificationScreen = ({ route }) => {
       
       if (result.success) {
         
+        // For new users from registration, register them in the backend first
+        if (isFromRegister) {
+          console.log('🔥 VerificationScreen: Registering new user in backend...');
+          try {
+            const registerResult = await authAPI.register(fullName, mobileNumber);
+            console.log('🔥 VerificationScreen: Backend registration result:', registerResult);
+            
+            if (!registerResult.success) {
+              console.log('🔥 VerificationScreen: Backend registration failed:', registerResult.message || 'Unknown error');
+              // Continue with the flow even if backend registration fails
+            }
+          } catch (registerError) {
+            console.error('💥 VerificationScreen: Backend registration error:', registerError);
+            // Continue with the flow even if backend registration fails
+          }
+        }
+        
         // Store token in Redux if available
         // Note: API response structure is result.data.data.token (nested)
         const token = result.data?.data?.token || result.data?.token;

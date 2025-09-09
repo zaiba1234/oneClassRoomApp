@@ -126,8 +126,8 @@ export const registerUser = async (phoneNumber, userData = {}) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        mobileNumber: phoneNumber,
-        fullName: userData.fullName
+        fullName: userData.fullName,
+        mobileNumber: phoneNumber
       }),
     });
 

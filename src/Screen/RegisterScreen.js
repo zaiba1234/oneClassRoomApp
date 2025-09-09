@@ -35,13 +35,13 @@ const RegisterScreen = ({ route }) => {
   React.useEffect(() => {
     console.log('🔥 RegisterScreen: Mobile number received:', route.params?.mobileNumber);
     console.log('🔥 RegisterScreen: Current phone number state:', phoneNumber);
-    
+
     // If we have a mobile number from route params and it's different from current state,
     // update the phone number state
     if (route.params?.mobileNumber && route.params.mobileNumber !== phoneNumber) {
       setPhoneNumber(route.params.mobileNumber);
     }
-    
+
     // Auto-send OTP when RegisterScreen loads for unregistered users
     // This ensures they get OTP immediately when redirected from LoginScreen
     // Only send OTP if we don't already have a verificationId from VerificationScreen
@@ -52,14 +52,14 @@ const RegisterScreen = ({ route }) => {
       console.log('🔥 RegisterScreen: Using verificationId from VerificationScreen:', route.params.verificationId);
       setVerificationId(route.params.verificationId);
     }
-  }, [route.params?.mobileNumber, phoneNumber]);
+  }, [route.params?.mobileNumber]); // Removed phoneNumber dependency to prevent infinite loop
 
   // Function to auto-send OTP for unregistered users
   const handleAutoSendOTP = async (mobileNumber) => {
     try {
       console.log('🔥 RegisterScreen: Sending OTP to:', mobileNumber);
       const otpResult = await authAPI.sendOTP(mobileNumber);
-      
+
       if (otpResult.success) {
         console.log('🔥 RegisterScreen: OTP sent successfully, verificationId:', otpResult.data.verificationId);
         // Store the verification ID for later use
@@ -79,54 +79,33 @@ const RegisterScreen = ({ route }) => {
     }
 
     setIsLoading(true);
-    
+
     try {
-      // First, register the user in the backend
-      console.log('🔥 RegisterScreen: Registering user in backend...');
-      const registerResult = await authAPI.register(fullName.trim(), phoneNumber);
-      
-      console.log('🔥 RegisterScreen: Backend registration result:', registerResult);
-      
-      if (registerResult.success) {
+      // First, send OTP to the user's phone number
+      console.log('🔥 RegisterScreen: Sending OTP to:', phoneNumber);
+      const otpResult = await authAPI.sendOTP(phoneNumber);
+
+      console.log('🔥 RegisterScreen: OTP send result:', otpResult);
+
+      if (otpResult.success) {
         // Store user data in Redux
         dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
-        
-        // Check if we already have a verificationId (from auto-send OTP)
-        let finalVerificationId = verificationId;
-        
-        if (!finalVerificationId) {
-          // If no verificationId, send OTP using Firebase
-          console.log('🔥 RegisterScreen: No existing verificationId, sending new OTP...');
-          const otpResult = await authAPI.sendOTP(phoneNumber);
-          
-          console.log('🔥 RegisterScreen: OTP send result:', otpResult);
-          
-          if (otpResult.success) {
-            finalVerificationId = otpResult.data.verificationId;
-          } else {
-            console.log('🔥 RegisterScreen: Failed to send OTP:', otpResult.message || 'Unknown error');
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          console.log('🔥 RegisterScreen: Using existing verificationId:', finalVerificationId);
-        }
-        
-        // Registration successful, navigate to verification with verificationId
+
+        // Navigate to verification screen with the verificationId
         console.log('🔥 RegisterScreen: Navigating to verification screen...');
-        navigation.navigate('Verify', { 
-          mobileNumber: phoneNumber, 
+        navigation.navigate('Verify', {
+          mobileNumber: phoneNumber,
           fullName: fullName.trim(),
-          verificationId: finalVerificationId,
+          verificationId: otpResult.data.verificationId,
           isFromRegister: true  // Flag to indicate this is from register flow
         });
-                                   
+
       } else {
-        console.log('🔥 RegisterScreen: Backend registration failed:', registerResult.message || 'Unknown error');
-        // You can show an alert here for registration failure
+        console.log('🔥 RegisterScreen: Failed to send OTP:', otpResult.data?.message || 'Unknown error');
+        // You can show an alert here for OTP sending failure
       }
     } catch (error) {
-      console.error('💥 Firebase RegisterScreen: Registration error:', error);
+      console.error('💥 Firebase RegisterScreen: OTP sending error:', error);
       // You can show an alert here for network/other errors
     } finally {
       setIsLoading(false);
@@ -145,51 +124,51 @@ const RegisterScreen = ({ route }) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-                       <Image
-               source={logo}
-               style={styles.logo}
-               resizeMode="contain"
-             />
-           <LinearGradient
-             colors={['#FF8800', 'rgba(255, 255, 255, 0)']}
-             start={{ x: 0, y: 1 }}
-             end={{ x: 0, y: 0 }}
-             style={styles.gradient}
-           >
-                          <View style={styles.inputContainer}>
-                <Text style={styles.label}>Full Name</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="John Smith"
-                    placeholderTextColor="#FF8A65"
-                    value={fullName}
-                    onChangeText={setFullName}
-                  />
-                </View>
+          <Image
+            source={logo}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <LinearGradient
+            colors={['#FF8800', 'rgba(255, 255, 255, 0)']}
+            start={{ x: 0, y: 1 }}
+            end={{ x: 0, y: 0 }}
+            style={styles.gradient}
+          >
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Full Name</Text>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="John Smith"
+                  placeholderTextColor="#FF8A65"
+                  value={fullName}
+                  onChangeText={setFullName}
+                />
               </View>
-          
-          
-<View style={styles.inputSection}>
-                 <Text style={styles.label}>Mobile No.</Text>
-                 <View style={styles.inputWrapper}>
-                   <View style={styles.countryCodeBox}>
-                     <Text style={styles.countryCode}>+91</Text>
-                   </View>
-                   <TextInput
-                     style={styles.input}
-                     placeholder="123-432-1234"
-                     placeholderTextColor="#FF8A65"
-                     keyboardType="phone-pad"
-                     value={phoneNumber}
-                     onChangeText={setPhoneNumber}
-                     maxLength={14}
-                   />
-                 </View>
-               </View>
+            </View>
 
 
-           </LinearGradient>
+            <View style={styles.inputSection}>
+              <Text style={styles.label}>Mobile No.</Text>
+              <View style={styles.inputWrapper}>
+                <View style={styles.countryCodeBox}>
+                  <Text style={styles.countryCode}>+91</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="123-432-1234"
+                  placeholderTextColor="#FF8A65"
+                  keyboardType="phone-pad"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  maxLength={14}
+                />
+              </View>
+            </View>
+
+
+          </LinearGradient>
 
           <View style={styles.buttonContainer}>
             <LinearGradient
@@ -198,8 +177,8 @@ const RegisterScreen = ({ route }) => {
               end={{ x: 0, y: 1 }}
               style={styles.button}
             >
-              <TouchableOpacity 
-                onPress={handleRegister} 
+              <TouchableOpacity
+                onPress={handleRegister}
                 style={{ width: '100%', alignItems: 'center' }}
                 disabled={isLoading}
               >
@@ -233,28 +212,28 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-  
+
     width: width * 0.48,
     height: height * 0.15,
     marginTop: 50,
-    position:'absolute',
+    position: 'absolute',
   },
-     inputContainer: {
-     position: 'absolute',
-     bottom: 100,
-     left: 5,
-     right: 5,
-     borderRadius: 25,
-     padding: 30,
-   },
-   inputSection: {
-     position: 'absolute',
-     bottom: 0,
-     left: 5,
-     right: 5,
-     borderRadius: 25,
-     padding: 30,
-   },
+  inputContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 5,
+    right: 5,
+    borderRadius: 25,
+    padding: 30,
+  },
+  inputSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: 5,
+    right: 5,
+    borderRadius: 25,
+    padding: 30,
+  },
   label: {
     marginBottom: 10,
     color: '#000',
@@ -289,7 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 15,
   },
- 
+
   buttonContainer: {
     alignItems: 'center',
     marginTop: 30,
