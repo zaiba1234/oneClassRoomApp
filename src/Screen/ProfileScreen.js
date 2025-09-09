@@ -43,6 +43,7 @@ const ProfileScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
+  const [overlayVisible, setOverlayVisible] = useState(false);
 
   // Custom alert state
   const [customAlert, setCustomAlert] = useState({
@@ -79,6 +80,7 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const showCustomAlert = (title, message, type = 'info', buttons = [], showSpinner = false) => {
+    setOverlayVisible(true);
     setCustomAlert({
       visible: true,
       title,
@@ -90,6 +92,7 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const hideCustomAlert = () => {
+    setOverlayVisible(false);
     setCustomAlert(prev => ({ ...prev, visible: false }));
   };
 
@@ -207,7 +210,7 @@ const ProfileScreen = ({ navigation }) => {
     setPrivacyPolicyAccepted(false); // Reset checkbox state
     showCustomAlert(
       'Delete Account',
-      'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost. ',
+      'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
       'error',
       [
         {
@@ -524,14 +527,11 @@ const ProfileScreen = ({ navigation }) => {
     </View>
   );
 
-  // Custom Alert Component
-  const CustomAlert = () => (
-    <Modal
-      visible={customAlert.visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={hideCustomAlert}
-    >
+  // Overlay Component
+  const Overlay = () => {
+    if (!overlayVisible) return null;
+    
+    return (
       <View style={styles.alertOverlay}>
         <View style={styles.alertContainer}>
           {/* Close button */}
@@ -569,7 +569,7 @@ const ProfileScreen = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.checkboxTop}
                   onPress={() => setPrivacyPolicyAccepted(!privacyPolicyAccepted)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.8}
                 >
                   <View style={[
                     styles.checkboxBox,
@@ -586,7 +586,6 @@ const ProfileScreen = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.checkboxBottom}
                   onPress={() => {
-                    hideCustomAlert();
                     openPrivacyPolicyPage();
                   }}
                   activeOpacity={0.7}
@@ -630,8 +629,8 @@ const ProfileScreen = ({ navigation }) => {
           )}
         </View>
       </View>
-    </Modal>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -687,8 +686,8 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </ScrollView>
 
-      {/* Custom Alert Modal */}
-      <CustomAlert />
+      {/* Custom Alert Overlay */}
+      <Overlay />
     </SafeAreaView>
   );
 };
@@ -854,14 +853,20 @@ const styles = StyleSheet.create({
 
   // Custom Alert Styles
   alertOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    zIndex: 9999,
+    elevation: 9999,
   },
   alertContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 25,
     width: '100%',
@@ -875,7 +880,9 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 20,
-    elevation: 10,
+    elevation: 10000,
+    minHeight: 200,
+    zIndex: 10000,
   },
   closeButton: {
     position: 'absolute',
