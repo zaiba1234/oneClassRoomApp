@@ -12,14 +12,52 @@ import {
 
 // Authentication API functions (Real Firebase Authentication)
 export const authAPI = {
+  // Backend login check (check if user exists)
+  async backendLogin(mobileNumber) {
+    try {
+      console.log('🌐 authAPI.backendLogin: Calling backend login API', { mobileNumber });
+      
+      const response = await fetch(getApiUrl(ENDPOINTS.LOGIN), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mobileNumber: mobileNumber
+        }),
+      });
+
+      const result = await response.json();
+      console.log('🌐 authAPI.backendLogin: Backend response', result);
+      
+      return result;
+    } catch (error) {
+      console.error('💥 authAPI.backendLogin: Error calling backend', error);
+      return {
+        success: false,
+        message: 'Backend login check failed: ' + error.message
+      };
+    }
+  },
+
   // Send OTP (Firebase)
   async sendOTP(mobileNumber) {
     const result = await sendOTP(mobileNumber);
     return result;
   },
 
-  // Login user (send OTP first)
+  // Login user (check backend first, then send OTP)
   async login(mobileNumber) {
+    // First check if user exists in backend
+    const backendResult = await this.backendLogin(mobileNumber);
+    
+    if (!backendResult.success) {
+      console.log('❌ authAPI.login: Backend login check failed', backendResult);
+      return backendResult;
+    }
+    
+    // If backend check passes, send Firebase OTP
+    console.log('✅ authAPI.login: Backend check passed, sending Firebase OTP');
     return await this.sendOTP(mobileNumber);
   },
 

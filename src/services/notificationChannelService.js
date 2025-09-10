@@ -63,55 +63,40 @@ class NotificationChannelService {
     try {
       if (Platform.OS === 'android') {
         // Import the native module
-        const { NotificationChannelService } = require('react-native').NativeModules;
+        const { NotificationChannelModule } = require('react-native').NativeModules;
         
-        if (NotificationChannelService) {
+        if (NotificationChannelModule) {
           // Create default channel
-          await NotificationChannelService.createNotificationChannel({
-            id: 'fcm_default_channel',
-            name: 'Default Notifications',
-            description: 'Default notification channel for LearningSaint app',
-            importance: 'high',
-            sound: 'default',
-            vibration: true,
-            lights: true,
-            lightColor: '#FF6B35'
-          });
+          await NotificationChannelModule.createNotificationChannel(
+            'fcm_default_channel',
+            'Default Notifications',
+            'Default notification channel for LearningSaint app',
+            4 // IMPORTANCE_HIGH
+          );
 
           // Create course notifications channel
-          await NotificationChannelService.createNotificationChannel({
-            id: 'course_notifications',
-            name: 'Course Notifications',
-            description: 'Notifications about courses, lessons, and learning updates',
-            importance: 'high',
-            sound: 'default',
-            vibration: true,
-            lights: true,
-            lightColor: '#FF6B35'
-          });
+          await NotificationChannelModule.createNotificationChannel(
+            'course_notifications',
+            'Course Notifications',
+            'Notifications about courses, lessons, and learning updates',
+            4 // IMPORTANCE_HIGH
+          );
 
           // Create live lesson channel
-          await NotificationChannelService.createNotificationChannel({
-            id: 'live_lessons',
-            name: 'Live Lessons',
-            description: 'Notifications for live lessons and classes',
-            importance: 'high',
-            sound: 'default',
-            vibration: true,
-            lights: true,
-            lightColor: '#FF6B35'
-          });
+          await NotificationChannelModule.createNotificationChannel(
+            'live_lessons',
+            'Live Lessons',
+            'Notifications for live lessons and classes',
+            4 // IMPORTANCE_HIGH
+          );
 
           // Create general notifications channel
-          await NotificationChannelService.createNotificationChannel({
-            id: 'general_notifications',
-            name: 'General Notifications',
-            description: 'General app notifications and updates',
-            importance: 'default',
-            sound: 'default',
-            vibration: false,
-            lights: false
-          });
+          await NotificationChannelModule.createNotificationChannel(
+            'general_notifications',
+            'General Notifications',
+            'General app notifications and updates',
+            3 // IMPORTANCE_DEFAULT
+          );
 
           console.log('✅ Notification channels created successfully');
         } else {

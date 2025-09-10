@@ -1670,6 +1670,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
@@ -1699,6 +1700,9 @@ const EnrollScreen = ({ navigation, route }) => {
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const webViewRef = useRef(null);
+  
+  // Get safe area insets for responsive design
+  const insets = useSafeAreaInsets();
 
   // Direct Razorpay integration - no custom class needed
 
@@ -2870,6 +2874,14 @@ const EnrollScreen = ({ navigation, route }) => {
 
       <ScrollView
         style={[styles.scrollView, isFullScreen && { display: 'none' }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingBottom: Platform.OS === 'android' 
+              ? Math.max(insets.bottom, 10) + 100 
+              : insets.bottom + 100
+          }
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -2905,7 +2917,15 @@ const EnrollScreen = ({ navigation, route }) => {
       </ScrollView>
 
       {!isFullScreen && !courseData.paymentStatus && (
-        <View style={styles.enrollButtonContainer}>
+        <View style={[
+          styles.enrollButtonContainer,
+          {
+            paddingBottom: Platform.OS === 'android' 
+              ? Math.max(insets.bottom, 10) + 20 
+              : insets.bottom + 20,
+            marginBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 10) : insets.bottom
+          }
+        ]}>
           {paymentStatus === 'failed' ? (
             <View style={styles.paymentFailedContainer}>
            
@@ -3022,6 +3042,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   videoContainer: {
     width: '100%',
@@ -3331,9 +3354,12 @@ const styles = StyleSheet.create({
   },
   enrollButtonContainer: {
     padding: getVerticalSize(20),
+    paddingTop: getVerticalSize(15),
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
+    position: 'relative',
+    zIndex: 10,
   },
   enrollButton: {
     backgroundColor: '#FF8800',
