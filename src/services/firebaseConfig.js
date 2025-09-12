@@ -9,7 +9,9 @@ const firebaseConfig = {
   projectId: "learningsaint-971bd",
   storageBucket: "learningsaint-971bd.firebasestorage.app",
   messagingSenderId: "830620644032",
-  appId: "1:830620644032:android:54d5247078117e3726f325"
+  appId: Platform.OS === 'ios' 
+    ? "1:830620644032:ios:54d5247078117e3726f325" 
+    : "1:830620644032:android:54d5247078117e3726f325"
 };
 
 // FCM Token Storage Key

@@ -30,8 +30,13 @@ export const sendOTP = async (phoneNumber) => {
     }
     
     console.log('✅ sendOTP: Firebase Auth available, sending real OTP...');
+    
+    // Format phone number properly
+    const formattedPhoneNumber = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+    console.log('📱 sendOTP: Formatted phone number:', formattedPhoneNumber);
+    
     // Real Firebase phone authentication
-    const confirmation = await firebaseAuth.signInWithPhoneNumber(phoneNumber);
+    const confirmation = await firebaseAuth.signInWithPhoneNumber(formattedPhoneNumber);
     console.log('✅ sendOTP: Firebase OTP sent successfully!');
     console.log('🆔 sendOTP: Verification ID:', confirmation.verificationId);
     
@@ -40,7 +45,7 @@ export const sendOTP = async (phoneNumber) => {
       data: {
         message: 'OTP sent successfully',
         verificationId: confirmation.verificationId,
-        phoneNumber: phoneNumber
+        phoneNumber: formattedPhoneNumber
       }
     };
   } catch (error) {
@@ -54,8 +59,21 @@ export const sendOTP = async (phoneNumber) => {
       return {
         success: false,
         data: {
-          message: 'Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console.',
+          message: 'Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console and restart the app.',
           error: 'missing-client-identifier',
+          phoneNumber: phoneNumber,
+          instructions: 'Add SHA-1: D3:82:2F:EE:F2:B3:52:6C:65:94:AF:0F:18:D1:F3:0B:51:35:8B:DB'
+        }
+      };
+    }
+    
+    if (error.code === 'auth/invalid-phone-number') {
+      console.log('❌ sendOTP: Invalid phone number format');
+      return {
+        success: false,
+        data: {
+          message: 'Invalid phone number format. Please use +91XXXXXXXXXX format.',
+          error: 'invalid-phone-number',
           phoneNumber: phoneNumber
         }
       };

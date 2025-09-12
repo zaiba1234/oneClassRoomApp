@@ -83,30 +83,6 @@ android {
     defaultConfig {
         applicationId "com.learningsaint"
         minSdkVersion rootProject.ext.minSdkVersion
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
-       
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 4
         versionName "1.1.0"
@@ -124,10 +100,10 @@ android {
         keyPassword 'android'
     }
     release {
-        storeFile file(MYAPP_RELEASE_STORE_FILE)
-        storePassword MYAPP_RELEASE_STORE_PASSWORD
-        keyAlias MYAPP_RELEASE_KEY_ALIAS
-        keyPassword MYAPP_RELEASE_KEY_PASSWORD
+        storeFile file('my-upload-key.keystore')
+        storePassword '1234567890'
+        keyAlias 'my-key-alias'
+        keyPassword '1234567890'
     }
 }
 
