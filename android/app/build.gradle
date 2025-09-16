@@ -84,7 +84,7 @@ android {
         applicationId "com.learningsaint"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 12
+        versionCode 6
         versionName "1.1.7"
         
         // Support for 16 KB memory page sizes (Android 15 requirement)
