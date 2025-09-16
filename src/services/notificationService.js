@@ -207,7 +207,7 @@ class NotificationService {
   handleInternshipRequestNotification(data) {
     // Navigate to internship letter screen
   }
-z
+
 
   // Store notification locally
   async storeNotification(notification) {

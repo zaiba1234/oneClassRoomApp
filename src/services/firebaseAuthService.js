@@ -1,14 +1,8 @@
 import auth from '@react-native-firebase/auth';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 
-// Firebase Auth instance - with error handling
-let firebaseAuth = null;
-
-try {
-  firebaseAuth = auth();
-} catch (error) {
-  firebaseAuth = null;
-}
+// Simple Firebase Auth instance
+const firebaseAuth = auth();
 
 // Send OTP to phone number
 export const sendOTP = async (phoneNumber) => {
@@ -16,29 +10,18 @@ export const sendOTP = async (phoneNumber) => {
     console.log('🔥 sendOTP: Starting OTP sending process...');
     console.log('📱 sendOTP: Phone number:', phoneNumber);
     
-    // Check if Firebase Auth is available
-    if (!firebaseAuth) {
-      console.log('⚠️ sendOTP: Firebase Auth not available, using test mode');
-      return {
-        success: true,
-        data: {
-          message: 'OTP sent successfully (Test mode)',
-          verificationId: 'test-verification-id',
-          phoneNumber: phoneNumber
-        }
-      };
-    }
-    
-    console.log('✅ sendOTP: Firebase Auth available, sending real OTP...');
-    
     // Format phone number properly
     const formattedPhoneNumber = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
     console.log('📱 sendOTP: Formatted phone number:', formattedPhoneNumber);
     
-    // Real Firebase phone authentication
+    // Check if Firebase Console has this number in test mode
+    console.log('🔥 sendOTP: Calling Firebase signInWithPhoneNumber...');
+    console.log('⚠️ sendOTP: If OTP not received, check Firebase Console - remove this number from Test Phone Numbers');
+    
     const confirmation = await firebaseAuth.signInWithPhoneNumber(formattedPhoneNumber);
     console.log('✅ sendOTP: Firebase OTP sent successfully!');
     console.log('🆔 sendOTP: Verification ID:', confirmation.verificationId);
+    console.log('📱 sendOTP: Check your phone for SMS message');
     
     return {
       success: true,
@@ -53,39 +36,11 @@ export const sendOTP = async (phoneNumber) => {
     console.error('🔥 sendOTP: Error code:', error.code);
     console.error('🔥 sendOTP: Error message:', error.message);
     
-    // Handle specific Firebase errors
-    if (error.code === 'auth/missing-client-identifier') {
-      console.log('❌ sendOTP: Missing client identifier error');
-      return {
-        success: false,
-        data: {
-          message: 'Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console and restart the app.',
-          error: 'missing-client-identifier',
-          phoneNumber: phoneNumber,
-          instructions: 'Add SHA-1: D3:82:2F:EE:F2:B3:52:6C:65:94:AF:0F:18:D1:F3:0B:51:35:8B:DB'
-        }
-      };
-    }
-    
-    if (error.code === 'auth/invalid-phone-number') {
-      console.log('❌ sendOTP: Invalid phone number format');
-      return {
-        success: false,
-        data: {
-          message: 'Invalid phone number format. Please use +91XXXXXXXXXX format.',
-          error: 'invalid-phone-number',
-          phoneNumber: phoneNumber
-        }
-      };
-    }
-    
-    // Fallback to test mode if Firebase fails
-    console.log('⚠️ sendOTP: Firebase failed, falling back to test mode');
     return {
-      success: true,
+      success: false,
       data: {
-        message: 'OTP sent successfully (Test mode)',
-        verificationId: 'test-verification-id',
+        message: 'OTP failed: ' + error.message,
+        error: error.code || 'unknown-error',
         phoneNumber: phoneNumber
       }
     };
@@ -95,25 +50,16 @@ export const sendOTP = async (phoneNumber) => {
 // Verify OTP
 export const verifyOTP = async (verificationId, otp, phoneNumber) => {
   try {
-    
-    // Check if Firebase Auth is available or if it's test mode
-    if (!firebaseAuth || verificationId === 'test-verification-id') {
-      return {
-        success: true,
-        data: {
-          message: 'OTP verified successfully (Test mode)',
-          user: {
-            uid: 'test-user-id',
-            phoneNumber: phoneNumber,
-            isNewUser: false
-          }
-        }
-      };
-    }
+    console.log('🔥 verifyOTP: Starting OTP verification...');
+    console.log('🆔 verifyOTP: Verification ID:', verificationId);
+    console.log('🔢 verifyOTP: OTP:', otp);
     
     // Real Firebase OTP verification
     const credential = auth.PhoneAuthProvider.credential(verificationId, otp);
     const userCredential = await firebaseAuth.signInWithCredential(credential);
+    
+    console.log('✅ verifyOTP: OTP verified successfully!');
+    console.log('👤 verifyOTP: User UID:', userCredential.user.uid);
     
     return {
       success: true,
@@ -129,16 +75,12 @@ export const verifyOTP = async (verificationId, otp, phoneNumber) => {
   } catch (error) {
     console.error('🔥 Firebase Auth Error (verifyOTP):', error);
     
-    // Fallback to test mode if Firebase fails
     return {
-      success: true,
+      success: false,
       data: {
-        message: 'OTP verified successfully (Test mode)',
-        user: {
-          uid: 'test-user-id',
-          phoneNumber: phoneNumber,
-          isNewUser: false
-        }
+        message: 'OTP verification failed: ' + error.message,
+        error: error.code || 'unknown-error',
+        phoneNumber: phoneNumber
       }
     };
   }
@@ -147,34 +89,34 @@ export const verifyOTP = async (verificationId, otp, phoneNumber) => {
 // Register user with backend
 export const registerUser = async (phoneNumber, userData = {}) => {
   try {
-    console.log('🔥 registerUser: Starting backend registration...');
-    console.log('📱 registerUser: Phone number:', phoneNumber);
-    console.log('👤 registerUser: User data:', userData);
+    const { getApiUrl } = require('../API/config');
+    const apiUrl = getApiUrl('/api/auth/firebase/register');
     
-    const url = getApiUrl(ENDPOINTS.REGISTER);
-    console.log('🌐 registerUser: API URL:', url);
+    console.log('🔥 registerUser: Calling API:', apiUrl);
     
-    const requestBody = {
-      mobileNumber: phoneNumber,
-      fullName: userData.fullName
-    };
-    console.log('📤 registerUser: Request body:', requestBody);
-    
-    const response = await fetch(url, {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        mobileNumber: phoneNumber,
+        fullName: userData.fullName || 'User',
+        ...userData
+      }),
     });
-
-    console.log('📡 registerUser: Response status:', response.status);
-    const result = await response.json();
-    console.log('📡 registerUser: Response data:', result);
     
+    console.log('🔥 registerUser: Response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ registerUser: Backend response:', result);
     return result;
   } catch (error) {
-    console.error('🔥 Firebase Auth Error (registerUser):', error);
+    console.error('🔥 Backend Registration Error:', error);
     return {
       success: false,
       data: {
@@ -184,25 +126,27 @@ export const registerUser = async (phoneNumber, userData = {}) => {
   }
 };
 
-// Login user with backend
+// Login user
 export const loginUser = async (phoneNumber, userData = {}) => {
   try {
+    const { getApiUrl } = require('../API/config');
+    const apiUrl = getApiUrl('/api/auth/firebase/login');
     
-    const response = await fetch(getApiUrl(ENDPOINTS.LOGIN), {
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        mobileNumber: phoneNumber
+        mobileNumber: phoneNumber,
+        ...userData
       }),
     });
-
-    const result = await response.json();
     
+    const result = await response.json();
     return result;
   } catch (error) {
-    console.error('🔥 Firebase Auth Error (loginUser):', error);
+    console.error('🔥 Backend Login Error:', error);
     return {
       success: false,
       data: {
@@ -218,22 +162,13 @@ export const resendOTP = async (phoneNumber) => {
     console.log('🔥 resendOTP: Starting OTP resend process...');
     console.log('📱 resendOTP: Phone number:', phoneNumber);
     
-    // Check if Firebase Auth is available
-    if (!firebaseAuth) {
-      console.log('⚠️ resendOTP: Firebase Auth not available, using test mode');
-      return {
-        success: true,
-        data: {
-          message: 'OTP resent successfully (Test mode)',
-          verificationId: 'test-verification-id',
-          phoneNumber: phoneNumber
-        }
-      };
-    }
+    // Format phone number properly
+    const formattedPhoneNumber = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+    console.log('📱 resendOTP: Formatted phone number:', formattedPhoneNumber);
     
-    console.log('✅ resendOTP: Firebase Auth available, resending real OTP...');
-    // Real Firebase resend OTP
-    const confirmation = await firebaseAuth.signInWithPhoneNumber(phoneNumber);
+    // Simple Firebase resend OTP
+    console.log('🔥 resendOTP: Calling Firebase signInWithPhoneNumber...');
+    const confirmation = await firebaseAuth.signInWithPhoneNumber(formattedPhoneNumber);
     console.log('✅ resendOTP: Firebase OTP resent successfully!');
     console.log('🆔 resendOTP: Verification ID:', confirmation.verificationId);
     
@@ -242,7 +177,7 @@ export const resendOTP = async (phoneNumber) => {
       data: {
         message: 'OTP resent successfully',
         verificationId: confirmation.verificationId,
-        phoneNumber: phoneNumber
+        phoneNumber: formattedPhoneNumber
       }
     };
   } catch (error) {
@@ -250,13 +185,11 @@ export const resendOTP = async (phoneNumber) => {
     console.error('🔥 resendOTP: Error code:', error.code);
     console.error('🔥 resendOTP: Error message:', error.message);
     
-    // Fallback to test mode if Firebase fails
-    console.log('⚠️ resendOTP: Firebase failed, falling back to test mode');
     return {
-      success: true,
+      success: false,
       data: {
-        message: 'OTP resent successfully (Test mode)',
-        verificationId: 'test-verification-id',
+        message: 'OTP resend failed: ' + error.message,
+        error: error.code || 'unknown-error',
         phoneNumber: phoneNumber
       }
     };
@@ -266,15 +199,4 @@ export const resendOTP = async (phoneNumber) => {
 // Get current user
 export const getCurrentUser = () => {
   return firebaseAuth.currentUser;
-};
-
-// Sign out
-export const signOut = async () => {
-  try {
-    await firebaseAuth.signOut();
-    return { success: true };
-  } catch (error) {
-    console.error('🔥 Firebase Auth Error (signOut):', error);
-    return { success: false, message: error.message };
-  }
 };

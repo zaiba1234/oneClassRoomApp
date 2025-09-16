@@ -12,7 +12,28 @@
           "package_name": "com.learningsaint"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "830620644032-d2uc06o1d9v090vchudqj8ilh6jdaaas.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.learningsaint",
+            "certificate_hash": "0c313beffb189d07845b2642c9e600932ce1ab86"
+          }
+        },
+        {
+          "client_id": "830620644032-qm3vdethm05jfb0tf7blo8mg9a6h8j5t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.learningsaint",
+            "certificate_hash": "d3822feef2b3526c6594af0f18d1f30b51358bdb"
+          }
+        },
+        {
+          "client_id": "830620644032-j4kpao6k3jak2ovtluttrgsjdqhn8q1h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBJn8hIkaO-MCKB_HJFyz1mNi3IwMUdiAg"
@@ -20,7 +41,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "830620644032-j4kpao6k3jak2ovtluttrgsjdqhn8q1h.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "830620644032-nao5h1rtk37c21d73uuilji26cncr8b6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "org.reactjs.native.example.LearningSaint"
+              }
+            }
+          ]
         }
       }
     }
