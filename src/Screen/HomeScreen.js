@@ -857,7 +857,7 @@ const HomeScreen = () => {
           <Icon 
             name={course.isFavorite ? "heart" : "heart-outline"} 
             size={getResponsiveSize(20)} 
-            color={course.isFavorite ? "#FF0000" : "#FF8800"}
+            color={course.isFavorite ? "#FF8800" : "#FF8800"} // Both filled and outline use #FF8800
           />
         </TouchableOpacity>
         <Text style={styles.coursePrice}>{course.price}</Text>
@@ -883,7 +883,11 @@ const HomeScreen = () => {
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notification')}>
-            <NotificationBadge size={24} color="#000000" showBadge={true} />
+            <NotificationBadge 
+              size={24} 
+              color="#000000" 
+              showBadge={true} // true = Notification1.png, false = Bell.png
+            />
           </TouchableOpacity>
           
 
@@ -919,7 +923,7 @@ const HomeScreen = () => {
           />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search now..."
+            placeholder="Search Courses"
             placeholderTextColor="#999"
             value={searchKeyword}
             onChangeText={handleSearchChange}
@@ -1264,17 +1268,21 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: getResponsiveSize(20),
-    paddingTop: getResponsiveSize(50),
+    paddingTop: Platform.OS === 'ios' ? insets.top + getResponsiveSize(10) : StatusBar.currentHeight + getResponsiveSize(10),
     paddingBottom: getResponsiveSize(20),
+
+    // Remove marginTop as it's causing issues
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: getResponsiveSize(50),
   },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   profileImage: {
     width: getResponsiveSize(40),
@@ -1286,16 +1294,19 @@ const styles = StyleSheet.create({
   },
   greetingContainer: {
     flexDirection: 'column',
+    flex: 1,
   },
   greeting: {
     fontSize: getResponsiveSize(16),
     color: '#FF8800',
     fontWeight: '600',
+    lineHeight: getResponsiveSize(20),
   },
   userName: {
     fontSize: getResponsiveSize(18),
     fontWeight: '600',
     color: '#333',
+    lineHeight: getResponsiveSize(22),
   },
   notificationButton: {
     width: getResponsiveSize(50),
@@ -1304,6 +1315,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F8FF',
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: getResponsiveSize(10),
   },
   notificationIcon: {
     width: getResponsiveSize(30),
@@ -1335,12 +1347,8 @@ const styles = StyleSheet.create({
     paddingVertical: getResponsiveSize(8),
     borderRadius: getResponsiveSize(16),
     borderWidth: 1.5,
-    borderColor: '#FFF3E0',
-    shadowColor: '#FFB300',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: '#FCDEBD', // Changed to #FCDEBD
+    // Removed all shadow properties
   },
   searchIcon: {
     marginRight: getResponsiveSize(12),
@@ -1624,7 +1632,7 @@ const styles = StyleSheet.create({
   coursePrice: {
     fontSize: getResponsiveSize(16),
     fontWeight: '600',
-    color: '#FF8800',
+    color: '#FF8800', // Keep #FF8800 for price
     textAlign: 'right',
   },
   carouselContentRow: {
