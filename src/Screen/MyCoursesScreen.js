@@ -140,7 +140,7 @@ const MyCoursesScreen = ({ navigation }) => {
                 {progress}%
               </Text>
             </View>
-          ) : (
+          ) : progress > 0 ? (
             <View
               style={[
                 styles.progressFill,
@@ -170,7 +170,7 @@ const MyCoursesScreen = ({ navigation }) => {
                 ]}
               />
             </View>
-          )}
+          ) : null}
           {progress !== 100 && (
             <Text style={[styles.progressText, { color: '#006C99' }]}>
               {progress}%

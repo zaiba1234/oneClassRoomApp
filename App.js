@@ -73,7 +73,13 @@ const AppContent = () => {
         const userId = state.user?.user?._id || state.user?.user?.id;
         console.log('👤 App: User ID for WebSocket:', userId);
         
+        // Set a timeout for WebSocket initialization
+        const websocketTimeout = setTimeout(() => {
+          console.warn('⏰ App: WebSocket initialization timeout - continuing without real-time features');
+        }, 25000); // 25 seconds timeout
+        
         await websocketService.connect(userId);
+        clearTimeout(websocketTimeout);
         console.log('✅ App: WebSocket connection established successfully!');
         
         // Initialize WebSocket notification handler
@@ -83,6 +89,12 @@ const AppContent = () => {
       } catch (error) {
         console.error('❌ App: WebSocket connection failed:', error);
         console.log('🛡️ App: App will continue without real-time features');
+        
+        // Set up periodic retry for WebSocket connection
+        setTimeout(() => {
+          console.log('🔄 App: Retrying WebSocket connection...');
+          initWebSocket();
+        }, 30000); // Retry after 30 seconds
       }
     };
     

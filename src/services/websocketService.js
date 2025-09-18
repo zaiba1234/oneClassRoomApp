@@ -15,27 +15,41 @@ class WebSocketService {
   connect(userId = null) {
     return new Promise((resolve, reject) => {
       try {
+        console.log('🔌 WebSocket: Attempting to connect...');
         
         // Get server URL from config
         const serverUrl = getApiUrl('').replace('/api', ''); // Remove /api from base URL
+        console.log('🌐 WebSocket: Connecting to:', serverUrl);
         
         this.socket = io(serverUrl, {
-          transports: ['websocket'],
+          transports: ['websocket', 'polling'], // Add polling as fallback
           autoConnect: true,
           reconnection: true,
           reconnectionAttempts: this.maxReconnectAttempts,
           reconnectionDelay: this.reconnectInterval,
-          timeout: 10000, // 10 seconds timeout
+          timeout: 15000, // Increase timeout to 15 seconds
+          forceNew: true, // Force new connection
         });
+
+        // Set up connection timeout
+        const connectionTimeout = setTimeout(() => {
+          console.warn('⏰ WebSocket: Connection timeout after 20 seconds');
+          if (!this.isConnected) {
+            reject(new Error('Connection timeout'));
+          }
+        }, 20000);
 
         // Connection successful
         this.socket.on('connect', () => {
+          clearTimeout(connectionTimeout);
           this.isConnected = true;
           this.reconnectAttempts = 0;
+          console.log('✅ WebSocket: Connected successfully!');
           
           // Join user room if userId provided
           if (userId) {
             this.socket.emit('join', userId);
+            console.log('👤 WebSocket: Joined user room:', userId);
           }
           
           // Setup existing event listeners
@@ -46,9 +60,14 @@ class WebSocketService {
 
         // Connection error
         this.socket.on('connect_error', (error) => {
-          console.error(' WebSocket: Connection error:', error);
+          console.error('❌ WebSocket: Connection error:', error);
           this.isConnected = false;
-          reject(error);
+          
+          // Don't reject immediately, let reconnection handle it
+          if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            clearTimeout(connectionTimeout);
+            reject(error);
+          }
         });
 
         // Disconnection
@@ -64,19 +83,23 @@ class WebSocketService {
         // Reconnection attempts
         this.socket.on('reconnect_attempt', (attemptNumber) => {
           this.reconnectAttempts = attemptNumber;
+          console.log(`🔄 WebSocket: Reconnection attempt ${attemptNumber}/${this.maxReconnectAttempts}`);
         });
 
         // Reconnection successful
         this.socket.on('reconnect', (attemptNumber) => {
           this.isConnected = true;
           this.reconnectAttempts = 0;
+          console.log('✅ WebSocket: Reconnected successfully!');
         });
 
         // Reconnection failed
         this.socket.on('reconnect_failed', () => {
           console.error('❌ WebSocket: Reconnection failed after maximum attempts');
           this.isConnected = false;
+          clearTimeout(connectionTimeout);
           this.handleConnectionFailure();
+          reject(new Error('Reconnection failed after maximum attempts'));
         });
 
         // Handle all incoming events

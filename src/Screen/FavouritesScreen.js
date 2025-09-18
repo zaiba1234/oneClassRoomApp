@@ -160,7 +160,7 @@ const FavouritesScreen = ({ navigation }) => {
           <Icon 
             name={togglingFavorites.has(String(course._id)) ? "heart-half" : "heart"} 
             size={20} 
-            color={togglingFavorites.has(String(course._id)) ? "#FF8800" : "#FF0000"}
+            color={togglingFavorites.has(String(course._id)) ? "#FF8800" : "#FF8800"}
           />
         </TouchableOpacity>
         <Text style={styles.coursePrice}>{course.price}</Text>
