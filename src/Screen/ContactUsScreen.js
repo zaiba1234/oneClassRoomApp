@@ -69,7 +69,7 @@ const ContactUsScreen = ({ navigation }) => {
             </View>
             <View style={styles.simpleCardContent}>
               <Text style={styles.simpleCardTitle}>Call Us</Text>
-              <Text style={styles.simpleCardSubtitle}>+1 (209) 268-2813</Text>
+              <Text style={styles.simpleCardSubtitle}>9695913043</Text>
             </View>
           </TouchableOpacity>
 
@@ -80,7 +80,7 @@ const ContactUsScreen = ({ navigation }) => {
             </View>
             <View style={styles.simpleCardContent}>
               <Text style={styles.simpleCardTitle}>Head Office</Text>
-              <Text style={styles.simpleCardSubtitle}>Delaware, USA</Text>
+              <Text style={styles.simpleCardSubtitle}>Noida,H-70,sector 63</Text>
             </View>
           </View>
         </View>
@@ -115,17 +115,10 @@ const ContactUsScreen = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Office Hours</Text>
           <View style={[styles.officeHoursContent, styles.officeHoursElevated]}>
             <View style={styles.officeHoursRow}>
-              <Text style={styles.officeHoursDay}>Monday - Friday</Text>
-              <Text style={styles.officeHoursTime}>9:00 AM - 6:00 PM</Text>
+              <Text style={styles.officeHoursDay}>Monday - Sunday</Text>
+              <Text style={styles.officeHoursTime}>24 / 7 Service</Text>
             </View>
-            <View style={styles.officeHoursRow}>
-              <Text style={styles.officeHoursDay}>Saturday</Text>
-              <Text style={styles.officeHoursTime}>10:00 AM - 4:00 PM</Text>
-            </View>
-            <View style={styles.officeHoursRow}>
-              <Text style={styles.officeHoursDay}>Sunday</Text>
-              <Text style={styles.officeHoursTime}>Closed</Text>
-            </View>
+            
           </View>
         </View>
       </ScrollView>

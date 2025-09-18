@@ -249,6 +249,7 @@ const HomeScreen = () => {
             price: `₹${course.price || 0}.00`,
             image: courseImage,
             isFavorite: userFavoriteCourses.has(String(course._id)), // Mark as favorite if in user's favorites
+            isUpComingCourse: course.isUpComingCourse || false, // Add the upcoming course flag
           };
         });
         
@@ -297,6 +298,7 @@ const HomeScreen = () => {
             price: `₹${course.price || 0}.00`,
             image: courseImage,
             isFavorite: userFavoriteCourses.has(String(course._id)), // Mark as favorite if in user's favorites
+            isUpComingCourse: course.isUpComingCourse || false, // Add the upcoming course flag
           };
         });
         
@@ -337,6 +339,7 @@ const HomeScreen = () => {
             price: `₹${course.price || 0}.00`,
             image: courseImage,
             isFavorite: userFavoriteCourses.has(String(course._id)), // Mark as favorite if in user's favorites
+            isUpComingCourse: course.isUpComingCourse || false, // Add the upcoming course flag
           };
         });
         
@@ -861,6 +864,12 @@ const HomeScreen = () => {
           />
         </TouchableOpacity>
         <Text style={styles.coursePrice}>{course.price}</Text>
+        {/* Coming Soon Label */}
+        {course.isUpComingCourse && (
+          <View style={styles.comingSoonLabel}>
+            <Text style={styles.comingSoonText}>Coming Soon</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -1634,6 +1643,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FF8800', // Keep #FF8800 for price
     textAlign: 'right',
+  },
+  comingSoonLabel: {
+    backgroundColor: '#000000',
+    paddingVertical: getResponsiveSize(4),
+    paddingHorizontal: getResponsiveSize(8),
+    borderRadius: getResponsiveSize(4),
+    marginTop: getResponsiveSize(4),
+    alignSelf: 'flex-end',
+  },
+  comingSoonText: {
+    color: '#FFFFFF',
+    fontSize: getResponsiveSize(10),
+    fontWeight: '600',
+    textAlign: 'center',
   },
   carouselContentRow: {
     flexDirection: 'row',
