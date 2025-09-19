@@ -1,7 +1,5 @@
 
 
-//  code by sonu
-
 import { useNavigation } from '@react-navigation/native';
 import React, { useRef, useState, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
@@ -40,7 +38,22 @@ const VerificationScreen = ({ route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(45);
+  const [currentVerificationId, setCurrentVerificationId] = useState(verificationId);
   const otpRefs = useRef([]);
+
+  // Suppress console errors to prevent red error warnings in UI
+  useEffect(() => {
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      // Only log to console, don't show red error warnings in UI
+      originalConsoleError(...args);
+    };
+
+    // Cleanup function to restore original console.error
+    return () => {
+      console.error = originalConsoleError;
+    };
+  }, []);
   
   const mobileNumber = route.params?.mobileNumber || '+91 ******333';
   const fullName = route.params?.fullName || '';
@@ -169,18 +182,27 @@ const VerificationScreen = ({ route }) => {
         setIsResending(false);
       }
     } else {
-      // Mobile OTP resend (existing logic)
-      console.log('📱 handleResendOTP: Mobile OTP resend flow');
+      // Mobile OTP resend using Firebase client-side (real OTP sending)
+      console.log('📱 handleResendOTP: Mobile OTP resend flow using Firebase client-side');
       
       setIsResending(true);
       
       try {
-        console.log('📡 handleResendOTP: Calling authAPI.resendOTP...');
+        console.log('📡 handleResendOTP: Calling authAPI.resendOTP (Firebase client-side)...');
         const result = await authAPI.resendOTP(mobileNumber);
-        console.log('📡 handleResendOTP: Resend result:', result);
+        console.log('📡 handleResendOTP: Firebase resend result:', result);
         
         if (result.success) {
-          console.log('✅ handleResendOTP: OTP resent successfully!');
+          console.log('✅ handleResendOTP: OTP resent successfully via Firebase!');
+          console.log('🆔 handleResendOTP: New verification ID:', result.data?.verificationId);
+          
+          // Update the verification ID for the new OTP
+          if (result.data?.verificationId) {
+            setCurrentVerificationId(result.data.verificationId);
+            console.log('🆔 handleResendOTP: Updated verification ID stored');
+          }
+          
+          Alert.alert('Success', 'OTP resent successfully! Check your phone for the new OTP.');
           // Reset timer to 45 seconds
           setResendTimer(45);
           // Clear OTP fields
@@ -188,10 +210,12 @@ const VerificationScreen = ({ route }) => {
           // Focus on first OTP field
           otpRefs.current[0]?.focus();
         } else {
-          console.log('❌ handleResendOTP: OTP resend failed:', result.data?.message);
+          console.log('❌ handleResendOTP: Firebase OTP resend failed:', result.data?.message);
+          Alert.alert('Error', result.data?.message || 'Failed to resend OTP');
         }
       } catch (error) {
-        console.error('💥 Firebase VerificationScreen: Resend OTP error:', error);
+        console.error('💥 VerificationScreen: Firebase resend OTP error:', error);
+        Alert.alert('Error', 'Failed to resend OTP. Please try again.');
       } finally {
         setIsResending(false);
       }
@@ -283,7 +307,7 @@ const VerificationScreen = ({ route }) => {
     console.log('🔥 handleVerifyOTP: Starting OTP verification...');
     console.log('📱 handleVerifyOTP: Mobile number:', mobileNumber);
     console.log('🔢 handleVerifyOTP: OTP:', otpString);
-    console.log('🆔 handleVerifyOTP: Verification ID:', verificationId);
+    console.log('🆔 handleVerifyOTP: Verification ID:', currentVerificationId);
     console.log('📝 handleVerifyOTP: Is from register:', isFromRegister);
     console.log('📝 handleVerifyOTP: Is from login:', isFromLogin);
 
@@ -294,13 +318,13 @@ const VerificationScreen = ({ route }) => {
       let result;
       if (isFromRegister) {
         console.log('📡 handleVerifyOTP: Using register flow verification...');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+        result = await authAPI.verifyOTP(mobileNumber, otpString, currentVerificationId);
       } else if (isFromLogin) {
         console.log('📡 handleVerifyOTP: Using login flow verification...');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+        result = await authAPI.verifyOTP(mobileNumber, otpString, currentVerificationId);
       } else {
         console.log('📡 handleVerifyOTP: Using default flow verification...');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
+        result = await authAPI.verifyOTP(mobileNumber, otpString, currentVerificationId);
       }
       
       console.log('📡 handleVerifyOTP: Verification result:', result);
@@ -422,7 +446,7 @@ const VerificationScreen = ({ route }) => {
          
         } else {
           // Show error message for other failures
-          Alert.alert('Error', result.message || 'OTP verification failed. Please try again.');
+          Alert.alert('Error', 'Wrong OTP filled');
         }
       }
     } catch (error) {

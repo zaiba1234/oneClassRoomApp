@@ -64,7 +64,8 @@ const MyCoursesScreen = ({ navigation }) => {
 
       if (result.success && result.data.success) {
         console.log('✅ MyCoursesScreen: Successfully fetched courses for filter:', filter);
-        
+        console.log('✅ MyCoursesScreen:data ', result);
+
         // Transform API data to match the existing UI structure
         const transformedCourses = result.data.data.map((course, index) => ({
           id: course.subcourseId || index + 1,

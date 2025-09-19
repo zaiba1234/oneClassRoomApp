@@ -120,6 +120,34 @@ export const authAPI = {
     return result;
   },
 
+  // Backend Firebase Resend OTP
+  async backendResendOTP(mobileNumber) {
+    try {
+      console.log('🌐 authAPI.backendResendOTP: Calling backend resend OTP API', { mobileNumber });
+      
+      const response = await fetch(getApiUrl(ENDPOINTS.RESEND_OTP), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mobileNumber: mobileNumber
+        }),
+      });
+
+      const result = await response.json();
+      console.log('🌐 authAPI.backendResendOTP: Backend response', result);
+      
+      return result;
+    } catch (error) {
+      console.error('💥 authAPI.backendResendOTP: Error calling backend', error);
+      return {
+        success: false,
+        message: 'Backend resend OTP failed: ' + error.message
+      };
+    }
+  },
+
   // Get current user (Firebase)
   getCurrentUser() {
     return getCurrentUser();

@@ -131,45 +131,6 @@ const HomeScreen = () => {
       }
     }, [token]) // Removed userFavoriteCourses from dependencies to prevent infinite loop
   );
-  // Auto-rotate carousel items
-  useEffect(() => {
-    // Calculate total items based on actual banner data
-    let totalItems = 0;
-
-    if (bannerData.recentSubcourse) totalItems++;
-    if (bannerData.recentPurchasedSubcourse) totalItems++;
-    if (bannerData.promos && bannerData.promos.length > 0) totalItems += bannerData.promos.length;
-
-    // Fallback to featured courses if no banner data
-    if (totalItems === 0 && featuredCourses.length > 0) {
-      totalItems = featuredCourses.length;
-    }
-
-    // Final fallback: ensure at least 1 item
-    if (totalItems === 0) {
-      totalItems = 1; // For the default welcome banner
-    }
-
-    if (totalItems > 1) {
-      const interval = setInterval(() => {
-        setCurrentCarouselIndex(prevIndex => {
-          const newIndex = (prevIndex + 1) % totalItems;
-
-          // Auto-scroll the carousel to the new index
-          if (carouselRef.current) {
-            carouselRef.current.scrollTo({
-              x: newIndex * (width - getResponsiveSize(40)),
-              animated: true
-            });
-          }
-
-          return newIndex;
-        });
-      }, 3000); // Change image every 3 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [featuredCourses.length, bannerData.recentSubcourse, bannerData.recentPurchasedSubcourse, bannerData.promos]);
 
   // Function to fetch featured courses from API
   const fetchFeaturedCourses = async () => {
@@ -1456,11 +1417,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   carouselImage: {
-    
     width: getResponsiveSize(90),
     height: getResponsiveSize(90),
-    borderRadius: getResponsiveSize(45), // Make it perfectly circular
-    overflow: 'hidden', // Ensure circular shape is complete
+    borderRadius: getResponsiveSize(12), // Make it square with rounded corners
+    overflow: 'hidden', // Ensure shape is complete
   },
   carouselBannerImage: {
     width: '130%',

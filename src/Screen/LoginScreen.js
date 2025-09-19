@@ -17,6 +17,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -159,10 +160,17 @@ const LoginScreen = () => {
               >
                 <TouchableOpacity
                   onPress={handleLogin}
-                  style={{ width: '100%', alignItems: 'center' }}
+                  style={styles.buttonTouchable}
                   disabled={isLoading}
                 >
-                  <Text style={styles.buttonText}>{isLoading ? 'Checking...' : 'Log In'}</Text>
+                  {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={styles.buttonText}>Sending OTP...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.buttonText}>Log In</Text>
+                  )}
                 </TouchableOpacity>
               </LinearGradient>
             </View>
@@ -271,9 +279,19 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     paddingVertical: 16,
   },
+  buttonTouchable: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+    marginLeft: 8,
   },
 });
