@@ -129,3 +129,10 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.core:core:1.16.0'
+        force 'androidx.appcompat:appcompat:1.6.1'
+    }
+}

@@ -21,6 +21,7 @@ import notificationService from './src/services/notificationService';
 import notificationChannelService from './src/services/notificationChannelService';
 import websocketNotificationHandler from './src/services/websocketNotificationHandler';
 import notificationTester from './src/services/notificationTester';
+import globalNotificationService from './src/services/globalNotificationService';
 import SplashScreen from './src/Screen/SplashScreen';
 import OnBoardScreen from './src/Screen/OnBoardScreen';
 import LoginScreen from './src/Screen/LoginScreen';
@@ -47,6 +48,7 @@ import PrivacyPolicyScreen from './src/Screen/PrivacyPolicyScreen';
 import TermsConditionScreen from './src/Screen/TermsConditionScreen';
 import ContactUsScreen from './src/Screen/ContactUsScreen';
 import SubCourseScreen from './src/Screen/SubCourseScreen';
+import GlobalNotificationTester from './src/Component/GlobalNotificationTester';
 
 import CourseCertificateDownload from './src/Screen/CourseCertificateDownload';
 import InternshipLetterScreen from './src/Screen/InternshipLetterScreen';
@@ -110,6 +112,14 @@ const AppContent = () => {
         // Initialize notification service
         await notificationService.initialize();
         console.log('✅ App: Notification service initialized!');
+        
+        // Initialize global notification service
+        await globalNotificationService.initialize();
+        console.log('✅ App: Global notification service initialized!');
+        
+        // Check WebSocket connection status
+        const wsStatus = websocketService.getConnectionStatus();
+        console.log('🔌 App: WebSocket connection status:', wsStatus);
         
         // Wait a bit for Firebase to initialize
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -302,6 +312,7 @@ const AppContent = () => {
         <Stack.Screen name="TermsCondition" component={TermsConditionScreen} />
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />
         <Stack.Screen name="SubCourse" component={SubCourseScreen} />
+        <Stack.Screen name="GlobalNotificationTester" component={GlobalNotificationTester} />
       
         <Stack.Screen name="CourseCertificate" component={CourseCertificateDownload} />
         <Stack.Screen name="Internship" component={InternshipLetterScreen} />

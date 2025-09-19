@@ -192,6 +192,11 @@ class WebSocketService {
     this.on('upload_internship_letter', callback);
   }
 
+  // Global notification handler
+  onGlobalNotification(callback) {
+    this.on('global_notification', callback);
+  }
+
   // Remove event listener
   off(eventName, callback) {
     const listeners = this.listeners.get(eventName);

@@ -23,6 +23,7 @@ import { useAppSelector } from '../Redux/hooks';
 import { getApiUrl } from '../API/config';
 import RNFS from 'react-native-fs'; // Ensure this is imported at the top
 import { Buffer } from 'buffer'; // Add Buffer polyfill for React Native
+import RazorpayCheckout from 'react-native-razorpay';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,6 +40,7 @@ const CourseCertificateDownload = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [certificateData, setCertificateData] = useState(null);
   const [isLoadingCertificate, setIsLoadingCertificate] = useState(true);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Get courseId from route params (coming from EnrollScreen)
   const courseId = route.params?.courseId;
@@ -228,9 +230,11 @@ const CourseCertificateDownload = () => {
   // Function to fetch certificate description from API
   const fetchCertificateDescription = async () => {
     try {
+      console.log('📥 CourseCertificateDownload: Fetching certificate description...');
       setIsLoadingCertificate(true);
       
       const apiUrl = getApiUrl(`/api/user/course/get-CoursecertificateDesc/${courseId}`);
+      console.log('🌐 CourseCertificateDownload: Certificate API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -239,19 +243,210 @@ const CourseCertificateDownload = () => {
         },
       });
       
+      console.log('📡 CourseCertificateDownload: Certificate API response status:', response.status);
+      
       if (response.ok) {
         const result = await response.json();
+        console.log('📥 CourseCertificateDownload: Certificate data received:', result);
         
         if (result.success && result.data) {
+          console.log('📊 CourseCertificateDownload: Setting certificate data:', result.data);
+          console.log('💰 CourseCertificateDownload: Payment status - isPaymentDone:', result.data.isPaymentDone);
           setCertificateData(result.data);
+        } else {
+          console.log('❌ CourseCertificateDownload: API response not successful:', result);
+          Alert.alert('Error', 'Failed to fetch certificate details');
         }
       } else {
+        console.log('❌ CourseCertificateDownload: API call failed with status:', response.status);
         Alert.alert('Error', 'Failed to fetch certificate details');
       }
     } catch (error) {
+      console.log('💥 CourseCertificateDownload: Fetch certificate description error:', error);
       Alert.alert('Error', 'Failed to fetch certificate details');
     } finally {
+      console.log('🏁 CourseCertificateDownload: Certificate fetching completed');
       setIsLoadingCertificate(false);
+    }
+  };
+
+  // Function to request course certificate payment
+  const requestCourseCertificatePayment = async () => {
+    try {
+      console.log('💳 CourseCertificateDownload: Requesting course certificate payment for courseId:', courseId);
+      
+      const apiUrl = getApiUrl('/api/user/certificate/request-main-course-certificate-payment');
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseId: courseId
+        }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ CourseCertificateDownload: Payment request successful:', result);
+        return result;
+      } else {
+        console.log('❌ CourseCertificateDownload: Payment request failed:', response.status);
+        const errorText = await response.text();
+        console.log('❌ CourseCertificateDownload: Error response:', errorText);
+        return null;
+      }
+    } catch (error) {
+      console.log('💥 CourseCertificateDownload: Payment request error:', error);
+      return null;
+    }
+  };
+
+  // Function to verify course certificate payment
+  const verifyCourseCertificatePayment = async (paymentData) => {
+    try {
+      console.log('🔍 CourseCertificateDownload: Verifying course certificate payment...');
+      console.log('📤 CourseCertificateDownload: Payment details being sent:', paymentData);
+      
+      const apiUrl = getApiUrl('/api/user/certificate/verify-certificate-payment');
+      console.log('🌐 CourseCertificateDownload: Verify API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(paymentData),
+      });
+      
+      console.log('📡 CourseCertificateDownload: Verify API response status:', response.status);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('📥 CourseCertificateDownload: Verify payment response:', result);
+        console.log('✅ CourseCertificateDownload: Payment verification successful');
+        return result;
+      } else {
+        console.log('❌ CourseCertificateDownload: Payment verification failed:', response.status);
+        const errorText = await response.text();
+        console.log('❌ CourseCertificateDownload: Error response:', errorText);
+        return null;
+      }
+    } catch (error) {
+      console.log('💥 CourseCertificateDownload: Payment verification error:', error);
+      return null;
+    }
+  };
+
+  // Function to initiate Razorpay payment
+  const initiateRazorpayPayment = async () => {
+    try {
+      console.log('🚀 CourseCertificateDownload: Starting Razorpay payment flow...');
+      setIsProcessingPayment(true);
+      
+      // Request payment from backend
+      console.log('💳 CourseCertificateDownload: Requesting payment from backend...');
+      const paymentRequest = await requestCourseCertificatePayment();
+      console.log('📥 CourseCertificateDownload: Payment request response:', paymentRequest);
+      
+      if (!paymentRequest || !paymentRequest.success) {
+        console.log('❌ CourseCertificateDownload: Payment request failed or returned invalid response');
+        Alert.alert('Error', 'First you have to complete all lessons and enroll the payment for download.');
+        return;
+      }
+
+      const paymentData = paymentRequest.data;
+      console.log('📊 CourseCertificateDownload: Payment data received:', paymentData);
+      
+      // Extract the correct data from the API response
+      const certificatePayment = paymentData.certificatePayment;
+      const razorpayOrder = paymentData.razorpayOrder;
+      
+      console.log('📊 CourseCertificateDownload: Certificate payment:', certificatePayment);
+      console.log('📊 CourseCertificateDownload: Razorpay order:', razorpayOrder);
+      
+      // Configure Razorpay options
+      const options = {
+        description: `Certificate for ${certificateData?.courseName || 'Course'}`,
+        image: 'https://your-logo-url.com/logo.png',
+        currency: 'INR',
+        key: 'rzp_live_ZumwCLoX1AZdm9', // Your Razorpay key
+        amount: razorpayOrder.amount,
+        name: 'LearningSaint',
+        order_id: certificatePayment.razorpayOrderId,
+        prefill: {
+          email: 'user@example.com',
+          contact: '9999999999',
+          name: 'User Name'
+        },
+        theme: { color: '#FF8800' }
+      };
+
+      console.log('💳 CourseCertificateDownload: Razorpay Options:', options);
+
+      // Open Razorpay checkout
+      console.log('🚀 CourseCertificateDownload: Opening Razorpay checkout...');
+      const razorpayResponse = await RazorpayCheckout.open(options);
+      console.log('✅ CourseCertificateDownload: Payment successful:', razorpayResponse);
+
+      // Verify payment with backend
+      console.log('🔄 CourseCertificateDownload: Verifying payment with backend...');
+      console.log('📤 CourseCertificateDownload: Payment result from Razorpay:', razorpayResponse);
+      console.log('📤 CourseCertificateDownload: certificatePaymentId being sent:', certificatePayment._id);
+      
+      const verificationData = {
+        certificatePaymentId: certificatePayment._id,
+        razorpayOrderId: razorpayResponse.razorpay_order_id,
+        razorpayPaymentId: razorpayResponse.razorpay_payment_id,
+        razorpaySignature: razorpayResponse.razorpay_signature
+      };
+
+      console.log('📤 CourseCertificateDownload: Verification payload for backend:', verificationData);
+
+      const verificationResult = await verifyCourseCertificatePayment(verificationData);
+      console.log('📥 CourseCertificateDownload: Verify API response:', verificationResult);
+      
+      if (verificationResult && verificationResult.success) {
+        console.log('✅ CourseCertificateDownload: Payment verification successful, refreshing certificate data...');
+        
+        // Immediately refresh certificate data to get updated payment status
+        await fetchCertificateDescription();
+        
+        Alert.alert(
+          'Payment Successful! 🎉',
+          'Your payment has been verified. You can now download the certificate.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('✅ CourseCertificateDownload: Payment completed, user can now download certificate');
+              }
+            }
+          ]
+        );
+      } else {
+        console.log('❌ CourseCertificateDownload: Payment verification failed:', verificationResult);
+        Alert.alert('Payment Verification Failed', 'Please contact support if the amount was deducted.');
+      }
+
+    } catch (error) {
+      console.log('💥 CourseCertificateDownload: Razorpay payment error:', error);
+      console.log('💥 CourseCertificateDownload: Error code:', error.code);
+      console.log('💥 CourseCertificateDownload: Error message:', error.message);
+      
+      if (error.code === 'RazorpayCheckoutCancel') {
+        console.log('❌ CourseCertificateDownload: User cancelled payment');
+        Alert.alert('Payment Cancelled', 'Payment was cancelled by user.');
+      } else {
+        console.log('❌ CourseCertificateDownload: Payment error occurred');
+        Alert.alert('Payment Error', 'Something went wrong during payment. Please try again.');
+      }
+    } finally {
+      console.log('🏁 CourseCertificateDownload: Payment flow completed, setting processing to false');
+      setIsProcessingPayment(false);
     }
   };
 
@@ -259,6 +454,13 @@ const CourseCertificateDownload = () => {
     try {
       if (!courseId) {
         Alert.alert('Error', 'Course ID not found');
+        return;
+      }
+
+      // Check payment status first
+      if (!certificateData?.isPaymentDone) {
+        console.log('💳 CourseCertificateDownload: Payment not done, initiating payment flow...');
+        await initiateRazorpayPayment();
         return;
       }
 
@@ -320,7 +522,11 @@ const CourseCertificateDownload = () => {
       setIsDownloading(true);
 
       // API endpoint using config file with courseId in URL
-      const apiUrl = getApiUrl(`/api/user/certificate/download-course-certificate/${courseId}`);
+      const apiUrl = getApiUrl(`/api/user/certificate/download-main-course-certificate/${courseId}`);
+      
+      console.log('🌐 CourseCertificateDownload: Download API URL:', apiUrl);
+      console.log('🔑 CourseCertificateDownload: Using token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+      console.log('📋 CourseCertificateDownload: Course ID:', courseId);
       
       // Make direct API call with proper headers
       const response = await fetch(apiUrl, {
@@ -330,6 +536,9 @@ const CourseCertificateDownload = () => {
           'Accept': 'application/pdf',
         },
       });
+      
+      console.log('📡 CourseCertificateDownload: Download response status:', response.status);
+      console.log('📡 CourseCertificateDownload: Download response headers:', response.headers);
       
       
       if (response.ok) {
@@ -453,16 +662,25 @@ const CourseCertificateDownload = () => {
         }
         
       } else {
-        console.error('❌ API call failed:', response.status, response.statusText);
+        console.error('❌ CourseCertificateDownload: API call failed:', response.status, response.statusText);
         const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
+        console.error('❌ CourseCertificateDownload: Error response body:', errorText);
         
         if (response.status === 401) {
+          console.log('🔐 CourseCertificateDownload: Authentication error - token may be invalid or expired');
           Alert.alert('Authentication Error', 'Please login again to download certificate');
+        } else if (response.status === 403) {
+          console.log('🚫 CourseCertificateDownload: Forbidden error - user may not have permission to download this certificate');
+          Alert.alert(
+            'Access Denied', 
+            'You do not have permission to download this certificate. Please ensure:\n\n1. You have completed the course\n2. You have made the required payment\n3. The certificate is available for download'
+          );
         } else if (response.status === 404) {
+          console.log('📄 CourseCertificateDownload: Certificate not found');
           Alert.alert('Certificate Not Found', 'Certificate for this course is not available yet');
         } else {
-          Alert.alert('Download Failed', `Error: ${response.status} - ${response.statusText}`);
+          console.log('❌ CourseCertificateDownload: Unknown error occurred');
+          Alert.alert('Download Failed', `Error: ${response.status} - ${response.statusText}\n\nResponse: ${errorText}`);
         }
       }
       
@@ -499,10 +717,10 @@ const CourseCertificateDownload = () => {
           <Text style={styles.congratulationsText}>Congratulations</Text>
           <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
           
-          {/* Dynamic Subcourse Name */}
-          {certificateData?.subcourseName && (
+          {/* Dynamic Course Name */}
+          {(certificateData?.courseName || certificateData?.subcourseName) && (
             <Text style={styles.subcourseNameText}>
-              {certificateData.subcourseName}
+              {certificateData.courseName || certificateData.subcourseName}
             </Text>
           )}
         </View>
@@ -529,9 +747,12 @@ const CourseCertificateDownload = () => {
       {/* Download Button */}
       <View style={styles.downloadButtonContainer}>
         <TouchableOpacity 
-          style={[styles.downloadButton, isDownloading && styles.downloadButtonDisabled]}
+          style={[
+            styles.downloadButton, 
+            (isDownloading || isProcessingPayment) && styles.downloadButtonDisabled
+          ]}
           onPress={handleDownload}
-          disabled={isDownloading}
+          disabled={isDownloading || isProcessingPayment}
         >
           <LinearGradient
             colors={['#FF8A00', '#FFB300']}
@@ -540,7 +761,14 @@ const CourseCertificateDownload = () => {
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.downloadButtonText}>
-              {isDownloading ? 'Downloading...' : 'Download Certificate'}
+              {isProcessingPayment 
+                ? 'Processing Payment...' 
+                : isDownloading 
+                  ? 'Downloading...' 
+                  : certificateData?.isPaymentDone 
+                    ? 'Download Certificate' 
+                    : `Download Pay ₹${certificateData?.price || 0}`
+              }
             </Text>
           </LinearGradient>
         </TouchableOpacity>

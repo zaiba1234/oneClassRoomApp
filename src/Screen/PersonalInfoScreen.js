@@ -10,6 +10,8 @@ import {
   StatusBar,
   Alert,
   Platform,
+  RefreshControl,
+  ScrollView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -33,6 +35,8 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [profileImage, setProfileImage] = useState(profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png'));
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   console.log('🔄 PersonalInfoScreen: Initial local state:', { name, userAddress, userEmail, phone });
 
@@ -68,15 +72,20 @@ const PersonalInfoScreen = ({ navigation }) => {
     }
   }, [fullName, mobileNumber, address, email, profileImageUrl]);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = async (isRefresh = false) => {
     if (!token) {
       console.log('❌ PersonalInfoScreen: No token available for profile fetch');
       setIsLoadingProfile(false);
+      setRefreshing(false);
       return;
     }
 
     try {
-      setIsLoadingProfile(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setIsLoadingProfile(true);
+      }
      
       
       const result = await profileAPI.getUserProfile(token);
@@ -97,7 +106,9 @@ const PersonalInfoScreen = ({ navigation }) => {
         setPhone(profileData.mobileNumber || '+91');
         setUserAddress(profileData.address || '');
         setUserEmail(profileData.email || '');
+        setIsEmailVerified(profileData.isEmailVerified || false);
         console.log('📧 PersonalInfoScreen: Set userEmail to:', profileData.email || '');
+        console.log('📧 PersonalInfoScreen: Email verification status:', profileData.isEmailVerified || false);
         
         if (profileData.profileImageUrl) {
           setProfileImage({ uri: profileData.profileImageUrl });
@@ -117,6 +128,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       Alert.alert('Error', 'Failed to load profile data');
     } finally {
       setIsLoadingProfile(false);
+      setRefreshing(false);
       console.log('🔄 PersonalInfoScreen: Profile fetch completed');
     }
   };
@@ -164,6 +176,11 @@ const PersonalInfoScreen = ({ navigation }) => {
   };
 
   const handleEmailVerification = async () => {
+    if (isEmailVerified) {
+      Alert.alert('Already Verified', 'Your email is already verified');
+      return;
+    }
+
     if (!userEmail || !userEmail.trim()) {
       Alert.alert('Error', 'Please enter an email address first');
       return;
@@ -399,6 +416,11 @@ const PersonalInfoScreen = ({ navigation }) => {
     });
   };
 
+  const onRefresh = () => {
+    console.log('🔄 PersonalInfoScreen: Pull to refresh triggered');
+    fetchUserProfile(true);
+  };
+
   if (isLoadingProfile) {
     return (
       <SafeAreaView style={styles.container}>
@@ -425,106 +447,136 @@ const PersonalInfoScreen = ({ navigation }) => {
         <View style={{ width: 32 }} />
       </View>
 
-      {/* Profile Image */}
-      <View style={styles.profileImageContainer}>
-        <Image
-          source={profileImage}
-          style={styles.profileImage}
-        />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#FF8800', '#FFB800']}
+            tintColor="#FF8800"
+            title="Pull to refresh"
+            titleColor="#666"
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Image */}
+        <View style={styles.profileImageContainer}>
+          <Image
+            source={profileImage}
+            style={styles.profileImage}
+          />
+          <TouchableOpacity
+            style={styles.editIconContainer}
+            onPress={showImagePickerOptions}
+          >
+            <LinearGradient
+              colors={['#FF8800', '#FFB800']}
+              style={styles.editIconCircle}
+            >
+              <Image
+                source={require('../assests/images/CameraIcon.png')}
+                style={styles.cameraIcon}
+                resizeMode="contain"
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {/* Form */}
+        <View style={styles.form}>
+          <Text style={styles.label}>Full Name</Text>
+          <View style={[styles.inputContainer, styles.disabledInputContainer]}>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={name}
+              editable={false}
+              selectTextOnFocus={false}
+            />
+          </View>
+
+          {/* Address */}
+          <Text style={styles.label}>Address</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              value={userAddress}
+              onChangeText={setUserAddress}
+            />
+            <TouchableOpacity style={styles.editIconBtn}>
+              <Icon name="create-outline" size={20} color="#00AEEF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* E-mail */}
+          <Text style={styles.label}>E-mail</Text>
+          <View style={[
+            styles.inputContainer,
+            isEmailVerified && styles.disabledInputContainer
+          ]}>
+            <TextInput
+              style={[
+                styles.input,
+                isEmailVerified && styles.disabledInput
+              ]}
+              value={userEmail}
+              onChangeText={isEmailVerified ? null : setUserEmail}
+              keyboardType="email-address"
+              editable={!isEmailVerified}
+              selectTextOnFocus={!isEmailVerified}
+            />
+            <TouchableOpacity 
+              style={[
+                styles.verifyBtn, 
+                isEmailVerified && styles.verifyBtnDisabled
+              ]} 
+              onPress={isEmailVerified ? null : handleEmailVerification}
+              disabled={isEmailVerified}
+            >
+              <Text style={[
+                styles.verifyBtnText,
+                isEmailVerified && styles.verifyBtnTextDisabled
+              ]}>
+                {isEmailVerified ? 'Verified' : 'Verify'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.label}>Phone Number</Text>
+          <View style={[styles.inputContainer, styles.disabledInputContainer]}>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={phone}
+              editable={false}
+              selectTextOnFocus={false}
+              keyboardType="phone-pad"
+            />
+          </View>
+        </View>
+
+        {/* Save Button */}
         <TouchableOpacity
-          style={styles.editIconContainer}
-          onPress={showImagePickerOptions}
+          style={[styles.saveBtn, isLoading && styles.saveBtnDisabled]}
+          onPress={handleSaveProfile}
+          disabled={isLoading}
         >
           <LinearGradient
-            colors={['#FF8800', '#FFB800']}
-            style={styles.editIconCircle}
+            colors={['#FFB800','#FF8800' ]}
+            style={styles.saveBtnGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
           >
-            <Image
-              source={require('../assests/images/CameraIcon.png')}
-              style={styles.cameraIcon}
-              resizeMode="contain"
-            />
+            <Text style={styles.saveBtnText}>
+              {isLoading ? 'Saving...' : 'Save Details'}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
-      </View>
 
-      {/* Form */}
-      <View style={styles.form}>
-        <Text style={styles.label}>Full Name</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-          />
-          <TouchableOpacity style={styles.editIconBtn}>
-            <Icon name="create-outline" size={20} color="#00AEEF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Address */}
-        <Text style={styles.label}>Address</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={userAddress}
-            onChangeText={setUserAddress}
-          />
-          <TouchableOpacity style={styles.editIconBtn}>
-            <Icon name="create-outline" size={20} color="#00AEEF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* E-mail */}
-        <Text style={styles.label}>E-mail</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={userEmail}
-            onChangeText={setUserEmail}
-            keyboardType="email-address"
-          />
-          <TouchableOpacity style={styles.verifyBtn} onPress={handleEmailVerification}>
-            <Text style={styles.verifyBtnText}>Verify</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.label}>Phone Number</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
-          <TouchableOpacity style={styles.editIconBtn}>
-            <Icon name="create-outline" size={20} color="#00AEEF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[styles.saveBtn, isLoading && styles.saveBtnDisabled]}
-        onPress={handleSaveProfile}
-        disabled={isLoading}
-      >
-        <LinearGradient
-          colors={['#FFB800','#FF8800' ]}
-          style={styles.saveBtnGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.saveBtnText}>
-            {isLoading ? 'Saving...' : 'Save Details'}
-          </Text>
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* App Version */}
-      <Text style={styles.versionText}>App version 1.0.0.1</Text>
-
-
+        {/* App Version */}
+        <Text style={styles.versionText}>App version 1.0.0.1</Text>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -535,7 +587,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     alignItems: 'center',
+    paddingBottom: 20,
   },
   header: {
     marginTop: 30,
@@ -693,5 +751,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  disabledInputContainer: {
+    backgroundColor: '#F5F5F5',
+    borderColor: '#E0E0E0',
+  },
+  disabledInput: {
+    color: '#999',
+    backgroundColor: 'transparent',
+  },
+  verifyBtnDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  verifyBtnTextDisabled: {
+    color: '#666',
   },
 });

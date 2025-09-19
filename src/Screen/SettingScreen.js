@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import BackButton from '../Component/BackButton';
+import GlobalNotificationTester from '../Component/GlobalNotificationTester';
 
 const SettingScreen = ({ navigation }) => {
   const [fingerprintEnabled, setFingerprintEnabled] = useState(true);
@@ -59,6 +60,14 @@ const SettingScreen = ({ navigation }) => {
         <TouchableOpacity style={styles.settingCard} onPress={handleNotificationSetting}>
           <View style={styles.settingContent}>
             <Text style={styles.settingLabel}>Notification Setting</Text>
+            <Icon name="chevron-forward" size={20} color="#000000" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Global Notification Tester */}
+        <TouchableOpacity style={styles.settingCard} onPress={() => navigation.navigate('GlobalNotificationTester')}>
+          <View style={styles.settingContent}>
+            <Text style={styles.settingLabel}>Global Notification Tester</Text>
             <Icon name="chevron-forward" size={20} color="#000000" />
           </View>
         </TouchableOpacity>
