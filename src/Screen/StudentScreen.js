@@ -49,9 +49,17 @@ const StudentScreen = ({ navigation, route }) => {
 
   // Fetch enrolled students when component mounts
   useEffect(() => {
+    console.log('🔍 StudentScreen: useEffect triggered');
+    console.log('🔍 StudentScreen: subcourseId:', subcourseId);
+    console.log('🔍 StudentScreen: token:', token ? 'Present' : 'Missing');
+    
     if (subcourseId && token) {
+      console.log('✅ StudentScreen: Both subcourseId and token present, calling fetchEnrolledStudents');
       fetchEnrolledStudents();
     } else {
+      console.log('❌ StudentScreen: Missing subcourseId or token, setting loading to false');
+      console.log('❌ StudentScreen: subcourseId present:', !!subcourseId);
+      console.log('❌ StudentScreen: token present:', !!token);
       setIsLoading(false);
     }
   }, [subcourseId, token]);
@@ -62,38 +70,68 @@ const StudentScreen = ({ navigation, route }) => {
       setIsLoading(true);
       setError(null);
       
+      console.log('🔍 StudentScreen: Starting to fetch enrolled students...');
+      console.log('🔍 StudentScreen: subcourseId:', subcourseId);
+      console.log('🔍 StudentScreen: token:', token ? 'Present' : 'Missing');
       
       const result = await courseAPI.getEnrolledStudents(token, subcourseId);
       
+      console.log('✅ StudentScreen: API call successful, response:', result);
+      console.log('🔍 StudentScreen: Response structure:', JSON.stringify(result, null, 2));
+      
       if (result.success && result.data.success) {
-        const apiStudents = result.data.data;
+        const responseData = result.data.data;
+        console.log('✅ StudentScreen: API response data:', responseData);
+        console.log('🔍 StudentScreen: Response data structure:', JSON.stringify(responseData, null, 2));
+        
+        // Extract users array from the response
+        const apiStudents = responseData.users || responseData;
+        console.log('✅ StudentScreen: API students data:', apiStudents);
+        console.log('🔍 StudentScreen: API students count:', apiStudents ? apiStudents.length : 'undefined');
+        console.log('🔍 StudentScreen: API students type:', typeof apiStudents);
+        console.log('🔍 StudentScreen: API students is array:', Array.isArray(apiStudents));
+        
+        // Check if we have pagination data
+        if (responseData.pagination) {
+          console.log('✅ StudentScreen: Pagination data:', responseData.pagination);
+        }
         
         // Transform API data to match existing UI structure
         const transformedStudents = apiStudents.map((student, index) => {
+          console.log(`🔍 StudentScreen: Processing student ${index}:`, student);
           const studentImage = student.profileImageUrl && student.profileImageUrl.trim() !== '' 
             ? { uri: student.profileImageUrl } 
             : require('../assests/images/John.png');
           
-          return {
+          const transformedStudent = {
             id: student.userId || index + 1,
             name: student.fullName || 'Unknown Student',
             avatar: studentImage,
           };
+          
+          console.log(`✅ StudentScreen: Transformed student ${index}:`, transformedStudent);
+          return transformedStudent;
         });
         
+        console.log('✅ StudentScreen: All transformed students:', transformedStudents);
         setEnrolledStudents(transformedStudents);
         
       } else {
+        console.log('❌ StudentScreen: API response not successful:', result);
+        console.log('❌ StudentScreen: Error message:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch enrolled students');
         // Keep empty array if API fails
         setEnrolledStudents([]);
       }
     } catch (error) {
       console.error('💥 StudentScreen: Error fetching enrolled students:', error);
+      console.error('💥 StudentScreen: Error details:', error.message);
+      console.error('💥 StudentScreen: Error stack:', error.stack);
       setError(error.message || 'Network error occurred');
       // Keep empty array if error occurs
       setEnrolledStudents([]);
     } finally {
+      console.log('🏁 StudentScreen: fetchEnrolledStudents completed, setting loading to false');
       setIsLoading(false);
     }
   };
@@ -148,6 +186,15 @@ const StudentScreen = ({ navigation, route }) => {
 
   // Use API data if available, otherwise use mock data
   const students = enrolledStudents.length > 0 ? enrolledStudents : mockStudents;
+  
+  // Debug logging for render
+  console.log('🔍 StudentScreen: Render - enrolledStudents:', enrolledStudents);
+  console.log('🔍 StudentScreen: Render - enrolledStudents.length:', enrolledStudents.length);
+  console.log('🔍 StudentScreen: Render - mockStudents.length:', mockStudents.length);
+  console.log('🔍 StudentScreen: Render - students:', students);
+  console.log('🔍 StudentScreen: Render - students.length:', students.length);
+  console.log('🔍 StudentScreen: Render - isLoading:', isLoading);
+  console.log('🔍 StudentScreen: Render - error:', error);
 
   const handleStudentPress = (student) => {
     // Navigate to student detail screen if needed

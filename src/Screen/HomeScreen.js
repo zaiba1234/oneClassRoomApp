@@ -62,6 +62,15 @@ const HomeScreen = () => {
     promos: []
   });
 
+  // Debug: Log banner data changes
+  useEffect(() => {
+    console.log('🏠 HomeScreen: Banner data state changed:', JSON.stringify(bannerData, null, 2));
+    console.log('🏠 HomeScreen: Banner data - recentSubcourse:', bannerData.recentSubcourse);
+    console.log('🏠 HomeScreen: Banner data - recentPurchasedSubcourse:', bannerData.recentPurchasedSubcourse);
+    console.log('🏠 HomeScreen: Banner data - promos:', bannerData.promos);
+    console.log('🏠 HomeScreen: Banner data - promos length:', bannerData.promos?.length);
+  }, [bannerData]);
+
 
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
   const [bannerError, setBannerError] = useState(null);
@@ -98,11 +107,13 @@ const HomeScreen = () => {
         }
 
         // Always fetch course data and banner data (these should work for all users)
+        console.log('🏠 HomeScreen: Starting parallel API calls...');
         await Promise.all([
           fetchCourseData(),
           fetchFeaturedCourses(),
           fetchBannerData()
         ]);
+        console.log('🏠 HomeScreen: All parallel API calls completed');
       } catch (error) {
         console.log('HomeScreen: Error during initialization:', error);
         // Continue with fallback data even if some APIs fail
@@ -141,8 +152,14 @@ const HomeScreen = () => {
       const result = await courseAPI.getPurchasedCourse(token);
 
       if (result.success && result.data.success) {
-        const apiCourses = result.data.data;
-        console.log('🏠 HomeScreen: Featured courses API data:', apiCourses);
+        const responseData = result.data.data;
+        console.log('🏠 HomeScreen: Featured courses API data:', responseData);
+        
+        // Extract courses array from the response
+        const apiCourses = responseData.subcourses || responseData;
+        console.log('🏠 HomeScreen: Featured courses extracted:', apiCourses);
+        console.log('🏠 HomeScreen: Featured courses type:', typeof apiCourses);
+        console.log('🏠 HomeScreen: Featured courses is array:', Array.isArray(apiCourses));
 
         // Transform API data to match existing UI structure
         const transformedFeaturedCourses = apiCourses.slice(0, 3).map((course, index) => {
@@ -164,11 +181,17 @@ const HomeScreen = () => {
         setFeaturedCourses(transformedFeaturedCourses);
 
       } else {
-        setFeaturedError(result.data?.message || 'Failed to fetch featured courses');
+        const errorMessage = result.data?.message || 'Failed to fetch featured courses';
+        console.log('❌ HomeScreen: Featured courses API failed:', errorMessage);
+        console.log('❌ HomeScreen: Featured courses result:', result);
+        setFeaturedError(errorMessage);
         // Keep existing featured courses if API fails
       }
     } catch (error) {
-      setFeaturedError(error.message || 'Network error occurred');
+      const errorMessage = error.message || 'Network error occurred';
+      console.log('💥 HomeScreen: Featured courses error:', errorMessage);
+      console.log('💥 HomeScreen: Featured courses error details:', error);
+      setFeaturedError(errorMessage);
       // Keep existing featured courses if error occurs
     } finally {
       setIsLoadingFeatured(false);
@@ -321,11 +344,13 @@ const HomeScreen = () => {
   // Function to fetch banner data from homePage-banner API
   const fetchBannerData = async () => {
     try {
+      console.log('🏠 HomeScreen: fetchBannerData called');
       setIsLoadingBanner(true);
       setBannerError(null);
 
       const apiUrl = getApiUrl(ENDPOINTS.HOMEPAGE_BANNER);
       console.log('🏠 HomeScreen: Fetching banner from URL:', apiUrl);
+      console.log('🏠 HomeScreen: ENDPOINTS.HOMEPAGE_BANNER:', ENDPOINTS.HOMEPAGE_BANNER);
 
       // Prepare headers - include token if available, but don't require it
       const headers = {
@@ -350,15 +375,25 @@ const HomeScreen = () => {
 
       if (response.ok) {
         const result = await response.json();
+        
+        console.log('🏠 HomeScreen: Raw API response:', JSON.stringify(result, null, 2));
+        console.log('🏠 HomeScreen: Response success:', result.success);
+        console.log('🏠 HomeScreen: Response data:', result.data);
+        console.log('🏠 HomeScreen: Response message:', result.message);
 
         if (result.success && result.data) {
           console.log('🏠 HomeScreen: Banner data fetched successfully:', result.data);
           console.log('🏠 HomeScreen: Banner data details - recentSubcourse:', result.data.recentSubcourse);
           console.log('🏠 HomeScreen: Banner data details - recentPurchasedSubcourse:', result.data.recentPurchasedSubcourse);
           console.log('🏠 HomeScreen: Banner data details - promos:', result.data.promos);
+          console.log('🏠 HomeScreen: Banner data details - promos length:', result.data.promos?.length);
+          console.log('🏠 HomeScreen: Banner data details - promos is array:', Array.isArray(result.data.promos));
           setBannerData(result.data);
         } else {
           console.log('❌ HomeScreen: Banner API response not successful:', result);
+          console.log('❌ HomeScreen: Response success:', result.success);
+          console.log('❌ HomeScreen: Response data exists:', !!result.data);
+          console.log('❌ HomeScreen: Response message:', result.message);
           // Set fallback banner data for new users
           const fallbackData = {
             recentSubcourse: null,
@@ -374,7 +409,10 @@ const HomeScreen = () => {
           setBannerData(fallbackData);
         }
       } else {
+        const errorMessage = `Banner API call failed: ${response.status} ${response.statusText}`;
         console.log('❌ HomeScreen: Banner API call failed:', response.status, response.statusText);
+        console.log('❌ HomeScreen: Setting banner error:', errorMessage);
+        setBannerError(errorMessage);
         // Set fallback banner data when API fails
         setBannerData({
           recentSubcourse: null,
@@ -388,7 +426,10 @@ const HomeScreen = () => {
         });
       }
     } catch (error) {
-      console.log('❌ HomeScreen: Banner fetch error:', error);
+      const errorMessage = error.message || 'Network error occurred';
+      console.log('❌ HomeScreen: Banner fetch error:', errorMessage);
+      console.log('❌ HomeScreen: Banner error details:', error);
+      setBannerError(errorMessage);
       // Set fallback banner data when network error occurs
       setBannerData({
         recentSubcourse: null,
@@ -973,6 +1014,21 @@ const HomeScreen = () => {
           ) : (featuredError || bannerError) ? (
             <View style={styles.carouselErrorContainer}>
               <Text style={styles.carouselErrorText}>Error loading content</Text>
+              <Text style={styles.carouselErrorText}>Featured Error: {featuredError}</Text>
+              <Text style={styles.carouselErrorText}>Banner Error: {bannerError}</Text>
+              <TouchableOpacity 
+                style={styles.retryButton} 
+                onPress={() => {
+                  if (featuredError) {
+                    fetchFeaturedCourses();
+                  }
+                  if (bannerError) {
+                    fetchBannerData();
+                  }
+                }}
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
             </View>
           ) : (() => {
             // Check if we have any content to show
@@ -981,10 +1037,71 @@ const HomeScreen = () => {
               (bannerData.promos && bannerData.promos.length > 0);
             const hasFeaturedContent = featuredCourses.length > 0;
 
-            console.log('🏠 HomeScreen: Carousel render check - bannerData:', bannerData);
+            console.log('🏠 HomeScreen: Carousel render check - bannerData:', JSON.stringify(bannerData, null, 2));
             console.log('🏠 HomeScreen: Carousel render check - hasBannerContent:', hasBannerContent);
             console.log('🏠 HomeScreen: Carousel render check - hasFeaturedContent:', hasFeaturedContent);
             console.log('🏠 HomeScreen: Carousel render check - featuredCourses:', featuredCourses);
+            console.log('🏠 HomeScreen: Carousel render check - isLoadingBanner:', isLoadingBanner);
+            console.log('🏠 HomeScreen: Carousel render check - isLoadingFeatured:', isLoadingFeatured);
+            console.log('🏠 HomeScreen: Carousel render check - featuredError:', featuredError);
+            console.log('🏠 HomeScreen: Carousel render check - bannerError:', bannerError);
+
+            // Check if banner data is still in initial state (all null/empty)
+            const isBannerDataInitial = !bannerData.recentSubcourse && 
+              !bannerData.recentPurchasedSubcourse && 
+              (!bannerData.promos || bannerData.promos.length === 0);
+
+            console.log('🏠 HomeScreen: Carousel render check - isBannerDataInitial:', isBannerDataInitial);
+
+            if (isBannerDataInitial && !hasFeaturedContent) {
+              console.log('🏠 HomeScreen: Banner data is in initial state, showing loading or default banner');
+              // Show loading state if banner is still loading, otherwise show default banner
+              if (isLoadingBanner) {
+                return (
+                  <View style={styles.carouselLoadingContainer}>
+                    <Text style={styles.carouselLoadingText}>Loading banner...</Text>
+                  </View>
+                );
+              } else {
+                // Show default banner when no data is available
+                return (
+                  <>
+                    <ScrollView
+                      ref={carouselRef}
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      onScroll={Animated.event(
+                        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                        { useNativeDriver: false }
+                      )}
+                      onMomentumScrollEnd={(event) => {
+                        const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
+                        setCurrentCarouselIndex(index);
+                      }}
+                      snapToInterval={width - getResponsiveSize(40)}
+                      decelerationRate="fast"
+                      style={styles.carousel}
+                      contentContainerStyle={styles.carouselContentContainer}
+                    >
+                      <View style={styles.carouselItem}>
+                        <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
+                          <Image
+                            source={require('../assests/images/HomeImage.png')}
+                            style={styles.carouselBannerImage}
+                            resizeMode="cover"
+                          />
+                        </View>
+                      </View>
+                    </ScrollView>
+
+                    <View style={styles.dotsContainer}>
+                      <View style={[styles.dot, styles.activeDot]} />
+                    </View>
+                  </>
+                );
+              }
+            }
 
             if (!hasBannerContent && !hasFeaturedContent) {
               console.log('🏠 HomeScreen: No content available, showing default banner');

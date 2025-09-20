@@ -43,11 +43,17 @@ const ReviewScreen = ({ navigation, route }) => {
 
   // Fetch ratings when component mounts
   useEffect(() => {
-   
+    console.log('🔍 ReviewScreen: useEffect triggered');
+    console.log('🔍 ReviewScreen: subcourseId:', subcourseId);
+    console.log('🔍 ReviewScreen: token:', token ? 'Present' : 'Missing');
     
     if (subcourseId && token) {
+      console.log('✅ ReviewScreen: Both subcourseId and token present, calling fetchRatings');
       fetchRatings();
     } else {
+      console.log('❌ ReviewScreen: Missing subcourseId or token, setting error');
+      console.log('❌ ReviewScreen: subcourseId present:', !!subcourseId);
+      console.log('❌ ReviewScreen: token present:', !!token);
       setError('Missing subcourse ID or authentication token');
       setIsLoading(false);
     }
@@ -58,35 +64,77 @@ const ReviewScreen = ({ navigation, route }) => {
       setIsLoading(true);
       setError(null);
       
+      console.log('🔍 ReviewScreen: Starting to fetch ratings...');
+      console.log('🔍 ReviewScreen: subcourseId:', subcourseId);
+      console.log('🔍 ReviewScreen: token:', token ? 'Present' : 'Missing');
       
       const result = await courseAPI.getSubcourseRatings(token, subcourseId);
       
+      console.log('✅ ReviewScreen: API call successful, response:', result);
+      console.log('🔍 ReviewScreen: Response structure:', JSON.stringify(result, null, 2));
       
       // Handle different response structures
       if (result.success) {
+        console.log('✅ ReviewScreen: API response is successful');
+        console.log('🔍 ReviewScreen: result.data:', result.data);
+        console.log('🔍 ReviewScreen: result.data.success:', result.data?.success);
+        console.log('🔍 ReviewScreen: result.data.data:', result.data?.data);
+        console.log('🔍 ReviewScreen: result.data.data type:', typeof result.data?.data);
+        console.log('🔍 ReviewScreen: result.data.data is array:', Array.isArray(result.data?.data));
+        
         if (result.data && result.data.success) {
           // Standard success response
-          if (Array.isArray(result.data.data)) {
-            setReviews(result.data.data);
+          console.log('✅ ReviewScreen: Standard success response structure');
+          const responseData = result.data.data;
+          console.log('🔍 ReviewScreen: Response data structure:', responseData);
+          
+          // Extract ratings array from the response
+          const apiRatings = responseData.ratings || responseData;
+          console.log('✅ ReviewScreen: API ratings data:', apiRatings);
+          console.log('🔍 ReviewScreen: API ratings count:', apiRatings ? apiRatings.length : 'undefined');
+          console.log('🔍 ReviewScreen: API ratings type:', typeof apiRatings);
+          console.log('🔍 ReviewScreen: API ratings is array:', Array.isArray(apiRatings));
+          
+          // Check if we have pagination data
+          if (responseData.pagination) {
+            console.log('✅ ReviewScreen: Pagination data:', responseData.pagination);
+          }
+          
+          if (Array.isArray(apiRatings)) {
+            console.log('✅ ReviewScreen: API ratings is array, setting reviews');
+            console.log('🔍 ReviewScreen: Reviews data:', apiRatings);
+            setReviews(apiRatings);
           } else {
+            console.log('❌ ReviewScreen: API ratings is not array, setting empty reviews');
             setReviews([]);
           }
         } else if (result.data && Array.isArray(result.data)) {
           // Direct array response
+          console.log('✅ ReviewScreen: Direct array response structure');
+          console.log('🔍 ReviewScreen: Direct reviews data:', result.data);
           setReviews(result.data);
         } else if (result.data && result.data.data && Array.isArray(result.data.data)) {
           // Nested data array response
+          console.log('✅ ReviewScreen: Nested data array response structure');
+          console.log('🔍 ReviewScreen: Nested reviews data:', result.data.data);
           setReviews(result.data.data);
         } else {
+          console.log('❌ ReviewScreen: Unexpected response format from server');
+          console.log('🔍 ReviewScreen: Full result.data:', result.data);
           setError('Unexpected response format from server');
         }
       } else {
+        console.log('❌ ReviewScreen: API response not successful');
+        console.log('❌ ReviewScreen: Error message:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch ratings');
       }
     } catch (error) {
       console.error('💥 ReviewScreen: Error fetching ratings:', error);
+      console.error('💥 ReviewScreen: Error details:', error.message);
+      console.error('💥 ReviewScreen: Error stack:', error.stack);
       setError(error.message || 'Network error occurred');
     } finally {
+      console.log('🏁 ReviewScreen: fetchRatings completed, setting loading to false');
       setIsLoading(false);
     }
   };
@@ -155,7 +203,14 @@ const ReviewScreen = ({ navigation, route }) => {
   );
 
   const renderContent = () => {
+    // Debug logging for render
+    console.log('🔍 ReviewScreen: Render - reviews:', reviews);
+    console.log('🔍 ReviewScreen: Render - reviews.length:', reviews.length);
+    console.log('🔍 ReviewScreen: Render - isLoading:', isLoading);
+    console.log('🔍 ReviewScreen: Render - error:', error);
+    
     if (isLoading) {
+      console.log('🔍 ReviewScreen: Rendering loading state');
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#FF6B35" />
@@ -165,6 +220,7 @@ const ReviewScreen = ({ navigation, route }) => {
     }
 
     if (error) {
+      console.log('🔍 ReviewScreen: Rendering error state');
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>Error: {error}</Text>
@@ -176,6 +232,7 @@ const ReviewScreen = ({ navigation, route }) => {
     }
 
     if (reviews.length === 0) {
+      console.log('🔍 ReviewScreen: Rendering empty state');
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyText}>No reviews available yet</Text>
@@ -187,6 +244,7 @@ const ReviewScreen = ({ navigation, route }) => {
       );
     }
 
+    console.log('🔍 ReviewScreen: Rendering reviews list with', reviews.length, 'reviews');
     return (
       <ScrollView 
         style={styles.scrollView}

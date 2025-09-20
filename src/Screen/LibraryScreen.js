@@ -27,11 +27,24 @@ const LibraryScreen = ({ navigation }) => {
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [courseError, setCourseError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [hasMoreData, setHasMoreData] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Fetch course data when component mounts
   useEffect(() => {
     if (token) {
-      fetchCourseData();
+      // Reset pagination when component mounts
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalCourses(0);
+      setHasMoreData(false);
+      setLibraryCourses([]);
+      fetchCourseData(1, false);
     }
   }, [token]);
 
@@ -39,7 +52,12 @@ const LibraryScreen = ({ navigation }) => {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await fetchCourseData();
+      // Reset pagination on refresh
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalCourses(0);
+      setHasMoreData(false);
+      await fetchCourseData(1, false);
     } catch (error) {
       console.error('💥 LibraryScreen: Error during pull-to-refresh:', error);
     } finally {
@@ -47,46 +65,122 @@ const LibraryScreen = ({ navigation }) => {
     }
   };
 
-  // Function to fetch course data from API
-  const fetchCourseData = async () => {
+  // Function to fetch course data from API (first page)
+  const fetchCourseData = async (page = 1, append = false) => {
     try {
-      setIsLoadingCourses(true);
+      if (page === 1) {
+        setIsLoadingCourses(true);
+      } else {
+        setLoadingMore(true);
+      }
       setCourseError(null);
 
-    
+      console.log('🔥 LibraryScreen: Starting API call to getAllCourses...');
+      console.log('🔥 LibraryScreen: Page:', page, 'Append:', append);
+      console.log('🔥 LibraryScreen: Token provided:', !!token);
+      console.log('🔥 LibraryScreen: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
 
-      const result = await courseAPI.getAllCourses(token);
+      const result = await courseAPI.getAllCourses(token, page, 10);
+
+      console.log('🔥 LibraryScreen: API call completed');
+      console.log('🔥 LibraryScreen: Result success:', result.success);
+      console.log('🔥 LibraryScreen: Result status:', result.status);
+      console.log('🔥 LibraryScreen: Full result object:', JSON.stringify(result, null, 2));
+      console.log('🔥 LibraryScreen: Result data:', result.data);
+      console.log('🔥 LibraryScreen: Result data type:', typeof result.data);
+      console.log('🔥 LibraryScreen: Result data.success:', result.data?.success);
+      console.log('🔥 LibraryScreen: Result data.data:', result.data?.data);
+      console.log('🔥 LibraryScreen: Result data.data type:', typeof result.data?.data);
 
       if (result.success && result.data.success) {
-        const apiCourses = result.data.data;
-      
+        // Handle new API response structure with pagination
+        const coursesData = result.data.data;
+        const courses = coursesData.courses || coursesData; // Handle both old and new structure
+        const pagination = coursesData.pagination || {};
+        
+        console.log('🔥 LibraryScreen: API courses array:', courses);
+        console.log('🔥 LibraryScreen: API courses length:', courses?.length);
+        console.log('🔥 LibraryScreen: First course object:', courses?.[0]);
+        console.log('🔥 LibraryScreen: Pagination data:', pagination);
+
+        // Check if courses is an array
+        if (!Array.isArray(courses)) {
+          console.log('❌ LibraryScreen: API courses is not an array:', courses);
+          setCourseError('Invalid data format received from API');
+          if (!append) {
+            setLibraryCourses([]);
+          }
+          return;
+        }
+
+        // Update pagination state
+        setCurrentPage(pagination.currentPage || page);
+        setTotalPages(pagination.totalPages || 1);
+        setTotalCourses(pagination.totalCourses || courses.length);
+        setHasMoreData((pagination.currentPage || page) < (pagination.totalPages || 1));
 
         // Transform API data to match existing UI structure
-        const transformedCourses = apiCourses.map((course, index) => {
+        const transformedCourses = courses.map((course, index) => {
+          console.log(`🔥 LibraryScreen: Processing course ${index + 1}:`, course);
+          console.log(`🔥 LibraryScreen: Course _id:`, course._id);
+          console.log(`🔥 LibraryScreen: Course courseName:`, course.courseName);
+          console.log(`🔥 LibraryScreen: Course totalModules:`, course.totalModules);
+          console.log(`🔥 LibraryScreen: Course CoverImageUrl:`, course.CoverImageUrl);
           
           const courseImage = course.CoverImageUrl ? { uri: course.CoverImageUrl } : require('../assests/images/Frame1.png');
           
-
-          return {
+          const transformedCourse = {
             id: course._id || index + 1,
             title: course.courseName || 'Course Title',
             modules: `${course.totalModules || 0} Modules`,
             image: courseImage,
           };
+          
+          console.log(`🔥 LibraryScreen: Transformed course ${index + 1}:`, transformedCourse);
+          return transformedCourse;
         });
 
-        setLibraryCourses(transformedCourses);
+        console.log('🔥 LibraryScreen: All transformed courses:', transformedCourses);
+        
+        // Update courses list
+        if (append && page > 1) {
+          setLibraryCourses(prev => [...prev, ...transformedCourses]);
+        } else {
+          setLibraryCourses(transformedCourses);
+        }
 
       } else {
+        console.log('❌ LibraryScreen: API call failed');
+        console.log('❌ LibraryScreen: Result success:', result.success);
+        console.log('❌ LibraryScreen: Result data success:', result.data?.success);
+        console.log('❌ LibraryScreen: Error message:', result.data?.message);
         setCourseError(result.data?.message || 'Failed to fetch courses');
-        // Keep existing course data if API fails
+        if (!append) {
+          setLibraryCourses([]);
+        }
       }
     } catch (error) {
-      console.error('💥 LibraryScreen: Error fetching course data:', error);
+      console.error('💥 LibraryScreen: Exception caught while fetching course data');
+      console.error('💥 LibraryScreen: Error type:', typeof error);
+      console.error('💥 LibraryScreen: Error message:', error.message);
+      console.error('💥 LibraryScreen: Error stack:', error.stack);
+      console.error('💥 LibraryScreen: Full error object:', error);
       setCourseError(error.message || 'Network error occurred');
-      // Keep existing course data if error occurs
+      if (!append) {
+        setLibraryCourses([]);
+      }
     } finally {
+      console.log('🔥 LibraryScreen: Setting loading to false');
       setIsLoadingCourses(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Load more courses (next page)
+  const loadMoreCourses = async () => {
+    if (hasMoreData && !loadingMore && !isLoadingCourses) {
+      console.log('📚 LibraryScreen: Loading more courses, page:', currentPage + 1);
+      await fetchCourseData(currentPage + 1, true);
     }
   };
 
@@ -141,12 +235,14 @@ const LibraryScreen = ({ navigation }) => {
           ) : courseError ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>Error: {courseError}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={fetchCourseData}>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchCourseData(1, false)}>
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
           ) : libraryCourses.length > 0 ? (
-            libraryCourses.map((course) => renderLibraryCard(course))
+            <>
+              {libraryCourses.map((course) => renderLibraryCard(course))}
+            </>
           ) : (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No courses available</Text>
@@ -287,5 +383,33 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     color: '#007BFF',
+  },
+  paginationInfo: {
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    marginTop: 10,
+  },
+  paginationText: {
+    fontSize: 14,
+    color: '#666',
+    marginVertical: 2,
+  },
+  loadMoreButton: {
+    backgroundColor: '#007BFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 15,
+    alignItems: 'center',
+  },
+  loadMoreButtonDisabled: {
+    backgroundColor: '#B0B0B0',
+  },
+  loadMoreButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

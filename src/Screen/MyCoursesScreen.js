@@ -26,21 +26,32 @@ const MyCoursesScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [hasMoreData, setHasMoreData] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Get user token from Redux
   const { token } = useAppSelector((state) => state.user);
 
   const filterOptions = ['All Course', 'In Progress', 'Completed'];
 
-  // Fetch courses based on selected filter
-  const fetchCourses = async (filter) => {
+  // Fetch courses based on selected filter (first page)
+  const fetchCourses = async (filter, page = 1, append = false) => {
     if (!token) {
       console.log('❌ MyCoursesScreen: No token available');
       return;
     }
 
     try {
-      setIsLoading(true);
+      if (page === 1) {
+        setIsLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
       
       let result;
@@ -48,26 +59,41 @@ const MyCoursesScreen = ({ navigation }) => {
       switch (filter) {
         case 'All Course':
           console.log('📚 MyCoursesScreen: Fetching purchased subcourses...');
-          result = await courseAPI.getPurchasedSubcourses(token);
+          result = await courseAPI.getPurchasedSubcourses(token, page, 10);
           break;
         case 'In Progress':
           console.log('📚 MyCoursesScreen: Fetching in-progress subcourses...');
-          result = await courseAPI.getInProgressSubcourses(token);
+          result = await courseAPI.getInProgressSubcourses(token, page, 10);
           break;
         case 'Completed':
           console.log('📚 MyCoursesScreen: Fetching completed subcourses...');
-          result = await courseAPI.getCompletedSubcourses(token);
+          result = await courseAPI.getCompletedSubcourses(token, page, 10);
           break;
         default:
-          result = await courseAPI.getPurchasedSubcourses(token);
+          result = await courseAPI.getPurchasedSubcourses(token, page, 10);
       }
 
       if (result.success && result.data.success) {
         console.log('✅ MyCoursesScreen: Successfully fetched courses for filter:', filter);
         console.log('✅ MyCoursesScreen:data ', result);
 
+        // Handle new API response structure with pagination
+        const coursesData = result.data.data;
+        const courses = coursesData.subcourses || coursesData; // Handle both old and new structure
+        const pagination = coursesData.pagination || {};
+        
+        // Ensure courses is an array
+        if (!Array.isArray(courses)) {
+          console.log('❌ MyCoursesScreen: Courses data is not an array:', courses);
+          setError('Invalid data format received');
+          if (!append) {
+            setCourseCards([]);
+          }
+          return;
+        }
+
         // Transform API data to match the existing UI structure
-        const transformedCourses = result.data.data.map((course, index) => ({
+        const transformedCourses = courses.map((course, index) => ({
           id: course.subcourseId || index + 1,
           title: course.subcourseName || 'Course Title',
           lessons: `${course.totalLessons || 0} lessons`,
@@ -78,25 +104,56 @@ const MyCoursesScreen = ({ navigation }) => {
         }));
 
         console.log('🔄 MyCoursesScreen: Transformed courses:', transformedCourses);
-        setCourseCards(transformedCourses);
+        
+        // Update pagination state
+        setCurrentPage(pagination.currentPage || page);
+        setTotalPages(pagination.totalPages || 1);
+        setTotalCourses(pagination.totalSubcourses || courses.length);
+        setHasMoreData((pagination.currentPage || page) < (pagination.totalPages || 1));
+        
+        // Update courses list
+        if (append && page > 1) {
+          setCourseCards(prev => [...prev, ...transformedCourses]);
+        } else {
+          setCourseCards(transformedCourses);
+        }
       } else {
         console.log('❌ MyCoursesScreen: Failed to fetch courses:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch courses');
-        setCourseCards([]);
+        if (!append) {
+          setCourseCards([]);
+        }
       }
     } catch (error) {
       console.error('💥 MyCoursesScreen: Error fetching courses:', error);
       setError('Network error occurred');
-      setCourseCards([]);
+      if (!append) {
+        setCourseCards([]);
+      }
     } finally {
       setIsLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Load more courses (next page)
+  const loadMoreCourses = async () => {
+    if (hasMoreData && !loadingMore && !isLoading) {
+      console.log('📚 MyCoursesScreen: Loading more courses, page:', currentPage + 1);
+      await fetchCourses(selectedFilter, currentPage + 1, true);
     }
   };
 
   // Fetch courses when component mounts or filter changes
   useEffect(() => {
     if (token) {
-      fetchCourses(selectedFilter);
+      // Reset pagination when filter changes
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalCourses(0);
+      setHasMoreData(false);
+      setCourseCards([]);
+      fetchCourses(selectedFilter, 1, false);
     }
   }, [selectedFilter, token]);
 
@@ -105,7 +162,12 @@ const MyCoursesScreen = ({ navigation }) => {
     console.log('🔄 MyCoursesScreen: Pull-to-refresh triggered');
     setRefreshing(true);
     try {
-      await fetchCourses(selectedFilter);
+      // Reset pagination on refresh
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalCourses(0);
+      setHasMoreData(false);
+      await fetchCourses(selectedFilter, 1, false);
       console.log('✅ MyCoursesScreen: Pull-to-refresh completed');
     } catch (error) {
       console.error('💥 MyCoursesScreen: Error during pull-to-refresh:', error);
@@ -273,14 +335,43 @@ const MyCoursesScreen = ({ navigation }) => {
           ) : error ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>Error: {error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => fetchCourses(selectedFilter)}>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchCourses(selectedFilter, 1, false)}>
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
           ) : courseCards.length === 0 ? (
             <Text style={styles.emptyText}>No courses found</Text>
           ) : (
-            courseCards.map((course) => renderCourseCard(course))
+            <>
+              {courseCards.map((course) => renderCourseCard(course))}
+              
+              {/* Pagination Info */}
+              {totalCourses > 0 && (
+                <View style={styles.paginationInfo}>
+                  <Text style={styles.paginationText}>
+                    Showing {courseCards.length} of {totalCourses} courses
+                  </Text>
+                  {totalPages > 1 && (
+                    <Text style={styles.paginationText}>
+                      Page {currentPage} of {totalPages}
+                    </Text>
+                  )}
+                </View>
+              )}
+              
+              {/* Load More Button */}
+              {hasMoreData && (
+                <TouchableOpacity 
+                  style={[styles.loadMoreButton, loadingMore && styles.loadMoreButtonDisabled]} 
+                  onPress={loadMoreCourses}
+                  disabled={loadingMore || isLoading}
+                >
+                  <Text style={styles.loadMoreButtonText}>
+                    {loadingMore ? 'Loading...' : 'Load More Courses'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       </ScrollView>
@@ -467,6 +558,34 @@ const styles = StyleSheet.create({
   refreshText: {
     fontSize: 14,
     color: '#2285FA',
+    fontWeight: '600',
+  },
+  paginationInfo: {
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    marginTop: 10,
+  },
+  paginationText: {
+    fontSize: 14,
+    color: '#666',
+    marginVertical: 2,
+  },
+  loadMoreButton: {
+    backgroundColor: '#006C99',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 15,
+    alignItems: 'center',
+  },
+  loadMoreButtonDisabled: {
+    backgroundColor: '#B0B0B0',
+  },
+  loadMoreButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '600',
   },
 });

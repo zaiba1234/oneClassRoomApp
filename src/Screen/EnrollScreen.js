@@ -98,19 +98,12 @@ const EnrollScreen = ({ navigation, route }) => {
   
   // Track courseData state changes
   useEffect(() => {
-    console.log('📊 CourseData state changed:', {
-      title: courseData.title,
-      lessonsCount: courseData.lessons?.length || 0,
-      hasLessons: !!courseData.lessons,
-      lessons: courseData.lessons
-    });
+  
   }, [courseData]);
 
   // Fetch course data when component mounts
   useEffect(() => {
-    console.log('🚀 EnrollScreen mounted/updated');
-    console.log('📚 Course ID:', courseId);
-    console.log('🔑 Token:', token ? 'Present' : 'Missing');
+   
     
     if (courseId && token) {
       console.log('✅ Both courseId and token available, fetching course details...');
@@ -162,10 +155,7 @@ const EnrollScreen = ({ navigation, route }) => {
   // Function to fetch course details from API
   const fetchCourseDetails = async () => {
     try {
-      console.log('🚀 Fetching course details...');
-      console.log('🔑 Token:', token ? 'Present' : 'Missing');
-      console.log('📚 Course ID:', courseId);
-      
+     
       setIsLoadingCourse(true);
       setCourseError(null);
 
@@ -174,8 +164,7 @@ const EnrollScreen = ({ navigation, route }) => {
 
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
-        console.log('📊 Raw API Course Data:', apiCourse);
-        console.log('📚 Lessons from API:', apiCourse.lessons);
+       
 
         const transformedCourse = {
           _id: apiCourse._id || courseId, // Add the subcourse ID
@@ -199,8 +188,7 @@ const EnrollScreen = ({ navigation, route }) => {
           isCompleted: Boolean(apiCourse.isCompleted), // Ensure boolean conversion
         };
 
-        console.log('🔄 Transformed Course Data:', transformedCourse);
-        console.log('📚 Transformed Lessons:', transformedCourse.lessons);
+      
 
         // Check each lesson for startTime
         if (transformedCourse.lessons && transformedCourse.lessons.length > 0) {
@@ -214,7 +202,7 @@ const EnrollScreen = ({ navigation, route }) => {
             });
           });
         } else {
-          console.log('❌ No lessons found in transformed data');
+         
         }
 
         // Set isCompleted from API response
@@ -222,7 +210,7 @@ const EnrollScreen = ({ navigation, route }) => {
           transformedCourse.isCompleted = true;
         }
 
-        console.log('✅ Setting course data...');
+      
         setCourseData(transformedCourse);
 
       } else {
@@ -252,8 +240,7 @@ const EnrollScreen = ({ navigation, route }) => {
 
   // Function to calculate live time from lesson start times
   const calculateLiveTime = () => {
-    console.log('🕐 calculateLiveTime called');
-    console.log('📚 courseData.lessons:', courseData.lessons);
+   
     
     if (!courseData.lessons || courseData.lessons.length === 0) {
       console.log('❌ No lessons found, returning null');
@@ -267,14 +254,7 @@ const EnrollScreen = ({ navigation, route }) => {
     const currentSecond = now.getSeconds();
     const currentTimeInSeconds = currentHour * 3600 + currentMinute * 60 + currentSecond;
 
-    console.log('⏰ Current time:', {
-      currentDate,
-      currentHour,
-      currentMinute,
-      currentSecond,
-      currentTimeInSeconds,
-      currentTimeString: `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}:${currentSecond.toString().padStart(2, '0')}`
-    });
+    
 
     // Find the next lesson based on start time and date
     let nextLesson = null;
@@ -283,14 +263,7 @@ const EnrollScreen = ({ navigation, route }) => {
 
     console.log('🔍 Checking lessons for start times and dates...');
     courseData.lessons.forEach((lesson, index) => {
-      console.log(`📖 Lesson ${index + 1}:`, {
-        lessonName: lesson.lessonName,
-        startTime: lesson.startTime,
-        date: lesson.date,
-        hasStartTime: !!lesson.startTime,
-        hasDate: !!lesson.date
-      });
-      
+     
       if (lesson.startTime && lesson.date) {
         // Parse lesson date
         const lessonDate = new Date(lesson.date);
@@ -310,12 +283,7 @@ const EnrollScreen = ({ navigation, route }) => {
           const [startHour, startMinute] = lesson.startTime.split(':').map(Number);
           const lessonStartSeconds = startHour * 3600 + startMinute * 60; // Convert to seconds
 
-          console.log(`⏱️ Lesson ${index + 1} time calculation:`, {
-            startHour,
-            startMinute,
-            lessonStartSeconds,
-            startTimeString: `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`
-          });
+        
 
           let timeDiff;
 
@@ -1708,7 +1676,7 @@ const styles = StyleSheet.create({
   },
   lessonsText: {
     fontSize: getFontSize(14),
-    color: '#666666',
+    color: '#666666', 
   },
   engagementMetrics: {
     flexDirection: 'row',

@@ -24,11 +24,24 @@ const FavouritesScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [togglingFavorites, setTogglingFavorites] = useState(new Set());
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [hasMoreData, setHasMoreData] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Fetch favorite courses when component mounts
   useEffect(() => {
     if (token) {
-      fetchFavoriteCourses();
+      // Reset pagination when component mounts
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalCourses(0);
+      setHasMoreData(false);
+      setFavouriteCourses([]);
+      fetchFavoriteCourses(1, false);
     } else {
       setIsLoading(false);
       setError('No token available');
@@ -39,54 +52,159 @@ const FavouritesScreen = ({ navigation }) => {
   useFocusEffect(
     React.useCallback(() => {
       if (token) {
-        fetchFavoriteCourses();
+        // Reset pagination when screen comes into focus
+        setCurrentPage(1);
+        setTotalPages(1);
+        setTotalCourses(0);
+        setHasMoreData(false);
+        fetchFavoriteCourses(1, false);
       }
     }, [token])
   );
 
-  const fetchFavoriteCourses = async () => {
+  const fetchFavoriteCourses = async (page = 1, append = false) => {
     try {
-      setIsLoading(true);
+      if (page === 1) {
+        setIsLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
       
-      const result = await courseAPI.getFavoriteCourses(token);
+      console.log('🔥 FavouritesScreen: Starting API call to getFavoriteCourses...');
+      console.log('🔥 FavouritesScreen: Page:', page, 'Append:', append);
+      console.log('🔥 FavouritesScreen: Token provided:', !!token);
+      console.log('🔥 FavouritesScreen: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
+      
+      const result = await courseAPI.getFavoriteCourses(token, page, 10);
+      
+      console.log('🔥 FavouritesScreen: API call completed');
+      console.log('🔥 FavouritesScreen: Result success:', result.success);
+      console.log('🔥 FavouritesScreen: Result status:', result.status);
+      console.log('🔥 FavouritesScreen: Full result object:', JSON.stringify(result, null, 2));
+      console.log('🔥 FavouritesScreen: Result data:', result.data);
+      console.log('🔥 FavouritesScreen: Result data type:', typeof result.data);
+      console.log('🔥 FavouritesScreen: Result data.success:', result.data?.success);
+      console.log('🔥 FavouritesScreen: Result data.data:', result.data?.data);
+      console.log('🔥 FavouritesScreen: Result data.data type:', typeof result.data?.data);
       
       if (result.success && result.data.success) {
-        const apiCourses = result.data.data;
+        // Handle new API response structure with pagination
+        const coursesData = result.data.data;
+        const courses = coursesData.courses || coursesData; // Handle both old and new structure
+        const pagination = coursesData.pagination || {};
+        
+        console.log('🔥 FavouritesScreen: API courses array:', courses);
+        console.log('🔥 FavouritesScreen: API courses length:', courses?.length);
+        console.log('🔥 FavouritesScreen: First course object:', courses?.[0]);
+        console.log('🔥 FavouritesScreen: Pagination data:', pagination);
+        
+        // Check if courses is an array
+        if (!Array.isArray(courses)) {
+          console.log('❌ FavouritesScreen: API courses is not an array:', courses);
+          setError('Invalid data format received from API');
+          if (!append) {
+            setFavouriteCourses([]);
+          }
+          return;
+        }
+        
+        // Update pagination state
+        setCurrentPage(pagination.currentPage || page);
+        setTotalPages(pagination.totalPages || 1);
+        setTotalCourses(pagination.totalCourses || courses.length);
+        setHasMoreData((pagination.currentPage || page) < (pagination.totalPages || 1));
         
         // Transform API data to match existing UI structure
-        const transformedCourses = apiCourses.map((course, index) => ({
-          id: course.id?._id || course.subcourseId || index + 1,
-          title: course.subcourseName || 'Course Title',
-          lessons: `${course.totalLessons || 0} lessons`,
-          rating: course.avgRating ? course.avgRating.toString() : '4.8',
-          price: `₹${course.price || 0}.00`,
-          thumbnail: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Frame1.png'),
-          _id: course.id?._id, // Store the actual _id for navigation
-          isFavorite: true, // All courses in favorites are favorited
-        }));
+        const transformedCourses = courses.map((course, index) => {
+          console.log(`🔥 FavouritesScreen: Processing course ${index + 1}:`, course);
+          console.log(`🔥 FavouritesScreen: Course id:`, course.id);
+          console.log(`🔥 FavouritesScreen: Course id._id:`, course.id?._id);
+          console.log(`🔥 FavouritesScreen: Course subcourseId:`, course.subcourseId);
+          console.log(`🔥 FavouritesScreen: Course subcourseName:`, course.subcourseName);
+          console.log(`🔥 FavouritesScreen: Course totalLessons:`, course.totalLessons);
+          console.log(`🔥 FavouritesScreen: Course avgRating:`, course.avgRating);
+          console.log(`🔥 FavouritesScreen: Course price:`, course.price);
+          console.log(`🔥 FavouritesScreen: Course thumbnailImageUrl:`, course.thumbnailImageUrl);
+          
+          const transformedCourse = {
+            id: course.id?._id || course.subcourseId || index + 1,
+            title: course.subcourseName || 'Course Title',
+            lessons: `${course.totalLessons || 0} lessons`,
+            rating: course.avgRating ? course.avgRating.toString() : '4.8',
+            price: `₹${course.price || 0}.00`,
+            thumbnail: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Frame1.png'),
+            _id: course.id?._id, // Store the actual _id for navigation
+            isFavorite: true, // All courses in favorites are favorited
+          };
+          
+          console.log(`🔥 FavouritesScreen: Transformed course ${index + 1}:`, transformedCourse);
+          return transformedCourse;
+        });
         
-        setFavouriteCourses(transformedCourses);
+        console.log('🔥 FavouritesScreen: All transformed courses:', transformedCourses);
+        
+        // Update courses list
+        if (append && page > 1) {
+          setFavouriteCourses(prev => [...prev, ...transformedCourses]);
+        } else {
+          setFavouriteCourses(transformedCourses);
+        }
       } else {
+        console.log('❌ FavouritesScreen: API call failed');
+        console.log('❌ FavouritesScreen: Result success:', result.success);
+        console.log('❌ FavouritesScreen: Result data success:', result.data?.success);
+        console.log('❌ FavouritesScreen: Error message:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch favorite courses');
+        if (!append) {
+          setFavouriteCourses([]);
+        }
       }
     } catch (error) {
-    
+      console.error('💥 FavouritesScreen: Exception caught while fetching favorite courses');
+      console.error('💥 FavouritesScreen: Error type:', typeof error);
+      console.error('💥 FavouritesScreen: Error message:', error.message);
+      console.error('💥 FavouritesScreen: Error stack:', error.stack);
+      console.error('💥 FavouritesScreen: Full error object:', error);
       setError('Failed to load favorite courses');
+      if (!append) {
+        setFavouriteCourses([]);
+      }
     } finally {
+      console.log('🔥 FavouritesScreen: Setting loading to false');
       setIsLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Load more courses (next page)
+  const loadMoreCourses = async () => {
+    if (hasMoreData && !loadingMore && !isLoading) {
+      console.log('📚 FavouritesScreen: Loading more courses, page:', currentPage + 1);
+      await fetchFavoriteCourses(currentPage + 1, true);
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchFavoriteCourses();
-    setRefreshing(false);
+    try {
+      // Reset pagination on refresh
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalCourses(0);
+      setHasMoreData(false);
+      await fetchFavoriteCourses(1, false);
+    } catch (error) {
+      console.error('💥 FavouritesScreen: Error during pull-to-refresh:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Function to toggle favorite status (remove from favorites)
   const toggleFavorite = async (courseId) => {
     try {
+      console.log('🔥 FavouritesScreen: Starting toggle favorite for courseId:', courseId);
       
       // Check if token exists
       if (!token) {
@@ -102,29 +220,50 @@ const FavouritesScreen = ({ navigation }) => {
       
       // Check if already toggling this course to prevent double calls
       if (togglingFavorites.has(String(courseId))) {
+        console.log('⚠️ FavouritesScreen: Already toggling this course, skipping...');
         return;
       }
       
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
+      console.log('🔥 FavouritesScreen: Set loading state for course:', courseId);
       
       const result = await courseAPI.toggleFavorite(token, courseId);
+      
+      console.log('🔥 FavouritesScreen: Toggle favorite API call completed');
+      console.log('🔥 FavouritesScreen: Result success:', result.success);
+      console.log('🔥 FavouritesScreen: Result status:', result.status);
+      console.log('🔥 FavouritesScreen: Full result object:', JSON.stringify(result, null, 2));
+      console.log('🔥 FavouritesScreen: Result data:', result.data);
+      console.log('🔥 FavouritesScreen: Result data.success:', result.data?.success);
+      console.log('🔥 FavouritesScreen: Result data.data:', result.data?.data);
       
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response
         const newFavoriteStatus = result.data.data.isLike;
+        console.log('🔥 FavouritesScreen: New favorite status:', newFavoriteStatus);
         
         if (!newFavoriteStatus) {
+          console.log('🔥 FavouritesScreen: Course was removed from favorites, removing from list');
           // Course was removed from favorites, remove it from the list
           setFavouriteCourses(prevCourses => 
             prevCourses.filter(course => String(course._id) !== String(courseId))
           );
+        } else {
+          console.log('🔥 FavouritesScreen: Course is still favorited');
         }
       } else {
+        console.log('❌ FavouritesScreen: Toggle favorite API call failed');
+        console.log('❌ FavouritesScreen: Error message:', result.data?.message);
       }
     } catch (error) {
-      console.error('💥 FavouritesScreen: Error toggling favorite:', error);
+      console.error('💥 FavouritesScreen: Exception caught while toggling favorite');
+      console.error('💥 FavouritesScreen: Error type:', typeof error);
+      console.error('💥 FavouritesScreen: Error message:', error.message);
+      console.error('💥 FavouritesScreen: Error stack:', error.stack);
+      console.error('💥 FavouritesScreen: Full error object:', error);
     } finally {
+      console.log('🔥 FavouritesScreen: Removing loading state for course:', courseId);
       // Remove loading state for this course
       setTogglingFavorites(prev => {
         const newSet = new Set(prev);
@@ -199,7 +338,7 @@ const FavouritesScreen = ({ navigation }) => {
           ) : error ? (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={fetchFavoriteCourses}>
+              <TouchableOpacity style={styles.retryButton} onPress={() => fetchFavoriteCourses(1, false)}>
                 <Text style={styles.retryButtonText}>Retry</Text>
               </TouchableOpacity>
             </View>
@@ -208,7 +347,22 @@ const FavouritesScreen = ({ navigation }) => {
               <Text style={styles.emptyText}>No favorite courses found</Text>
             </View>
           ) : (
-            favouriteCourses.map((course) => renderCourseCard(course))
+            <>
+              {favouriteCourses.map((course) => renderCourseCard(course))}
+              
+              {/* Load More Button */}
+              {hasMoreData && (
+                <TouchableOpacity 
+                  style={[styles.loadMoreButton, loadingMore && styles.loadMoreButtonDisabled]} 
+                  onPress={loadMoreCourses}
+                  disabled={loadingMore || isLoading}
+                >
+                  <Text style={styles.loadMoreButtonText}>
+                    {loadingMore ? 'Loading...' : 'Load More Favorites'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       </ScrollView>
@@ -370,5 +524,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 5,
+  },
+  paginationInfo: {
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    marginTop: 10,
+  },
+  paginationText: {
+    fontSize: 14,
+    color: '#666',
+    marginVertical: 2,
+  },
+  loadMoreButton: {
+    backgroundColor: '#FF8800',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginVertical: 15,
+    alignItems: 'center',
+  },
+  loadMoreButtonDisabled: {
+    backgroundColor: '#B0B0B0',
+  },
+  loadMoreButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
