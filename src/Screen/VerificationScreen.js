@@ -8,6 +8,8 @@ import { useAppDispatch } from '../Redux/hooks';
 import { setUserData, saveUserToStorage, setProfileData } from '../Redux/userSlice';
 import store from '../Redux/store';
 import { getApiUrl } from '../API/config';
+import { getFCMTokenService } from '../services/fcmTokenService';
+import notificationService from '../services/notificationService';
 import {
   Alert,
   TextInput,
@@ -38,7 +40,6 @@ const VerificationScreen = ({ route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(45);
-  const [currentVerificationId, setCurrentVerificationId] = useState(verificationId);
   const otpRefs = useRef([]);
 
   // Suppress console errors to prevent red error warnings in UI
@@ -62,8 +63,10 @@ const VerificationScreen = ({ route }) => {
   const verificationId = route.params?.verificationId || null;
   const isFromLogin = route.params?.isFromLogin || false;
   const isFromRegister = route.params?.isFromRegister || false;
+  
+  const [currentVerificationId, setCurrentVerificationId] = useState(verificationId);
 
-  // Test Redux dispatch to verify it's working
+  // Debug and initialize verification
   useEffect(() => {
     console.log('🔥 VerificationScreen: Component mounted');
     console.log('📱 VerificationScreen: Mobile number:', mobileNumber);
@@ -73,10 +76,23 @@ const VerificationScreen = ({ route }) => {
     console.log('📝 VerificationScreen: Is from login:', isFromLogin);
     console.log('📧 VerificationScreen: Is email verification:', isEmailVerification);
     
-    // Debug: Log which flow we're in
+    // Set current verification ID if not already set
+    if (verificationId && !currentVerificationId) {
+      setCurrentVerificationId(verificationId);
+      console.log('🆔 VerificationScreen: Set verification ID from route params');
+    }
     
-    // Test dispatch - only run once
-  }, []);
+    // Debug: Log which flow we're in
+    if (isEmailVerification) {
+      console.log('📧 VerificationScreen: Email verification flow');
+    } else if (isFromRegister) {
+      console.log('📝 VerificationScreen: Registration flow');
+    } else if (isFromLogin) {
+      console.log('🔐 VerificationScreen: Login flow');
+    } else {
+      console.log('❓ VerificationScreen: Unknown flow');
+    }
+  }, [verificationId, currentVerificationId]);
 
   // Timer effect for resend OTP
   useEffect(() => {
@@ -92,10 +108,13 @@ const VerificationScreen = ({ route }) => {
   const handleOtpChange = (index, value) => {
     const newOtp = [...otp];
     
+    console.log(`🔢 OTP Input: Index ${index}, Value: "${value}", Current OTP: [${otp.join(', ')}]`);
+    
     // If clearing the field (value is empty)
     if (value === '' && newOtp[index] !== '') {
       newOtp[index] = '';
       setOtp(newOtp);
+      console.log(`🔢 OTP Cleared: Index ${index}, New OTP: [${newOtp.join(', ')}]`);
       // Move cursor to previous field
       if (index > 0) {
         otpRefs.current[index - 1]?.focus();
@@ -107,11 +126,14 @@ const VerificationScreen = ({ route }) => {
     if (value && /^\d$/.test(value)) {
       newOtp[index] = value;
       setOtp(newOtp);
+      console.log(`🔢 OTP Entered: Index ${index}, Value: ${value}, New OTP: [${newOtp.join(', ')}]`);
       
       // Move to next field if not the last one
       if (index < 5) {
         otpRefs.current[index + 1]?.focus();
       }
+    } else if (value && !/^\d$/.test(value)) {
+      console.log(`❌ Invalid OTP Input: "${value}" is not a digit`);
     }
   };
 
@@ -301,6 +323,13 @@ const VerificationScreen = ({ route }) => {
     
     if (otpString.length !== 6) {
       console.log('❌ handleVerifyOTP: OTP length invalid:', otpString.length);
+      Alert.alert('Error', 'Please enter complete 6-digit OTP');
+      return;
+    }
+
+    if (!currentVerificationId) {
+      console.log('❌ handleVerifyOTP: No verification ID available');
+      Alert.alert('Error', 'Verification session expired. Please request OTP again.');
       return;
     }
 
@@ -314,23 +343,10 @@ const VerificationScreen = ({ route }) => {
     setIsLoading(true);
     
     try {
-      // Use the appropriate API based on the flow
-      let result;
-      if (isFromRegister) {
-        console.log('📡 handleVerifyOTP: Using register flow verification...');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, currentVerificationId);
-      } else if (isFromLogin) {
-        console.log('📡 handleVerifyOTP: Using login flow verification...');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, currentVerificationId);
-      } else {
-        console.log('📡 handleVerifyOTP: Using default flow verification...');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, currentVerificationId);
-      }
+      console.log('📡 handleVerifyOTP: Calling authAPI.verifyOTP...');
+      const result = await authAPI.verifyOTP(mobileNumber, otpString, currentVerificationId);
       
       console.log('📡 handleVerifyOTP: Verification result:', result);
-      
-     
-      
       
       if (result.success) {
         
@@ -370,6 +386,20 @@ const VerificationScreen = ({ route }) => {
               // Save to storage
               dispatch(saveUserToStorage(completeUserData));
               
+              // Send FCM token to backend after successful verification
+              console.log('🔔 VerificationScreen: Sending FCM token to backend after verification...');
+              try {
+                const fcmService = getFCMTokenService(store);
+                const fcmSent = await fcmService.sendStoredTokenToBackend();
+                if (fcmSent) {
+                  console.log('✅ VerificationScreen: FCM token sent to backend successfully');
+                } else {
+                  console.log('⚠️ VerificationScreen: Failed to send FCM token to backend');
+                }
+              } catch (fcmError) {
+                console.error('💥 VerificationScreen: Error sending FCM token:', fcmError);
+              }
+              
             } else {
               
               // Fallback to route params if profile fetch fails
@@ -385,6 +415,20 @@ const VerificationScreen = ({ route }) => {
               
               dispatch(setUserData(fallbackUserData));
               dispatch(saveUserToStorage(fallbackUserData));
+              
+              // Send FCM token to backend after successful verification (fallback case)
+              console.log('🔔 VerificationScreen: Sending FCM token to backend after verification (fallback)...');
+              try {
+                const fcmService = getFCMTokenService(store);
+                const fcmSent = await fcmService.sendStoredTokenToBackend();
+                if (fcmSent) {
+                  console.log('✅ VerificationScreen: FCM token sent to backend successfully (fallback)');
+                } else {
+                  console.log('⚠️ VerificationScreen: Failed to send FCM token to backend (fallback)');
+                }
+              } catch (fcmError) {
+                console.error('💥 VerificationScreen: Error sending FCM token (fallback):', fcmError);
+              }
             }
           } catch (profileError) {
             console.error('💥 VerificationScreen: Error fetching user profile:', profileError);
@@ -402,6 +446,20 @@ const VerificationScreen = ({ route }) => {
             
             dispatch(setUserData(fallbackUserData));
             dispatch(saveUserToStorage(fallbackUserData));
+            
+            // Send FCM token to backend after successful verification (error fallback case)
+            console.log('🔔 VerificationScreen: Sending FCM token to backend after verification (error fallback)...');
+            try {
+              const fcmService = getFCMTokenService(store);
+              const fcmSent = await fcmService.sendStoredTokenToBackend();
+              if (fcmSent) {
+                console.log('✅ VerificationScreen: FCM token sent to backend successfully (error fallback)');
+              } else {
+                console.log('⚠️ VerificationScreen: Failed to send FCM token to backend (error fallback)');
+              }
+            } catch (fcmError) {
+              console.error('💥 VerificationScreen: Error sending FCM token (error fallback):', fcmError);
+            }
           }
         } else {
           
@@ -434,23 +492,42 @@ const VerificationScreen = ({ route }) => {
           navigation.navigate('Home');
         }
       } else {
-       
+        console.log('❌ handleVerifyOTP: Verification failed:', result);
         
-        if (result.message?.includes('not registered') || 
-            result.message?.includes('Mobile number not registered') ||
-            result.message?.includes('not verified') ||
-            result.message?.includes('User not found')) {
+        // Check for specific error types
+        const errorMessage = result.message || result.data?.message || 'Verification failed';
+        
+        if (errorMessage.includes('not registered') || 
+            errorMessage.includes('Mobile number not registered') ||
+            errorMessage.includes('not verified') ||
+            errorMessage.includes('User not found')) {
         
           // Direct navigation to Register screen without alert
           navigation.navigate('Register', { mobileNumber: mobileNumber });
          
+        } else if (errorMessage.includes('invalid-verification-code') || 
+                   errorMessage.includes('Wrong OTP') ||
+                   errorMessage.includes('Invalid OTP')) {
+          // Show specific OTP error
+          Alert.alert('Error', 'Invalid OTP. Please check and try again.');
         } else {
-          // Show error message for other failures
-          Alert.alert('Error', 'Wrong OTP filled');
+          // Show generic error message
+          Alert.alert('Error', errorMessage);
         }
       }
     } catch (error) {
       console.error('💥 VerificationScreen: OTP verification error:', error);
+      
+      // Check if it's a Firebase error
+      if (error.code === 'auth/invalid-verification-code') {
+        Alert.alert('Error', 'Invalid OTP. Please check the code and try again.');
+      } else if (error.code === 'auth/code-expired') {
+        Alert.alert('Error', 'OTP has expired. Please request a new one.');
+      } else if (error.code === 'auth/too-many-requests') {
+        Alert.alert('Error', 'Too many attempts. Please try again later.');
+      } else {
+        Alert.alert('Error', 'Verification failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

@@ -54,7 +54,7 @@ const SplashScreen = ({ navigation }) => {
       } else {
         navigation.replace('OnBoard');
       }
-    }, 2000); // 3 seconds total
+    }, 3000); // 3 seconds total
 
     return () => clearTimeout(timer);
   }, [navigation, logoAnimation, opacityAnimation, isAuthenticated, isLoading]);

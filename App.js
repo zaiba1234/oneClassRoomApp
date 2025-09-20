@@ -16,12 +16,11 @@ import {
 } from './src/services/firebaseConfig';
 import { getFCMTokenService } from './src/services/fcmTokenService';
 import { testFCMTokenGeneration, getFCMTokenInfo, testFirebaseConfig } from './src/services/fcmTest';
-import websocketService from './src/services/websocketService';
 import notificationService from './src/services/notificationService';
-import notificationChannelService from './src/services/notificationChannelService';
-import websocketNotificationHandler from './src/services/websocketNotificationHandler';
 import notificationTester from './src/services/notificationTester';
 import globalNotificationService from './src/services/globalNotificationService';
+import CustomAlertManager from './src/Component/CustomAlertManager';
+import notificationAlertService from './src/services/notificationAlertService';
 import SplashScreen from './src/Screen/SplashScreen';
 import OnBoardScreen from './src/Screen/OnBoardScreen';
 import LoginScreen from './src/Screen/LoginScreen';
@@ -56,7 +55,7 @@ import InternshipLetterScreen from './src/Screen/InternshipLetterScreen';
 const Stack = createStackNavigator();
 
 // Main App Component
-const AppContent = () => {
+const AppContent = ({ alertManagerRef }) => {
   const dispatch = useDispatch();
   const { token } = useSelector((state) => state.user);
   const fcmService = getFCMTokenService(store);
@@ -65,49 +64,16 @@ const AppContent = () => {
   useEffect(() => {
     console.log('🚀 App started!');
     
-    // Initialize WebSocket connection
-    const initWebSocket = async () => {
-      try {
-        console.log('🔌 App: Initializing WebSocket connection...');
-        
-        // Get user ID from Redux store if available
-        const state = store.getState();
-        const userId = state.user?.user?._id || state.user?.user?.id;
-        console.log('👤 App: User ID for WebSocket:', userId);
-        
-        // Set a timeout for WebSocket initialization
-        const websocketTimeout = setTimeout(() => {
-          console.warn('⏰ App: WebSocket initialization timeout - continuing without real-time features');
-        }, 25000); // 25 seconds timeout
-        
-        await websocketService.connect(userId);
-        clearTimeout(websocketTimeout);
-        console.log('✅ App: WebSocket connection established successfully!');
-        
-        // Initialize WebSocket notification handler
-        await websocketNotificationHandler.initialize();
-        console.log('✅ App: WebSocket notification handler initialized!');
-        
-      } catch (error) {
-        console.error('❌ App: WebSocket connection failed:', error);
-        console.log('🛡️ App: App will continue without real-time features');
-        
-        // Set up periodic retry for WebSocket connection
-        setTimeout(() => {
-          console.log('🔄 App: Retrying WebSocket connection...');
-          initWebSocket();
-        }, 30000); // Retry after 30 seconds
-      }
-    };
+    // Note: WebSocket removed - using Firebase push notifications only
+    console.log('📱 App: Using Firebase push notifications only (WebSocket removed)');
     
     // Initialize notification system
     const initNotifications = async () => {
       try {
         console.log('🔔 App: Initializing notification system...');
         
-        // Initialize notification channel service first (for Android)
-        await notificationChannelService.initialize();
-        console.log('✅ App: Notification channel service initialized!');
+        // Note: Using Firebase messaging only - no additional notification channel service needed
+        console.log('✅ App: Firebase messaging initialized!');
         
         // Initialize notification service
         await notificationService.initialize();
@@ -117,9 +83,9 @@ const AppContent = () => {
         await globalNotificationService.initialize();
         console.log('✅ App: Global notification service initialized!');
         
-        // Check WebSocket connection status
-        const wsStatus = websocketService.getConnectionStatus();
-        console.log('🔌 App: WebSocket connection status:', wsStatus);
+        // Set up custom alert service
+        // Note: We'll set this up after the component mounts
+        console.log('ℹ️ App: Custom alert service will be initialized after component mount');
         
         // Wait a bit for Firebase to initialize
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -153,8 +119,7 @@ const AppContent = () => {
       console.error('💥 App: Error setting up message listener:', error);
     }
 
-    // Initialize WebSocket and Notifications
-    initWebSocket();
+    // Initialize Notifications (Firebase only)
     initNotifications();
     
     // Test FCM after 5 seconds
@@ -185,22 +150,7 @@ const AppContent = () => {
     global.testNotifications = () => notificationTester.runCompleteTest();
     global.quickStatus = () => notificationTester.quickStatusCheck();
     
-    // Add global WebSocket functions for debugging
-    global.websocketStatus = () => {
-      const status = websocketService.getConnectionStatus();
-      console.log('🔌 WebSocket Status:', status);
-      return status;
-    };
-    global.reconnectWebSocket = () => {
-      const { _id, userId } = store.getState().user;
-      const userIdentifier = _id || userId;
-      console.log('🔄 Reconnecting WebSocket...');
-      return websocketService.reconnect(userIdentifier);
-    };
-    global.disconnectWebSocket = () => {
-      console.log('🔌 Disconnecting WebSocket...');
-      websocketService.disconnect();
-    };
+    // Note: WebSocket functions removed - using Firebase push notifications only
     global.showFCMToken = async () => {
       try {
         const { getStoredFCMToken } = require('./src/services/firebaseConfig');
@@ -230,13 +180,11 @@ const AppContent = () => {
         }
       }
       
-      // Disconnect WebSocket and cleanup when app unmounts
+      // Cleanup when app unmounts (Firebase only)
       try {
-        websocketService.disconnect();
-        websocketNotificationHandler.cleanup();
-        console.log('🔌 App: WebSocket disconnected and notification handler cleaned up on app unmount');
+        console.log('📱 App: App unmounting - Firebase notifications will continue to work');
       } catch (error) {
-        console.error('💥 App: Error disconnecting WebSocket:', error);
+        console.error('💥 App: Error during app unmount cleanup:', error);
       }
     };
   }, [dispatch, token]);
@@ -248,26 +196,12 @@ const AppContent = () => {
         try {
           console.log('🔔 App: User logged in, handling post-login tasks...');
           
-          // Send FCM token to backend (only once when user logs in)
-          console.log('🔔 App: Sending FCM token to backend...');
-          const sent = await fcmService.sendStoredTokenToBackend();
-          if (sent) {
-            console.log('✅ App: FCM token sent to backend on login successfully');
-          } else {
-            console.log('ℹ️ App: No FCM token to send or failed to send');
-          }
+          // Note: FCM token is now sent in VerificationScreen after successful verification
+          // No need to send it again here to avoid duplicate requests
+          console.log('ℹ️ App: FCM token will be sent during verification process');
           
-          // Join WebSocket user room
-          console.log('🔌 App: Joining WebSocket user room...');
-          const { _id, userId } = store.getState().user;
-          const userIdentifier = _id || userId;
-          
-          if (userIdentifier) {
-            websocketService.emit('join', { userId: userIdentifier });
-            console.log('✅ App: Joined WebSocket user room:', userIdentifier);
-          } else {
-            console.log('⚠️ App: No user ID available for WebSocket room join');
-          }
+          // Note: WebSocket removed - using Firebase push notifications only
+          console.log('📱 App: Firebase push notifications will be sent directly from backend');
           
         } catch (error) {
           console.error('💥 App: Error handling user login tasks:', error);
@@ -275,7 +209,27 @@ const AppContent = () => {
       } else {
         // User logged out, cleanup
         console.log('👋 App: User logged out, cleaning up...');
-        websocketService.emit('leave', {});
+        
+        // Clean up FCM token from backend
+        try {
+          console.log('🔔 App: Removing FCM token from backend on logout...');
+          const fcmToken = await fcmService.getCurrentFCMToken();
+          if (fcmToken) {
+            const userToken = store.getState().user?.token;
+            if (userToken) {
+              const removed = await notificationService.removeFCMTokenFromBackend(fcmToken, userToken);
+              if (removed) {
+                console.log('✅ App: FCM token removed from backend successfully');
+              } else {
+                console.log('⚠️ App: Failed to remove FCM token from backend');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('💥 App: Error removing FCM token on logout:', error);
+        }
+        
+        // Clean up notification service
         await notificationService.cleanup();
       }
     };
@@ -322,10 +276,25 @@ const AppContent = () => {
 };
 
 const App = () => {
+  const alertManagerRef = useRef(null);
+  
+  // Set up alert service when component mounts
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (alertManagerRef.current) {
+        notificationAlertService.setAlertRef(alertManagerRef.current);
+        console.log('✅ App: Custom alert service initialized!');
+      }
+    }, 1000); // Wait for component to mount
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
   return (
     <SafeAreaProvider>
       <Provider store={store}>
-        <AppContent />
+        <AppContent alertManagerRef={alertManagerRef} />
+        <CustomAlertManager ref={alertManagerRef} />
       </Provider>
     </SafeAreaProvider>
   );

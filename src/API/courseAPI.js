@@ -360,57 +360,95 @@ export const courseAPI = {
 
   getPurchasedSubcourses: async (token) => {
     try {
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Starting API call...');
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Token provided:', !!token);
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
 
       const url = getApiUrl('/api/user/course/purchased-subcourses');
+      console.log('🔥 courseAPI.getPurchasedSubcourses: API URL:', url);
+      
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
       };
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Request headers:', headers);
 
-
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Making fetch request...');
       const response = await fetch(url, {
         method: 'GET',
         headers: headers,
       });
 
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response received');
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response status:', response.status);
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response ok:', response.ok);
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response headers:', response.headers);
+
       const responseData = await response.json();
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data:', JSON.stringify(responseData, null, 2));
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data type:', typeof responseData);
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.success:', responseData?.success);
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.data:', responseData?.data);
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.data type:', typeof responseData?.data);
+      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.data isArray:', Array.isArray(responseData?.data));
 
       if (response.ok) {
+        console.log('✅ courseAPI.getPurchasedSubcourses: API call successful');
         return { success: true, data: responseData, status: response.status };
       } else {
+        console.log('❌ courseAPI.getPurchasedSubcourses: API call failed');
+        console.log('❌ courseAPI.getPurchasedSubcourses: Error response data:', responseData);
         return { success: false, data: responseData, status: response.status };
       }
     } catch (error) {
-      console.error('💥 courseAPI: Error fetching purchased subcourses:', error);
-      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+      console.error('💥 courseAPI.getPurchasedSubcourses: Exception caught');
+      console.error('💥 courseAPI.getPurchasedSubcourses: Error type:', typeof error);
+      console.error('💥 courseAPI.getPurchasedSubcourses: Error message:', error.message);
+      console.error('💥 courseAPI.getPurchasedSubcourses: Error stack:', error.stack);
+      console.error('💥 courseAPI.getPurchasedSubcourses: Full error object:', error);
+      return { success: false, data: { message: 'Network error occurred: ' + error.message }, status: 0 };
     }
   },
 
   getInProgressSubcourses: async (token) => {
     try {
+      console.log('🔥 courseAPI.getInProgressSubcourses: Starting API call...');
+      console.log('🔥 courseAPI.getInProgressSubcourses: Token provided:', !!token);
+      console.log('🔥 courseAPI.getInProgressSubcourses: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
 
       const url = getApiUrl('/api/user/course/in-progress-subcourses');
+      console.log('🔥 courseAPI.getInProgressSubcourses: API URL:', url);
+      
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
       };
+      console.log('🔥 courseAPI.getInProgressSubcourses: Request headers:', headers);
 
-
+      console.log('🔥 courseAPI.getInProgressSubcourses: Making fetch request...');
       const response = await fetch(url, {
         method: 'GET',
         headers: headers,
       });
 
+      console.log('🔥 courseAPI.getInProgressSubcourses: Response received');
+      console.log('🔥 courseAPI.getInProgressSubcourses: Response status:', response.status);
+      console.log('🔥 courseAPI.getInProgressSubcourses: Response ok:', response.ok);
+
       const responseData = await response.json();
+      console.log('🔥 courseAPI.getInProgressSubcourses: Response data:', JSON.stringify(responseData, null, 2));
+      console.log('🔥 courseAPI.getInProgressSubcourses: Response data.data isArray:', Array.isArray(responseData?.data));
 
       if (response.ok) {
+        console.log('✅ courseAPI.getInProgressSubcourses: API call successful');
         return { success: true, data: responseData, status: response.status };
       } else {
+        console.log('❌ courseAPI.getInProgressSubcourses: API call failed');
         return { success: false, data: responseData, status: response.status };
       }
     } catch (error) {
-      console.error('💥 courseAPI: Error fetching in-progress subcourses:', error);
-      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+      console.error('💥 courseAPI.getInProgressSubcourses: Exception caught:', error);
+      return { success: false, data: { message: 'Network error occurred: ' + error.message }, status: 0 };
     }
   },
 
@@ -697,14 +735,3 @@ export const courseAPI = {
     },
 
 };
-
-
-
-
-
-
-
-
-
-
-

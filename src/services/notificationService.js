@@ -3,6 +3,7 @@ import messaging, { getMessaging } from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiUrl } from '../API/config';
 import { getStoredFCMToken, getFirebaseApp } from './firebaseConfig';
+import notificationAlertService from './notificationAlertService';
 
 // Notification Service for handling all notification operations
 class NotificationService {
@@ -34,6 +35,8 @@ class NotificationService {
       return false;
     }
   }
+
+
 
   // Setup background message handler
   setupBackgroundHandler() {
@@ -89,6 +92,8 @@ class NotificationService {
   // Handle background notification
   async handleBackgroundNotification(remoteMessage) {
     try {
+      console.log('📨 NotificationService: Handling background notification...');
+      console.log('📨 NotificationService: Remote message:', JSON.stringify(remoteMessage, null, 2));
       
       const { notification, data } = remoteMessage;
       
@@ -102,10 +107,8 @@ class NotificationService {
         type: data?.type || 'general'
       });
       
-      // For background notifications, the system automatically shows them
-      // when the app is in background or closed
-      if (notification) {
-      }
+      // Firebase handles system tray display automatically for background notifications
+      console.log('📨 NotificationService: Background notification stored and will be visible in system tray');
       
     } catch (error) {
       console.error('❌ NotificationService: Background notification handling failed:', error);
@@ -115,18 +118,14 @@ class NotificationService {
   // Handle foreground notification
   async handleForegroundNotification(remoteMessage) {
     try {
+      console.log('📱 NotificationService: Handling Firebase foreground notification...');
+      console.log('📱 NotificationService: Data type:', remoteMessage.data?.type);
+      console.log('📱 NotificationService: Title:', remoteMessage.notification?.title);
+      console.log('📱 NotificationService: Body:', remoteMessage.notification?.body);
       
       const { notification, data } = remoteMessage;
       
-      // Show in-app notification
-      this.showInAppNotification({
-        title: notification?.title || 'New Notification',
-        body: notification?.body || 'You have a new notification',
-        data: data || {},
-        type: data?.type || 'general'
-      });
-      
-      // Store notification
+      // Store notification first
       await this.storeNotification({
         title: notification?.title || 'New Notification',
         body: notification?.body || 'You have a new notification',
@@ -136,6 +135,22 @@ class NotificationService {
         type: data?.type || 'general'
       });
       
+      // For all notifications in foreground, show in-app notification
+      // Note: Firebase doesn't have a direct method to show system notifications in foreground
+      // Global notifications will be visible in the app's notification screen
+      console.log('📱 NotificationService: Showing in-app notification for foreground notification...');
+      this.showInAppNotification({
+        title: notification?.title || 'New Notification',
+        body: notification?.body || 'You have a new notification',
+        data: data || {},
+        type: data?.type || 'general'
+      });
+      
+      // Log special handling for global notifications
+      if (data?.type === 'admin_global_notification') {
+        console.log('🌍 NotificationService: Global notification - will be visible in app notification screen');
+      }
+      
     } catch (error) {
       console.error('❌ NotificationService: Foreground notification handling failed:', error);
     }
@@ -144,11 +159,104 @@ class NotificationService {
   // Show in-app notification
   showInAppNotification(notification) {
     try {
+      console.log('📱 NotificationService: Showing in-app notification...');
+      console.log('📱 NotificationService: Title:', notification.title);
+      console.log('📱 NotificationService: Body:', notification.body);
+      console.log('📱 NotificationService: Type:', notification.type);
       
-      // Show alert for now (you can replace with custom notification component)
+      const { title, body, data, type } = notification;
+      
+      // Use custom alert based on notification type
+      switch (type) {
+        case 'admin_global_notification':
+          notificationAlertService.showGlobalNotification(
+            title || 'Global Notification',
+            body || 'You have a new notification',
+            {
+              onConfirm: () => {
+                console.log('📱 NotificationService: User viewed global notification');
+                this.handleNotificationTap(notification);
+              },
+              onCancel: () => {
+                console.log('📱 NotificationService: User dismissed global notification');
+              },
+            }
+          );
+          break;
+          
+        case 'course_notification':
+        case 'course_update':
+          notificationAlertService.showCourseNotification(
+            title || 'Course Update',
+            body || 'You have a new course notification',
+            {
+              onConfirm: () => {
+                console.log('📱 NotificationService: User viewed course notification');
+                this.handleNotificationTap(notification);
+              },
+              onCancel: () => {
+                console.log('📱 NotificationService: User dismissed course notification');
+              },
+            }
+          );
+          break;
+          
+        case 'lesson_notification':
+        case 'lesson_update':
+          notificationAlertService.showLessonNotification(
+            title || 'New Lesson Available',
+            body || 'You have a new lesson notification',
+            {
+              onConfirm: () => {
+                console.log('📱 NotificationService: User viewed lesson notification');
+                this.handleNotificationTap(notification);
+              },
+              onCancel: () => {
+                console.log('📱 NotificationService: User dismissed lesson notification');
+              },
+            }
+          );
+          break;
+          
+        case 'internship_notification':
+        case 'internship_update':
+          notificationAlertService.showInternshipNotification(
+            title || 'Internship Update',
+            body || 'You have a new internship notification',
+            {
+              onConfirm: () => {
+                console.log('📱 NotificationService: User viewed internship notification');
+                this.handleNotificationTap(notification);
+              },
+              onCancel: () => {
+                console.log('📱 NotificationService: User dismissed internship notification');
+              },
+            }
+          );
+          break;
+          
+        default:
+          // Default info notification
+          notificationAlertService.showInfo(
+            title || 'New Notification',
+            body || 'You have a new notification',
+            {
+              onConfirm: () => {
+                console.log('📱 NotificationService: User acknowledged notification');
+                this.handleNotificationTap(notification);
+              },
+            }
+          );
+          break;
+      }
+      
+    } catch (error) {
+      console.error('❌ NotificationService: In-app notification failed:', error);
+      
+      // Fallback to native alert
       Alert.alert(
-        notification.title,
-        notification.body,
+        notification.title || 'New Notification',
+        notification.body || 'You have a new notification',
         [
           {
             text: 'View',
@@ -160,8 +268,6 @@ class NotificationService {
           }
         ]
       );
-    } catch (error) {
-      console.error('❌ NotificationService: In-app notification failed:', error);
     }
   }
 
@@ -272,12 +378,15 @@ class NotificationService {
   // Remove FCM token from backend
   async removeFCMTokenFromBackend(fcmToken, userToken) {
     try {
+      console.log('🔔 NotificationService: Removing FCM token from backend...');
+      console.log('🔔 NotificationService: FCM Token:', fcmToken ? `${fcmToken.substring(0, 20)}...` : 'null');
+      console.log('🔔 NotificationService: User Token:', userToken ? `${userToken.substring(0, 20)}...` : 'null');
       
       const apiUrl = getApiUrl('/api/notification/remove-fcm-token');
       const deviceId = await this.getDeviceId();
       
       const response = await fetch(apiUrl, {
-        method: 'POST',
+        method: 'DELETE', // Changed to DELETE method to match backend
         headers: {
           'Authorization': `Bearer ${userToken}`,
           'Content-Type': 'application/json',
@@ -289,10 +398,13 @@ class NotificationService {
       });
       
       const result = await response.json();
+      console.log('🔔 NotificationService: Remove FCM token response:', result);
       
       if (response.ok && result.success) {
+        console.log('✅ NotificationService: FCM token removed successfully');
         return true;
       } else {
+        console.log('❌ NotificationService: Failed to remove FCM token:', result.message);
         return false;
       }
     } catch (error) {
@@ -419,20 +531,36 @@ class NotificationService {
     }
   }
 
+
+
   // Cleanup on logout
   async cleanup() {
     try {
+      console.log('🔔 NotificationService: Starting cleanup...');
       
       // Remove FCM token from backend
       const userToken = await AsyncStorage.getItem('user_token');
       const fcmToken = await getStoredFCMToken();
       
       if (userToken && fcmToken) {
-        await this.removeFCMTokenFromBackend(fcmToken, userToken);
+        console.log('🔔 NotificationService: Removing FCM token during cleanup...');
+        const removed = await this.removeFCMTokenFromBackend(fcmToken, userToken);
+        if (removed) {
+          console.log('✅ NotificationService: FCM token removed during cleanup');
+        } else {
+          console.log('⚠️ NotificationService: Failed to remove FCM token during cleanup');
+        }
+      } else {
+        console.log('ℹ️ NotificationService: No FCM token or user token to remove during cleanup');
       }
       
       // Clear local notifications
       await AsyncStorage.removeItem('stored_notifications');
+      console.log('✅ NotificationService: Local notifications cleared');
+      
+      // Clear FCM token from storage
+      await AsyncStorage.removeItem('fcm_token');
+      console.log('✅ NotificationService: FCM token cleared from storage');
       
     } catch (error) {
       console.error('❌ NotificationService: Cleanup failed:', error);

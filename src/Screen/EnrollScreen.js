@@ -487,7 +487,6 @@ const EnrollScreen = ({ navigation, route }) => {
             },
             {
               text: 'Cancel',
-              style: 'cancel'
             }
           ]
         );
@@ -1066,39 +1065,54 @@ const EnrollScreen = ({ navigation, route }) => {
     true;
   `;
 
-  const renderVideoPlayer = () => (
-    <View style={[styles.videoContainer, isFullScreen && styles.fullScreenVideoContainer]}>
-      <WebView
-        ref={webViewRef}
-        source={{ uri: courseData.introVideoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' }}
-        style={styles.webView}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        startInLoadingState={true}
-        allowsFullscreenVideo={true}
-        mediaPlaybackRequiresUserAction={false}
-        onMessage={onMessage}
-        injectedJavaScript={injectedJavaScript}
-        renderLoading={() => <Text style={{ color: '#FFFFFF', textAlign: 'center' }}>Loading Video...</Text>}
-      />
-      {isFullScreen && (
-        <TouchableOpacity
-          style={styles.exitFullScreenButton}
-          onPress={() => {
-            setIsFullScreen(false);
-            if (webViewRef.current) {
-              webViewRef.current.injectJavaScript(`
-                document.exitFullscreen();
-                true;
-              `);
-            }
-          }}
-        >
-          <Text style={styles.exitFullScreenText}>Exit Full Screen</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  const renderVideoPlayer = () => {
+    // Check if intro video URL is available
+    if (!courseData.introVideoUrl || courseData.introVideoUrl.trim() === '') {
+      return (
+        <View style={[styles.videoContainer, isFullScreen && styles.fullScreenVideoContainer]}>
+          <View style={styles.noVideoContainer}>
+            <Icon name="videocam-off" size={60} color="#CCCCCC" />
+            <Text style={styles.noVideoText}>No preview video available</Text>
+            <Text style={styles.noVideoSubText}>Course content will be available after enrollment</Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.videoContainer, isFullScreen && styles.fullScreenVideoContainer]}>
+        <WebView
+          ref={webViewRef}
+          source={{ uri: courseData.introVideoUrl }}
+          style={styles.webView}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          allowsFullscreenVideo={true}
+          mediaPlaybackRequiresUserAction={false}
+          onMessage={onMessage}
+          injectedJavaScript={injectedJavaScript}
+          renderLoading={() => <Text style={{ color: '#FFFFFF', textAlign: 'center' }}>Loading Video...</Text>}
+        />
+        {isFullScreen && (
+          <TouchableOpacity
+            style={styles.exitFullScreenButton}
+            onPress={() => {
+              setIsFullScreen(false);
+              if (webViewRef.current) {
+                webViewRef.current.injectJavaScript(`
+                  document.exitFullscreen();
+                  true;
+                `);
+              }
+            }}
+          >
+            <Text style={styles.exitFullScreenText}>Exit Full Screen</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
 
   const renderCourseInfo = () => (
     <View style={[styles.courseInfoContainer, isFullScreen && { display: 'none' }]}>
@@ -1194,10 +1208,24 @@ const EnrollScreen = ({ navigation, route }) => {
   const renderLessons = () => {
     // Add extra safety check
     if (!courseData.lessons || !Array.isArray(courseData.lessons) || courseData.lessons.length === 0) {
+      // Show alert and return empty view
+      Alert.alert(
+        'No Lessons Available',
+        'Lessons not added yet',
+        [
+          {
+            text: 'OK',
+            style: 'default'
+          }
+        ]
+      );
+      
       return (
         <View style={styles.lessonsContainer}>
           <View style={styles.emptyLessonsContainer}>
-            <Text style={styles.emptyLessonsText}>No lessons available yet</Text>
+            <Icon name="book-outline" size={60} color="#CCCCCC" />
+            <Text style={styles.emptyLessonsText}>No lessons available</Text>
+            <Text style={styles.emptyLessonsSubText}>Please check back later</Text>
           </View>
         </View>
       );
@@ -1215,10 +1243,11 @@ const EnrollScreen = ({ navigation, route }) => {
             ? lesson.duration
             : '0 mins';
 
-          // Ensure thumbnail is valid
-          const thumbnailSource = lesson && lesson.thumbnailImageUrl && typeof lesson.thumbnailImageUrl === 'string'
+          // Check if thumbnail is available, otherwise show placeholder
+          const hasThumbnail = lesson && lesson.thumbnailImageUrl && typeof lesson.thumbnailImageUrl === 'string' && lesson.thumbnailImageUrl.trim() !== '';
+          const thumbnailSource = hasThumbnail 
             ? { uri: lesson.thumbnailImageUrl }
-            : require('../assests/images/Course.png');
+            : null; // No fallback image
 
           // Check if lesson should be locked
           const isFirstLesson = index === 0;
@@ -1245,10 +1274,16 @@ const EnrollScreen = ({ navigation, route }) => {
               }}
               disabled={isLessonLocked}
             >
-              <Image
-                source={thumbnailSource}
-                style={styles.lessonThumbnail}
-              />
+              {hasThumbnail ? (
+                <Image
+                  source={thumbnailSource}
+                  style={styles.lessonThumbnail}
+                />
+              ) : (
+                <View style={styles.lessonThumbnailPlaceholder}>
+                  <Icon name="play-circle-outline" size={30} color="#CCCCCC" />
+                </View>
+              )}
               <View style={styles.lessonInfo}>
                 <Text style={styles.lessonTitle}>
                   {lessonTitle}
@@ -1532,8 +1567,9 @@ const styles = StyleSheet.create({
     fontSize: getFontSize(18),
     fontWeight: 'bold',
     color: '#000000',
-    textAlign: 'center',
-    marginHorizontal: getVerticalSize(10),
+    textAlign: 'left',
+    marginLeft: getVerticalSize(28),
+    marginRight: getVerticalSize(10),
   },
   placeholder: {
     width: getFontSize(40),
@@ -1776,6 +1812,17 @@ const styles = StyleSheet.create({
     borderRadius: getFontSize(6),
     marginRight: getVerticalSize(12),
   },
+  lessonThumbnailPlaceholder: {
+    width: getFontSize(60),
+    height: getFontSize(40),
+    borderRadius: getFontSize(6),
+    marginRight: getVerticalSize(12),
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
   lessonInfo: {
     flex: 1,
   },
@@ -1921,10 +1968,37 @@ const styles = StyleSheet.create({
     paddingVertical: getVerticalSize(40),
   },
   emptyLessonsText: {
-    fontSize: getFontSize(16),
+    fontSize: getFontSize(18),
+    color: '#666666',
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: getVerticalSize(15),
+  },
+  emptyLessonsSubText: {
+    fontSize: getFontSize(14),
     color: '#999999',
     textAlign: 'center',
-    fontStyle: 'italic',
+    marginTop: getVerticalSize(8),
+  },
+  noVideoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F8F8',
+    paddingVertical: getVerticalSize(40),
+  },
+  noVideoText: {
+    fontSize: getFontSize(18),
+    color: '#666666',
+    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: getVerticalSize(15),
+  },
+  noVideoSubText: {
+    fontSize: getFontSize(14),
+    color: '#999999',
+    textAlign: 'center',
+    marginTop: getVerticalSize(8),
   },
   enrollButtonDisabled: {
     opacity: 0.7,

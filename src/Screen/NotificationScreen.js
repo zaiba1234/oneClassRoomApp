@@ -194,6 +194,17 @@ const NotificationScreen = ({ navigation }) => {
     }
   };
 
+  // Note: WebSocket listeners removed - using Firebase push notifications only
+  // Firebase notifications are handled automatically by the notification service
+  useEffect(() => {
+    if (!token) return;
+
+    console.log('🔔 NotificationScreen: Using Firebase push notifications only (WebSocket removed)');
+    
+    // Firebase notifications are handled automatically by the notification service
+    // No need for manual listeners - notifications will be received and stored automatically
+  }, [token]);
+
   // Load notifications when screen focuses
   useFocusEffect(
     useCallback(() => {

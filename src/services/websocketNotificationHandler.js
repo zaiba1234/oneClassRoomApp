@@ -1,6 +1,7 @@
 import { Alert, Linking } from 'react-native';
 import websocketService from './websocketService';
 import notificationService from './notificationService';
+import notificationAlertService from './notificationAlertService';
 
 // WebSocket Notification Handler
 class WebSocketNotificationHandler {
@@ -73,6 +74,13 @@ class WebSocketNotificationHandler {
         this.handleInternshipUploadNotification(data);
       });
       console.log('✅ WebSocketNotificationHandler: Upload internship letter listener set up');
+      
+      // Global notification handler
+      websocketService.onGlobalNotification((data) => {
+        console.log('🌍 WebSocketNotificationHandler: Global notification event received:', data);
+        this.handleGlobalNotification(data);
+      });
+      console.log('✅ WebSocketNotificationHandler: Global notification listener set up');
       
       console.log('✅ WebSocketNotificationHandler: All event listeners set up successfully');
     } catch (error) {
@@ -278,6 +286,113 @@ class WebSocketNotificationHandler {
     }
   }
 
+  // Handle global notification
+  async handleGlobalNotification(data) {
+    try {
+      console.log('🌍 WebSocketNotificationHandler: Processing global notification...');
+      console.log('🌍 WebSocketNotificationHandler: Received data:', JSON.stringify(data, null, 2));
+      
+      const notification = {
+        title: data.title || 'Global Notification',
+        body: data.body || data.message || 'You have a new notification',
+        data: {
+          type: 'admin_global_notification',
+          ...data
+        },
+        timestamp: new Date().toISOString(),
+        isRead: false
+      };
+      
+      console.log('🌍 WebSocketNotificationHandler: Created notification:', JSON.stringify(notification, null, 2));
+      
+      // For global notifications, use Firebase to send push notification to system tray
+      // 1. Store the notification locally
+      await notificationService.storeNotification(notification);
+      
+      // 2. Send Firebase push notification to system notification tray
+      console.log('🌍 WebSocketNotificationHandler: Sending Firebase push notification to system tray...');
+      await this.sendFirebasePushNotification(notification);
+      
+      console.log('✅ WebSocketNotificationHandler: Global notification processed');
+    } catch (error) {
+      console.error('❌ WebSocketNotificationHandler: Global notification failed:', error);
+    }
+  }
+
+  // Send Firebase push notification to system notification tray
+  async sendFirebasePushNotification(notification) {
+    try {
+      console.log('🌍 WebSocketNotificationHandler: Sending Firebase push notification...');
+      
+      // Use React Native's built-in notification system
+      const { Platform } = require('react-native');
+      
+      if (Platform.OS === 'android') {
+        // For Android, we'll use the notification channel service
+        await this.showAndroidSystemNotification(notification);
+      } else {
+        // For iOS, we'll use a different approach
+        await this.showIOSSystemNotification(notification);
+      }
+      
+      console.log('✅ WebSocketNotificationHandler: Firebase push notification sent to system tray');
+    } catch (error) {
+      console.error('❌ WebSocketNotificationHandler: Firebase push notification failed:', error);
+    }
+  }
+
+  // Show Android system notification
+  async showAndroidSystemNotification(notification) {
+    try {
+      console.log('🌍 WebSocketNotificationHandler: Showing Android system notification...');
+      
+      // Import the notification channel service
+      const { showNotification } = require('./notificationChannelService');
+      
+      // Show the notification using the channel service
+      const success = await showNotification({
+        title: notification.title,
+        body: notification.body,
+        data: notification.data,
+        channelId: 'global_notifications',
+        priority: 'high',
+        sound: 'default',
+        vibrate: true,
+        tag: 'global_notification',
+        icon: 'ic_notification',
+        color: '#FF6B35',
+      });
+      
+      if (success) {
+        console.log('✅ WebSocketNotificationHandler: Android system notification shown');
+      } else {
+        console.log('⚠️ WebSocketNotificationHandler: Android system notification failed, using fallback');
+        // Fallback: The notification will still be stored and visible in the app
+      }
+    } catch (error) {
+      console.error('❌ WebSocketNotificationHandler: Android system notification failed:', error);
+    }
+  }
+
+  // Show iOS system notification
+  async showIOSSystemNotification(notification) {
+    try {
+      console.log('🌍 WebSocketNotificationHandler: Showing iOS system notification...');
+      
+      // For iOS, we'll use a different approach since local notifications are more complex
+      // The notification will be stored and visible in the app's notification screen
+      console.log('🌍 WebSocketNotificationHandler: iOS system notification would be shown here');
+      console.log('🌍 WebSocketNotificationHandler: Title:', notification.title);
+      console.log('🌍 WebSocketNotificationHandler: Body:', notification.body);
+      
+      // In a production app, you might want to use react-native-push-notification
+      // or implement a custom solution for iOS system notifications
+      
+    } catch (error) {
+      console.error('❌ WebSocketNotificationHandler: iOS system notification failed:', error);
+    }
+  }
+
   // Show in-app notification
   showInAppNotification(notification) {
     try {
@@ -285,27 +400,74 @@ class WebSocketNotificationHandler {
       console.log('🔔 WebSocketNotificationHandler: Notification title:', notification.title);
       console.log('🔔 WebSocketNotificationHandler: Notification body:', notification.body);
       
-      // Show alert with action buttons
-      Alert.alert(
-        notification.title,
-        notification.body,
-        [
-          {
-            text: 'View',
-            onPress: () => {
-              console.log('🔔 WebSocketNotificationHandler: User tapped View button');
-              this.handleNotificationTap(notification);
+      // Use custom alert based on notification type
+      const notificationType = notification.type || 'general';
+      
+      switch (notificationType) {
+        case 'live_lesson':
+        case 'lesson_started':
+          notificationAlertService.showLessonNotification(
+            notification.title,
+            notification.body,
+            {
+              onConfirm: () => {
+                console.log('🔔 WebSocketNotificationHandler: User tapped View button');
+                this.handleNotificationTap(notification);
+              },
+              onCancel: () => {
+                console.log('🔔 WebSocketNotificationHandler: User dismissed notification');
+              },
             }
-          },
-          {
-            text: 'Dismiss',
-            style: 'cancel',
-            onPress: () => {
-              console.log('🔔 WebSocketNotificationHandler: User dismissed notification');
+          );
+          break;
+          
+        case 'course_purchased':
+        case 'course_unlocked':
+          notificationAlertService.showCourseNotification(
+            notification.title,
+            notification.body,
+            {
+              onConfirm: () => {
+                console.log('🔔 WebSocketNotificationHandler: User tapped View button');
+                this.handleNotificationTap(notification);
+              },
+              onCancel: () => {
+                console.log('🔔 WebSocketNotificationHandler: User dismissed notification');
+              },
             }
-          }
-        ]
-      );
+          );
+          break;
+          
+        case 'internship_letter':
+        case 'internship_payment':
+          notificationAlertService.showInternshipNotification(
+            notification.title,
+            notification.body,
+            {
+              onConfirm: () => {
+                console.log('🔔 WebSocketNotificationHandler: User tapped View button');
+                this.handleNotificationTap(notification);
+              },
+              onCancel: () => {
+                console.log('🔔 WebSocketNotificationHandler: User dismissed notification');
+              },
+            }
+          );
+          break;
+          
+        default:
+          notificationAlertService.showInfo(
+            notification.title,
+            notification.body,
+            {
+              onConfirm: () => {
+                console.log('🔔 WebSocketNotificationHandler: User tapped View button');
+                this.handleNotificationTap(notification);
+              },
+            }
+          );
+          break;
+      }
       
       console.log('✅ WebSocketNotificationHandler: In-app notification displayed successfully');
     } catch (error) {

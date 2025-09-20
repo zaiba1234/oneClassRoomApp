@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiUrl } from '../API/config';
 import websocketService from './websocketService';
 import notificationService from './notificationService';
+import notificationAlertService from './notificationAlertService';
 
 class GlobalNotificationService {
   constructor() {
@@ -138,19 +139,19 @@ class GlobalNotificationService {
     try {
       console.log('📱 GlobalNotificationService: Showing push notification:', notificationData.title);
       
-      // For now, we'll use Alert for background notifications
-      // This can be enhanced later with proper push notification setup
-      Alert.alert(
+      // Use custom alert for background notifications
+      notificationAlertService.showGlobalNotification(
         notificationData.title,
         notificationData.body,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              console.log('📱 GlobalNotificationService: User acknowledged notification');
-            }
-          }
-        ]
+        {
+          onConfirm: () => {
+            console.log('📱 GlobalNotificationService: User acknowledged notification');
+            this.handleNotificationTap(notificationData);
+          },
+          onCancel: () => {
+            console.log('📱 GlobalNotificationService: User dismissed notification');
+          },
+        }
       );
       
       console.log('✅ GlobalNotificationService: Push notification sent successfully');
@@ -165,21 +166,19 @@ class GlobalNotificationService {
     try {
       console.log('📱 GlobalNotificationService: Showing in-app notification:', notificationData.title);
       
-      // Show alert for now (you can replace with custom notification component)
-      Alert.alert(
+      // Use custom alert for in-app notifications
+      notificationAlertService.showGlobalNotification(
         notificationData.title,
         notificationData.body,
-        [
-          {
-            text: 'View Details',
-            onPress: () => this.handleNotificationTap(notificationData)
+        {
+          onConfirm: () => {
+            console.log('📱 GlobalNotificationService: User viewed notification details');
+            this.handleNotificationTap(notificationData);
           },
-          {
-            text: 'Dismiss',
-            style: 'cancel'
-          }
-        ],
-        { cancelable: true }
+          onCancel: () => {
+            console.log('📱 GlobalNotificationService: User dismissed notification');
+          },
+        }
       );
     } catch (error) {
       console.error('❌ GlobalNotificationService: Error showing in-app notification:', error);

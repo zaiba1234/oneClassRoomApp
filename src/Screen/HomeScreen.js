@@ -421,35 +421,46 @@ const HomeScreen = () => {
       const result = await courseAPI.getFavoriteCourses(token);
 
       if (result.success && result.data.success) {
-        const favoriteCourseIds = result.data.data.map(course => {
-          // Handle different possible ID structures from API
-          const courseId = course.id?._id || course.subcourseId || course._id;
-          return String(courseId);
-        }).filter(id => id && id !== 'undefined'); // Filter out invalid IDs
+        const apiCourses = result.data.data;
+        
+        // Check if apiCourses is an array
+        if (Array.isArray(apiCourses)) {
+          console.log('✅ HomeScreen: Found', apiCourses.length, 'favorite courses');
+          
+          const favoriteCourseIds = apiCourses.map(course => {
+            // Handle different possible ID structures from API
+            const courseId = course.id?._id || course.subcourseId || course._id;
+            return String(courseId);
+          }).filter(id => id && id !== 'undefined'); // Filter out invalid IDs
 
-        const newFavoriteSet = new Set(favoriteCourseIds);
-        setUserFavoriteCourses(newFavoriteSet);
+          const newFavoriteSet = new Set(favoriteCourseIds);
+          setUserFavoriteCourses(newFavoriteSet);
 
-        // Update course cards with fresh favorite status
-        setCourseCards(prevCourses =>
-          prevCourses.map(course => ({
-            ...course,
-            isFavorite: newFavoriteSet.has(String(course.id))
-          }))
-        );
+          // Update course cards with fresh favorite status
+          setCourseCards(prevCourses =>
+            prevCourses.map(course => ({
+              ...course,
+              isFavorite: newFavoriteSet.has(String(course.id))
+            }))
+          );
 
-        // Update featured courses with fresh favorite status
-        setFeaturedCourses(prevFeatured =>
-          prevFeatured.map(course => ({
-            ...course,
-            isFavorite: newFavoriteSet.has(String(course.id))
-          }))
-        );
+          // Update featured courses with fresh favorite status
+          setFeaturedCourses(prevFeatured =>
+            prevFeatured.map(course => ({
+              ...course,
+              isFavorite: newFavoriteSet.has(String(course.id))
+            }))
+          );
 
-        console.log('✅ HomeScreen: Favorite courses updated successfully');
+          console.log('✅ HomeScreen: Favorite courses updated successfully');
+        } else {
+          console.log('⚠️ HomeScreen: Favorite courses data is not an array:', typeof apiCourses);
+          setUserFavoriteCourses(new Set());
+        }
       } else {
+        const errorMessage = result.data?.message || result.message || 'Failed to fetch favorite courses';
+        console.log('❌ HomeScreen: Failed to fetch favorite courses:', errorMessage);
         setUserFavoriteCourses(new Set()); // Set empty set on failure
-        console.log('❌ HomeScreen: Failed to fetch favorite courses');
       }
     } catch (error) {
       setUserFavoriteCourses(new Set()); // Set empty set on error
@@ -1270,7 +1281,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: getResponsiveSize(20),
-    paddingTop: Platform.OS === 'ios' ? insets.top + getResponsiveSize(10) : StatusBar.currentHeight + getResponsiveSize(10),
+    paddingTop: Platform.OS === 'ios' ? insets.top + getResponsiveSize(20) : StatusBar.currentHeight + getResponsiveSize(60),
     paddingBottom: getResponsiveSize(20),
   },
   headerTop: {
@@ -1278,7 +1289,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     minHeight: getResponsiveSize(50),
-  },
+  },  
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
