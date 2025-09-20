@@ -7,9 +7,13 @@ import {
   Dimensions,
   StyleSheet,
   Platform,
+  Image,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import LinearGradient from 'react-native-linear-gradient';
+
+// Import logo
+const LogoImage = require('../assests/images/logo.jpeg');
 
 const { width, height } = Dimensions.get('window');
 
@@ -182,10 +186,14 @@ const CustomAlert = ({
           end={{ x: 1, y: 0 }}
           style={styles.headerGradient}
         >
-          {/* Icon */}
+          {/* Logo */}
           {showIcon && (
-            <View style={[styles.iconContainer, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}>
-              <Text style={styles.iconText}>{icon || config.icon}</Text>
+            <View style={styles.iconContainer}>
+              <Image 
+                source={LogoImage} 
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
           )}
         </LinearGradient>
@@ -271,24 +279,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   iconContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    overflow: 'hidden',
   },
-  iconText: {
-    fontSize: 32,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  logoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   contentContainer: {
     paddingHorizontal: 30,
