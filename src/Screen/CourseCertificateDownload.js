@@ -13,6 +13,7 @@ import {
   Linking,
   PermissionsAndroid,
   Platform,
+  RefreshControl,
 } from 'react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
@@ -41,6 +42,7 @@ const CourseCertificateDownload = () => {
   const [certificateData, setCertificateData] = useState(null);
   const [isLoadingCertificate, setIsLoadingCertificate] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Get courseId from route params (coming from EnrollScreen)
   const courseId = route.params?.courseId;
@@ -253,6 +255,18 @@ const CourseCertificateDownload = () => {
       Alert.alert('Error', 'Failed to fetch certificate details');
     } finally {
       setIsLoadingCertificate(false);
+    }
+  };
+
+  // Function to handle pull-to-refresh
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await fetchCertificateDescription();
+    } catch (error) {
+      // Handle refresh error silently
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -649,7 +663,18 @@ const CourseCertificateDownload = () => {
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent} >
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#FF8A00']}
+            tintColor="#FF8A00"
+            title="Pull to refresh..."
+            titleColor="#FF8A00"
+          />
+        }
+      >
         {/* Congratulations Section */}
         <View style={styles.congratulationsContainer}>
           <Image 

@@ -12,6 +12,7 @@ import {
   ScrollView,
   Linking,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
@@ -65,6 +66,7 @@ const LessonVideoScreen = ({ navigation, route }) => {
 
   const [isLoadingLesson, setIsLoadingLesson] = useState(true);
   const [lessonError, setLessonError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // State for time-based button logic
   const [isButtonEnabled, setIsButtonEnabled] = useState(false);
@@ -189,6 +191,18 @@ const LessonVideoScreen = ({ navigation, route }) => {
       setLessonError(error.message || 'Network error occurred');
     } finally {
       setIsLoadingLesson(false);
+    }
+  };
+
+  // Function to handle pull-to-refresh
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await fetchLessonDetails();
+    } catch (error) {
+      // Handle refresh error silently
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -420,6 +434,16 @@ const LessonVideoScreen = ({ navigation, route }) => {
       <ScrollView 
         style={[styles.scrollView, isFullScreen && { display: 'none' }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#FF6B35']}
+            tintColor="#FF6B35"
+            title="Pull to refresh..."
+            titleColor="#FF6B35"
+          />
+        }
       >
         {isLoadingLesson ? (
           <View style={styles.loadingContainer}>
