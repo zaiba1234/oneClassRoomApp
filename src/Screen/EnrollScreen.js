@@ -106,10 +106,8 @@ const EnrollScreen = ({ navigation, route }) => {
    
     
     if (courseId && token) {
-      console.log('✅ Both courseId and token available, fetching course details...');
       fetchCourseDetails();
     } else {
-      console.log('❌ Missing courseId or token:', { courseId: !!courseId, token: !!token });
     }
   }, [courseId, token]);
 
@@ -155,15 +153,21 @@ const EnrollScreen = ({ navigation, route }) => {
   // Function to fetch course details from API
   const fetchCourseDetails = async () => {
     try {
-     
       setIsLoadingCourse(true);
       setCourseError(null);
 
+      console.log('🔍 EnrollScreen: Fetching course details for courseId:', courseId);
+      console.log('🔍 EnrollScreen: Using token:', token ? 'Present' : 'Missing');
+
       const result = await courseAPI.getSubcourseById(token, courseId);
-      console.log('📡 API Response:', result);
+
+      console.log('📥 EnrollScreen: getSubcourseById API Response:', result);
+      console.log('📥 EnrollScreen: API Success:', result.success);
+      console.log('📥 EnrollScreen: API Data:', result.data);
 
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
+        console.log('📥 EnrollScreen: Course data from API:', apiCourse);
        
 
         const transformedCourse = {
@@ -192,14 +196,7 @@ const EnrollScreen = ({ navigation, route }) => {
 
         // Check each lesson for startTime
         if (transformedCourse.lessons && transformedCourse.lessons.length > 0) {
-          console.log('🔍 Checking lessons for startTime...');
           transformedCourse.lessons.forEach((lesson, index) => {
-            console.log(`📖 Lesson ${index + 1}:`, {
-              lessonName: lesson.lessonName,
-              startTime: lesson.startTime,
-              hasStartTime: !!lesson.startTime,
-              lessonId: lesson.lessonId
-            });
           });
         } else {
          
@@ -214,14 +211,11 @@ const EnrollScreen = ({ navigation, route }) => {
         setCourseData(transformedCourse);
 
       } else {
-        console.log('❌ API call failed:', result.data?.message || 'Failed to fetch course details');
         setCourseError(result.data?.message || 'Failed to fetch course details');
       }
     } catch (error) {
-      console.log('💥 Error fetching course details:', error);
       setCourseError(error.message || 'Network error occurred');
     } finally {
-      console.log('🏁 Course fetch completed');
       setIsLoadingCourse(false);
     }
   };
@@ -243,7 +237,6 @@ const EnrollScreen = ({ navigation, route }) => {
    
     
     if (!courseData.lessons || courseData.lessons.length === 0) {
-      console.log('❌ No lessons found, returning null');
       return null;
     }
 
@@ -261,7 +254,6 @@ const EnrollScreen = ({ navigation, route }) => {
     let minTimeDiff = Infinity;
     let hasFutureLesson = false; // Track if any lesson is in the future
 
-    console.log('🔍 Checking lessons for start times and dates...');
     courseData.lessons.forEach((lesson, index) => {
      
       if (lesson.startTime && lesson.date) {
@@ -277,7 +269,7 @@ const EnrollScreen = ({ navigation, route }) => {
           isFuture: lessonDateString > currentDate,
           isPast: lessonDateString < currentDate
         });
-
+        
         // Check if lesson is today or in the future
         if (lessonDateString >= currentDate) {
           const [startHour, startMinute] = lesson.startTime.split(':').map(Number);
@@ -309,7 +301,6 @@ const EnrollScreen = ({ navigation, route }) => {
           // Check if this lesson is in the future
           if (timeDiff > 0) {
             hasFutureLesson = true;
-            console.log(`✅ Lesson ${index + 1} is in the future`);
             
             if (timeDiff < minTimeDiff) {
               minTimeDiff = timeDiff;
@@ -320,7 +311,7 @@ const EnrollScreen = ({ navigation, route }) => {
                 minTimeDiff,
                 lessonDate: lessonDateString
               });
-            }
+          }
           } else {
             console.log(`⏰ Lesson ${index + 1} is in the past`);
           }
@@ -341,12 +332,10 @@ const EnrollScreen = ({ navigation, route }) => {
 
     // If no future lesson found, don't show timer
     if (!hasFutureLesson) {
-      console.log('❌ No future lessons found, returning null');
       return null;
     }
 
     if (!nextLesson || minTimeDiff === Infinity) {
-      console.log('❌ No valid next lesson found, returning null');
       return null;
     }
 
@@ -358,15 +347,6 @@ const EnrollScreen = ({ navigation, route }) => {
     // Format the time string as HH:MM:SS
     const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-    console.log('⏰ Final timer result:', {
-      hours,
-      minutes,
-      seconds,
-      timeString,
-      nextLessonName: nextLesson.lessonName,
-      nextLessonDate: nextLesson.date
-    });
-
     return timeString;
   };
 
@@ -375,33 +355,22 @@ const EnrollScreen = ({ navigation, route }) => {
   
   // Track liveTime state changes
   useEffect(() => {
-    console.log('⏰ LiveTime state changed:', liveTime);
   }, [liveTime]);
 
   // Update live time every second
   useEffect(() => {
-    console.log('🔄 Timer useEffect triggered');
-    console.log('📚 Lessons available:', courseData.lessons?.length || 0);
-    
     if (courseData.lessons && courseData.lessons.length > 0) {
-      console.log('⏰ Starting timer interval...');
-      
       const interval = setInterval(() => {
-        console.log('⏱️ Timer tick - calculating live time...');
         const calculatedTime = calculateLiveTime();
-        console.log('📊 Calculated time result:', calculatedTime);
         
         if (calculatedTime) {
-          console.log('✅ Setting live time:', calculatedTime);
           setLiveTime(calculatedTime);
         } else {
-          console.log('❌ No calculated time, clearing live time');
           setLiveTime('');
         }
       }, 1000);
 
       return () => {
-        console.log('🛑 Clearing timer interval');
         clearInterval(interval);
       };
     } else {
@@ -466,7 +435,14 @@ const EnrollScreen = ({ navigation, route }) => {
       const priceInRupees = parseFloat(priceString) || 1;
       const priceInPaise = Math.round(priceInRupees * 100);
 
+      console.log('💳 EnrollScreen: Creating course order...');
+      console.log('💳 EnrollScreen: Order details - courseId:', courseId, 'priceInPaise:', priceInPaise);
+
       const orderResult = await courseAPI.createCourseOrder(token, courseId, priceInPaise);
+
+      console.log('📥 EnrollScreen: createCourseOrder API Response:', orderResult);
+      console.log('📥 EnrollScreen: Order Success:', orderResult.success);
+      console.log('📥 EnrollScreen: Order Data:', orderResult.data);
 
       if (!orderResult.success || !orderResult.data.success) {
         setPaymentStatus('failed');
@@ -516,6 +492,9 @@ const EnrollScreen = ({ navigation, route }) => {
         return;
       }
 
+      console.log('✅ EnrollScreen: Verifying payment...');
+      console.log('✅ EnrollScreen: Payment details - orderId:', orderData.orderId, 'paymentId:', paymentId, 'signature:', signature);
+
       const verificationResult = await courseAPI.verifyPayment(
         token,
         orderData.orderId,
@@ -523,6 +502,10 @@ const EnrollScreen = ({ navigation, route }) => {
         signature,
         courseId // Pass courseId as subcourseId
       );
+
+      console.log('📥 EnrollScreen: verifyPayment API Response:', verificationResult);
+      console.log('📥 EnrollScreen: Verification Success:', verificationResult.success);
+      console.log('📥 EnrollScreen: Verification Data:', verificationResult.data);
 
       if (verificationResult.success && verificationResult.data.success) {
         setPaymentStatus('success');
@@ -1115,7 +1098,6 @@ const EnrollScreen = ({ navigation, route }) => {
             </Text>
           </TouchableOpacity>
         )}
-        {console.log('🎯 Live time display check:', { liveTime, hasLiveTime: !!liveTime })}
       </View>
 
       <Text style={styles.courseTitle}>
@@ -1192,7 +1174,7 @@ const EnrollScreen = ({ navigation, route }) => {
         <View style={styles.lessonsContainer}>
           <View style={styles.emptyLessonsContainer}>
             <Icon name="book-outline" size={60} color="#CCCCCC" />
-            <Text style={styles.emptyLessonsText}>No lessons available</Text>
+            <Text style={styles.emptyLessonsText}>No lessons added</Text>
             <Text style={styles.emptyLessonsSubText}>Please check back later</Text>
           </View>
         </View>

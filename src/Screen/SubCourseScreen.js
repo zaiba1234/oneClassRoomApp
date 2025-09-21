@@ -98,7 +98,6 @@ const SubCourseScreen = ({ navigation, route }) => {
         // Keep existing subcourse data if API fails
       }
     } catch (error) {
-      console.error('💥 SubCourseScreen: Error fetching subcourse data:', error);
       setSubcourseError(error.message || 'Network error occurred');
       // Keep existing subcourse data if error occurs
     } finally {
@@ -202,7 +201,6 @@ const SubCourseScreen = ({ navigation, route }) => {
       } else {
       }
     } catch (error) {
-      console.error('💥 SubCourseScreen: Error during toggle favorite:', error);
     } finally {
       // Remove loading state for this course
       setTogglingFavorites(prev => {
@@ -246,7 +244,7 @@ const SubCourseScreen = ({ navigation, route }) => {
             <Icon 
               name={course.isLike ? "heart" : "heart-outline"} 
               size={20} 
-              color={course.isLike ? "#FF0000" : "#FF8800"}
+              color={course.isLike ? "#F6B800" : "#FF8800"}
             />
           </TouchableOpacity>
           <Text style={styles.coursePrice}>{course.price}</Text>

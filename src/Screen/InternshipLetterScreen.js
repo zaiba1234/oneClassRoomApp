@@ -28,7 +28,6 @@ import { courseAPI } from '../API/courseAPI';
 import { RAZORPAY_KEY_ID } from '../config/env';
 import RazorpayCheckout from 'react-native-razorpay';
 
-console.log('✅ InternshipLetterScreen: Direct Razorpay import successful');
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,7 +38,6 @@ const getResponsiveSize = (size) => {
 };
 
 const InternshipLetterScreen = () => {
-  console.log('🚀 InternshipLetterScreen: Component initialized');
   const insets = useSafeAreaInsets();
   
   // Suppress all console errors to prevent red error warnings
@@ -60,7 +58,6 @@ const InternshipLetterScreen = () => {
   const [isPageRefreshing, setIsPageRefreshing] = useState(false);
 
 
-  console.log('course price:', courseData);
   
   // Custom Alert State
   const [customAlert, setCustomAlert] = useState({
@@ -72,25 +69,17 @@ const InternshipLetterScreen = () => {
     showSpinner: false
   });
   
-  console.log('🔍 InternshipLetterScreen: Initial state values:', {
-    hasNavigation: !!navigation,
-    hasRoute: !!route,
-    hasToken: !!token,
-    courseId: route.params?.courseId
-  });
   
   // Direct Razorpay integration - no custom class needed
 
   // Get courseId from route params
   const courseId = route.params?.courseId;
-  console.log('🔍 InternshipLetterScreen: courseId from route params:', courseId);
 
   // Get user data from Redux store at component level
   const userState = useAppSelector((state) => state.user);
   
   // Function to get user profile data (no hooks inside)
   const getUserProfileData = () => {
-    console.log('👤 InternshipLetterScreen: getUserProfileData called');
     return {
       email: userState.email || 'user@example.com',
       contact: userState.phone || userState.contact || '0000000000',
@@ -136,12 +125,7 @@ const InternshipLetterScreen = () => {
 
   // Fetch course details when component mounts
   useEffect(() => {
-    console.log('🔄 InternshipLetterScreen: useEffect triggered for fetchCourseDetails');
-    console.log('🔄 InternshipLetterScreen: courseId:', courseId, 'token:', !!token);
-    console.log('🔄 InternshipLetterScreen: Navigation params:', route.params);
-    
     if (courseId && token) {
-      console.log('✅ InternshipLetterScreen: Conditions met, calling fetchCourseDetails');
       fetchCourseDetails();
       
       // Check internship status to get current enrollment and upload status
@@ -149,7 +133,6 @@ const InternshipLetterScreen = () => {
       
       // Check if we have uploadStatus from navigation params
       if (route.params?.uploadStatus) {
-        console.log('🔄 InternshipLetterScreen: Found uploadStatus from navigation:', route.params.uploadStatus);
         // Create a mock requestData structure with the uploadStatus
         const mockData = {
           internshipLetter: {
@@ -158,19 +141,14 @@ const InternshipLetterScreen = () => {
             _id: 'temp-id'
           }
         };
-        console.log('🔄 InternshipLetterScreen: Setting requestData from navigation:', JSON.stringify(mockData, null, 2));
         setRequestData(mockData);
       }
-    } else {
-      console.log('❌ InternshipLetterScreen: Conditions not met - courseId:', !!courseId, 'token:', !!token);
     }
   }, [courseId, token, route.params]);
 
   // Separate useEffect to handle navigation params changes
   useEffect(() => {
-    console.log('🔄 InternshipLetterScreen: Navigation params changed:', route.params);
     if (route.params?.uploadStatus) {
-      console.log('🔄 InternshipLetterScreen: Updating requestData with new uploadStatus:', route.params.uploadStatus);
       const mockData = {
         internshipLetter: {
           uploadStatus: route.params.uploadStatus,
@@ -178,17 +156,13 @@ const InternshipLetterScreen = () => {
           _id: 'temp-id'
         }
       };
-      console.log('🔄 InternshipLetterScreen: Setting mockData:', JSON.stringify(mockData, null, 2));
       setRequestData(mockData);
     }
   }, [route.params?.uploadStatus]);
 
   // Monitor courseData changes
   useEffect(() => {
-    console.log('🔄 InternshipLetterScreen: courseData changed:', JSON.stringify(courseData, null, 2));
     if (courseData) {
-      console.log('🔄 InternshipLetterScreen: courseData.price:', courseData.price);
-      console.log('🔄 InternshipLetterScreen: courseData.price type:', typeof courseData.price);
     }
   }, [courseData]);
 
@@ -196,29 +170,19 @@ const InternshipLetterScreen = () => {
   useEffect(() => {
     const testPrice = 88;
     const formattedPrice = testPrice ? `₹${testPrice}.00` : '₹99.00';
-    console.log('🧪 InternshipLetterScreen: Test price formatting - Input:', testPrice, 'Output:', formattedPrice);
   }, []);
 
   // Function to fetch course details
   const fetchCourseDetails = async () => {
-    console.log('📚 InternshipLetterScreen: fetchCourseDetails called');
     try {
-      console.log('📚 InternshipLetterScreen: Setting isLoadingCourse to true');
       setIsLoadingCourse(true);
       
-      console.log('📚 InternshipLetterScreen: Calling courseAPI.getCourseCertificateDesc with courseId:', courseId, 'token:', !!token);
       const result = await courseAPI.getCourseCertificateDesc(token, courseId);
-      console.log('📚 InternshipLetterScreen: API response received:', JSON.stringify(result, null, 2));
       
       if (result.success && result.data.success) {
-        console.log('✅ InternshipLetterScreen: API call successful');
         const courseDetails = result.data.data;
-        console.log('📚 InternshipLetterScreen: Full API response:', JSON.stringify(result, null, 2));
-        console.log('📚 InternshipLetterScreen: Course details received:', JSON.stringify(courseDetails, null, 2));
         
         if (courseDetails) {
-          console.log('✅ InternshipLetterScreen: Setting courseData:', JSON.stringify(courseDetails, null, 2));
-          
           // Format the course data with proper price formatting
           const courseWithPrice = {
             courseName: courseDetails.courseName,
@@ -227,23 +191,9 @@ const InternshipLetterScreen = () => {
             uploadStatus: courseDetails.uploadStatus
           };
           
-          // Debug: Check if price is being set correctly
-          console.log('🔍 InternshipLetterScreen: Debug price formatting:');
-          console.log('  - courseDetails.price:', courseDetails.price);
-          console.log('  - typeof courseDetails.price:', typeof courseDetails.price);
-          console.log('  - courseWithPrice.price:', courseWithPrice.price);
-          
-          console.log('💰 InternshipLetterScreen: Raw price from API:', courseDetails.price, 'Type:', typeof courseDetails.price);
-          console.log('💰 InternshipLetterScreen: Course price formatted:', courseWithPrice.price);
-          console.log('📝 InternshipLetterScreen: Course name:', courseWithPrice.courseName);
-          console.log('📝 InternshipLetterScreen: Course description:', courseWithPrice.description);
-          console.log('📝 InternshipLetterScreen: Upload status:', courseWithPrice.uploadStatus);
           setCourseData(courseWithPrice);
-        } else {
-          console.log('❌ InternshipLetterScreen: Course details not found in API response');
         }
       } else {
-        console.log('❌ InternshipLetterScreen: API call failed:', result.data?.message || result.message);
         showCustomAlert(
           'Failed to Load Course Details',
           result.data?.message || 'Unable to load course information. Please try again.',
@@ -256,7 +206,6 @@ const InternshipLetterScreen = () => {
       }
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error in fetchCourseDetails:', error);
       showCustomAlert(
         'Network Error',
         'Unable to load course details. Please check your internet connection and try again.',
@@ -267,20 +216,17 @@ const InternshipLetterScreen = () => {
         ]
       );
     } finally {
-      console.log('📚 InternshipLetterScreen: Setting isLoadingCourse to false');
       setIsLoadingCourse(false);
     }
   };
 
   // Function to handle refresh
   const handleRefresh = async () => {
-    console.log('🔄 InternshipLetterScreen: handleRefresh called');
     setIsRefreshing(true);
     try {
       await fetchCourseDetails();
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error during refresh:', error);
     } finally {
       setIsRefreshing(false);
     }
@@ -288,7 +234,6 @@ const InternshipLetterScreen = () => {
 
   // Function to handle page refresh (full page reload)
   const handlePageRefresh = async () => {
-    console.log('🔄 InternshipLetterScreen: handlePageRefresh called');
     setIsPageRefreshing(true);
     try {
       await fetchCourseDetails();
@@ -297,7 +242,6 @@ const InternshipLetterScreen = () => {
       setTimeout(() => setIsPageRefreshing(false), 1000);
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error during page refresh:', error);
       setIsPageRefreshing(false);
     }
   };
@@ -305,14 +249,9 @@ const InternshipLetterScreen = () => {
 
   // Function to check internship status before proceeding with payment
   const checkInternshipStatus = async () => {
-    console.log('🔍 InternshipLetterScreen: checkInternshipStatus called');
-    console.log('🔍 InternshipLetterScreen: courseId:', courseId);
-    console.log('🔑 InternshipLetterScreen: token:', token ? token.substring(0, 30) + '...' : 'No token');
-    
     try {
       // Build the check status API URL with courseId as query parameter
       const checkStatusUrl = getApiUrl(`/api/user/internshipLetter/check-internshipStatus/${courseId}`);
-      console.log('🌐 InternshipLetterScreen: Check status API URL:', checkStatusUrl);
       
       const response = await fetch(checkStatusUrl, {
         method: 'GET',
@@ -322,16 +261,10 @@ const InternshipLetterScreen = () => {
         },
       });
       
-      
       const result = await response.json();
-      console.log('InternshipLetterScreen xxx', JSON.stringify(result));
       
       if (response.ok && result.success) {
-        console.log('✅ InternshipLetterScreen: Check status API call successful');
-        console.log('🔍 InternshipLetterScreen: isEnrolled flag:', result.data?.isEnrolled);
-        
         if (result.data?.isEnrolled === true) {
-          console.log('✅ InternshipLetterScreen: User is already enrolled, setting requestData');
           // Set requestData with the API response to show proper UI state
           setRequestData({
             internshipLetter: {
@@ -344,12 +277,9 @@ const InternshipLetterScreen = () => {
           });
           return { isEnrolled: true };
         } else {
-          console.log('❌ InternshipLetterScreen: User is not enrolled, proceeding with Razorpay payment');
           return { isEnrolled: false };
         }
       } else {
-        console.log('❌ InternshipLetterScreen: Check status API call failed - response.ok:', response.ok, 'result.success:', result.success);
-        console.log('❌ InternshipLetterScreen: Error message:', result.message);
         showCustomAlert(
           'Status Check Failed',
           result.message || 'Failed to check internship status. Please try again.',
@@ -360,7 +290,6 @@ const InternshipLetterScreen = () => {
       }
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error in checkInternshipStatus:', error);
       showCustomAlert(
         'Network Error',
         'Unable to check internship status. Please check your internet connection and try again.',
@@ -373,40 +302,27 @@ const InternshipLetterScreen = () => {
 
   // Function to request internship letter from API
   const requestInternshipLetter = async () => {
-    console.log('🎯 InternshipLetterScreen: requestInternshipLetter called');
     try {
-      console.log('🎯 InternshipLetterScreen: Setting isRequesting to true');
       setIsRequesting(true);
       
       // First, check internship status
-      console.log('🔍 InternshipLetterScreen: Step 1 - Checking internship status...');
       const statusCheck = await checkInternshipStatus();
-      console.log('🔍 InternshipLetterScreen: Status check result:', JSON.stringify(statusCheck, null, 2));
       
       if (statusCheck.error) {
-        console.log('❌ InternshipLetterScreen: Status check failed, stopping process');
         return;
       }
       
       if (statusCheck.isEnrolled) {
-        console.log('✅ InternshipLetterScreen: User already enrolled, stopping process');
         return;
       }
       
       // If not enrolled, proceed with Razorpay payment
-      console.log('🎯 InternshipLetterScreen: Step 2 - User not enrolled, proceeding with Razorpay payment...');
-      
-      console.log('🎯 InternshipLetterScreen: Building API URL');
       const apiUrl = getApiUrl('/api/user/internshipLetter/request-InternshipLetter');
-      console.log('🌐 InternshipLetterScreen: API URL:', apiUrl);
       
-      console.log('🎯 InternshipLetterScreen: Preparing request body with courseId:', courseId);
       const requestBody = {
         courseId: courseId
       };
-      console.log('📦 InternshipLetterScreen: Request body:', JSON.stringify(requestBody, null, 2));
       
-      console.log('🎯 InternshipLetterScreen: Making API call...');
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -416,31 +332,14 @@ const InternshipLetterScreen = () => {
         body: JSON.stringify(requestBody)
       });
       
-      console.log('📡 InternshipLetterScreen: API response received - status:', response.status, response.statusText);
-      
       const result = await response.json();
-      console.log('📄 InternshipLetterScreen: API response parsed:', JSON.stringify(result, null, 2));
       
       if (response.ok && result.success && result.data) {
-        console.log('✅ InternshipLetterScreen: API call successful, setting requestData');
-        console.log('🔍 InternshipLetterScreen: Setting requestData with:', JSON.stringify(result.data, null, 2));
-        
-        // Debug: Check the amount in API response
-        if (result.data.internshipLetter) {
-          console.log('💰 InternshipLetterScreen: API Response Amount Check:');
-          console.log('💰 Amount from API:', result.data.internshipLetter.amount);
-          console.log('💰 Amount type:', typeof result.data.internshipLetter.amount);
-          console.log('💰 All internshipLetter fields:', Object.keys(result.data.internshipLetter));
-        }
-        
         setRequestData(result.data);
         
-        console.log('🎯 InternshipLetterScreen: Calling openRazorpayPayment with result.data');
-        console.log('🔍 InternshipLetterScreen: Passing data to openRazorpayPayment:', JSON.stringify(result.data, null, 2));
         // After successful request, open Razorpay payment
         openRazorpayPayment(result.data);
       } else {
-        console.log('❌ InternshipLetterScreen: API call failed - response.ok:', response.ok, 'result.success:', result.success);
         showCustomAlert(
           'Request Failed',
           result.message || 'Unable to process your request. Please try again.',
@@ -453,12 +352,9 @@ const InternshipLetterScreen = () => {
       }
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error in requestInternshipLetter:', error);
-      console.log('💥 InternshipLetterScreen: Error message:', error.message);
       
       // Handle specific Razorpay errors with custom alerts
       if (error.message === 'PAYMENT_CANCELLED') {
-        console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
         showCustomAlert(
           'Payment Cancelled',
           'You cancelled the payment. No charges have been made. You can try again anytime.',
@@ -469,7 +365,6 @@ const InternshipLetterScreen = () => {
           ]
         );
       } else if (error.message === 'PAYMENT_FAILED') {
-        console.log('💥 InternshipLetterScreen: Payment failed');
         showCustomAlert(
           'Payment Failed',
           'Payment was not successful. Please check your payment method and try again.',
@@ -480,7 +375,6 @@ const InternshipLetterScreen = () => {
           ]
         );
       } else if (error.message && error.message.includes('Invalid course price')) {
-        console.log('⚙️ InternshipLetterScreen: Invalid course price');
         showCustomAlert(
           'Configuration Error',
           'Course price configuration error. Please contact support.',
@@ -488,7 +382,6 @@ const InternshipLetterScreen = () => {
           [{ text: 'OK', onPress: hideCustomAlert }]
         );
       } else if (error.message && error.message.includes('Razorpay payment failed')) {
-        console.log('💳 InternshipLetterScreen: Razorpay payment error');
         showCustomAlert(
           'Payment Error',
           error.message,
@@ -496,7 +389,6 @@ const InternshipLetterScreen = () => {
           [{ text: 'OK', onPress: hideCustomAlert }]
         );
       } else {
-        console.log('💥 InternshipLetterScreen: Generic error');
         showCustomAlert(
           'Something went wrong',
           'An unexpected error occurred. Please try again.',
@@ -508,25 +400,18 @@ const InternshipLetterScreen = () => {
         );
       }
     } finally {
-      console.log('🎯 InternshipLetterScreen: Setting isRequesting to false');
       setIsRequesting(false);
     }
   };
 
   // Function to open Razorpay payment interface - EXACT SAME AS ENROLLSCREEN
   const openRazorpayPayment = async (requestData) => {
-    console.log('🔍 InternshipLetterScreen: openRazorpayPayment called');
     try {
-     
-      
       if (requestData.internshipLetter && requestData.internshipLetter.razorpayOrderId) {
-        console.log('✅ InternshipLetterScreen: Found internship letter data with order ID');
-        
         // Calculate price from course data (same logic as EnrollScreen)
         const coursePrice = courseData?.price || '₹99.00';
         
         if (!coursePrice || typeof coursePrice !== 'string') {
-          console.log('❌ InternshipLetterScreen: Invalid course price:', coursePrice);
           showCustomAlert(
             'Invalid Course Price',
             'Course price information is not available. Please refresh and try again.',
@@ -540,7 +425,6 @@ const InternshipLetterScreen = () => {
         const priceInRupees = parseFloat(priceString);
         
         if (isNaN(priceInRupees) || priceInRupees <= 0) {
-          console.log('❌ InternshipLetterScreen: Invalid price calculation:', { priceString, priceInRupees });
           showCustomAlert(
             'Invalid Course Price',
             'Course price configuration error. Please contact support.',
@@ -552,22 +436,9 @@ const InternshipLetterScreen = () => {
         
         const priceInPaise = Math.round(priceInRupees * 100);
         
-        console.log('💰 InternshipLetterScreen: Price calculation:', {
-          coursePrice: coursePrice,
-          priceString: priceString,
-          priceInRupees: priceInRupees,
-          priceInPaise: priceInPaise
-        });
-        
         // Use the API amount if available, otherwise use calculated amount
         const apiAmount = requestData.internshipLetter.amount;
         const finalAmount = apiAmount && apiAmount > 0 ? apiAmount : priceInPaise;
-        
-        console.log('💰 InternshipLetterScreen: Amount comparison:', {
-          apiAmount: apiAmount,
-          calculatedAmount: priceInPaise,
-          finalAmount: finalAmount
-        });
         
         // Use the EXACT SAME logic as EnrollScreen.js
         // The API should return the same structure as courseAPI.createCourseOrder
@@ -578,12 +449,8 @@ const InternshipLetterScreen = () => {
           orderId: requestData.internshipLetter.razorpayOrderId,
         };
         
-        console.log('🔑 InternshipLetterScreen: Using Razorpay key from env config:', RAZORPAY_KEY_ID);
-        console.log('🔍 InternshipLetterScreen: Order Data prepared (same as EnrollScreen):', JSON.stringify(orderData, null, 2));
-        
         // Validate order data (key will come from frontend config)
         if (!orderData.amount || !orderData.orderId) {
-          console.log('❌ InternshipLetterScreen: Invalid order data received:', orderData);
           showCustomAlert(
             'Invalid Payment Data',
             'Payment information is incomplete. Please try again.',
@@ -597,7 +464,6 @@ const InternshipLetterScreen = () => {
         }
         
         // Open Razorpay payment interface using the same method as EnrollScreen
-        console.log('🔍 InternshipLetterScreen: Calling handlePaymentWithRazorpay');
         const paymentData = await handlePaymentWithRazorpay(orderData);
         
         if (!paymentData) {
@@ -605,17 +471,9 @@ const InternshipLetterScreen = () => {
         }
         
         // Handle successful payment
-        console.log('✅ InternshipLetterScreen: Payment successful, calling handleSuccessfulPayment');
         await handleSuccessfulPayment(paymentData, requestData.internshipLetter.razorpayOrderId, requestData);
         
       } else {
-        
-        if (requestData.internshipLetter) {
-          console.log('❌ InternshipLetterScreen: Available fields in internshipLetter:', Object.keys(requestData.internshipLetter));
-        }
-        if (requestData.razorpayOrder) {
-          console.log('❌ InternshipLetterScreen: Available fields in razorpayOrder:', Object.keys(requestData.razorpayOrder));
-        }
         showCustomAlert(
           'Payment Order Error',
           'Payment order not found. Please try again.',
@@ -628,7 +486,6 @@ const InternshipLetterScreen = () => {
       }
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error in openRazorpayPayment:', error);
       showCustomAlert(
         'Payment Interface Error',
         'Unable to open payment gateway. Please check your internet connection and try again.',
@@ -645,7 +502,6 @@ const InternshipLetterScreen = () => {
   const handlePaymentWithRazorpay = async (orderData) => {
     try {
       if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
-        console.log('❌ InternshipLetterScreen: Razorpay not available');
         showCustomAlert(
           'Payment Gateway Unavailable',
           'Payment service is temporarily unavailable. Please try again later.',
@@ -654,12 +510,9 @@ const InternshipLetterScreen = () => {
         );
         return null;
       }
-      console.log('💳 InternshipLetterScreen: Opening Razorpay payment interface...');
-      console.log('🔑 InternshipLetterScreen: Using Razorpay key from frontend config:', RAZORPAY_KEY_ID ? RAZORPAY_KEY_ID.substring(0, 20) + '...' : 'Not found');
       
       // Validate Razorpay key is available
       if (!RAZORPAY_KEY_ID) {
-        console.log('❌ InternshipLetterScreen: Razorpay key not found in frontend config');
         showCustomAlert(
           'Configuration Error',
           'Payment configuration is missing. Please contact support.',
@@ -670,13 +523,11 @@ const InternshipLetterScreen = () => {
       }
       
       const userProfile = getUserProfileData();
-      console.log('👤 InternshipLetterScreen: User profile data:', JSON.stringify(userProfile, null, 2));
       
       // Calculate price from course data (same logic as EnrollScreen)
       const coursePrice = courseData?.price || '₹99.00';
       
       if (!coursePrice || typeof coursePrice !== 'string') {
-        console.log('❌ InternshipLetterScreen: Invalid course price:', coursePrice);
         throw new Error('Invalid course price. Please refresh and try again.');
       }
       
@@ -684,18 +535,10 @@ const InternshipLetterScreen = () => {
       const priceInRupees = parseFloat(priceString);
       
       if (isNaN(priceInRupees) || priceInRupees <= 0) {
-        console.log('❌ InternshipLetterScreen: Invalid price calculation:', { priceString, priceInRupees });
         throw new Error('Invalid course price. Please contact support.');
       }
       
       const priceInPaise = Math.round(priceInRupees * 100);
-      
-      console.log('💰 InternshipLetterScreen: Price calculation in handlePaymentWithRazorpay:', {
-        coursePrice: coursePrice,
-        priceString: priceString,
-        priceInRupees: priceInRupees,
-        priceInPaise: priceInPaise
-      });
       
       // Use the orderData amount (which comes from API or calculated)
       const finalAmount = orderData.amount;
@@ -717,34 +560,24 @@ const InternshipLetterScreen = () => {
         },
         modal: {
           ondismiss: () => {
-            console.log('🔒 InternshipLetterScreen: Razorpay modal dismissed');
           }
         }
       };
       
-      console.log('🎨 InternshipLetterScreen: Razorpay options configured:', JSON.stringify(razorpayOptions, null, 2));
-      console.log('🔍 InternshipLetterScreen: About to call RazorpayCheckout.open with options:', JSON.stringify(razorpayOptions, null, 2));
-      
       const paymentData = await RazorpayCheckout.open(razorpayOptions);
-      console.log('✅ InternshipLetterScreen: Payment successful:', JSON.stringify(paymentData, null, 2));
       return paymentData;
     } catch (razorpayError) {
       // Suppress console errors to prevent red error warnings
-      console.log('❌ InternshipLetterScreen: Razorpay error caught:', razorpayError);
       
       // More specific error handling - suppress console errors for user experience
       if (razorpayError.message === 'PAYMENT_CANCELLED') {
-        console.log('🚫 InternshipLetterScreen: Payment was cancelled by user');
         throw new Error('PAYMENT_CANCELLED');
       } else if (razorpayError.message === 'PAYMENT_FAILED') {
-        console.log('💥 InternshipLetterScreen: Payment failed');
         throw new Error('PAYMENT_FAILED');
       } else if (razorpayError.message && razorpayError.message.includes('Invalid course price')) {
-        console.log('⚙️ InternshipLetterScreen: Invalid course price');
         throw new Error('Invalid course price. Please contact support.');
       } else {
         // Suppress detailed error messages from user
-        console.log('💥 InternshipLetterScreen: Generic Razorpay error:', razorpayError);
         throw new Error('PAYMENT_FAILED');
       }
     }
@@ -752,26 +585,16 @@ const InternshipLetterScreen = () => {
 
   // Function to handle successful payment
   const handleSuccessfulPayment = async (paymentData, orderId, internshipLetterData = null) => {
-    console.log('🎉 InternshipLetterScreen: handleSuccessfulPayment called');
     try {
-      console.log('🎉 InternshipLetterScreen: Payment data received:', JSON.stringify(paymentData, null, 2));
-      console.log('🎉 InternshipLetterScreen: Order ID:', orderId);
-      console.log('🎉 InternshipLetterScreen: Current requestData:', JSON.stringify(requestData, null, 2));
-      console.log('🎉 InternshipLetterScreen: Passed internshipLetterData:', JSON.stringify(internshipLetterData, null, 2));
-      
       // Use passed data or fallback to requestData
       const dataToUse = internshipLetterData || requestData;
-      console.log('🎉 InternshipLetterScreen: Using data for verification:', JSON.stringify(dataToUse, null, 2));
       
       // Verify payment with backend using the correct structure
       const verificationUrl = getApiUrl('/api/user/internshipLetter/verify-payment');
-      console.log('🌐 InternshipLetterScreen: Verification URL:', verificationUrl);
       
       // Validate required data
       const internshipLetterId = dataToUse?.internshipLetter?._id;
       if (!internshipLetterId) {
-        console.log('❌ InternshipLetterScreen: Missing internshipLetterId');
-        console.log('❌ InternshipLetterScreen: Available data structure:', Object.keys(dataToUse || {}));
         showCustomAlert(
           'Missing Information',
           'Required information is missing. Please try again.',
@@ -793,11 +616,6 @@ const InternshipLetterScreen = () => {
         courseId: courseId // Use courseId instead of subcourseId
       };
       
-      console.log('📦 InternshipLetterScreen: Verification request body (updated structure):', JSON.stringify(verificationBody, null, 2));
-      console.log('🔍 InternshipLetterScreen: Validation - internshipLetterId:', internshipLetterId);
-      console.log('🔍 InternshipLetterScreen: Validation - razorpayOrderId:', orderId);
-      console.log('🔍 InternshipLetterScreen: Validation - courseId:', courseId);
-      
       const verificationResponse = await fetch(verificationUrl, {
         method: 'POST',
         headers: {
@@ -807,18 +625,12 @@ const InternshipLetterScreen = () => {
         body: JSON.stringify(verificationBody),
       });
       
-      console.log('📡 InternshipLetterScreen: Verification response status:', verificationResponse.status, verificationResponse.statusText);
-      
       if (verificationResponse.ok) {
         const verificationResult = await verificationResponse.json();
-        console.log('📄 InternshipLetterScreen: Verification result:', JSON.stringify(verificationResult, null, 2));
         
         if (verificationResult.success) {
-          console.log('✅ InternshipLetterScreen: Payment verification successful');
-          
           // Update requestData with the latest information from verification response
           if (verificationResult.data) {
-            console.log('🔄 InternshipLetterScreen: Updating requestData with verification response');
             setRequestData(verificationResult.data);
           }
           
@@ -831,12 +643,8 @@ const InternshipLetterScreen = () => {
               onPress: () => {
                 hideCustomAlert();
                 // Navigate back to Internship screen with uploadStatus to show updated button state
-                console.log('✅ InternshipLetterScreen: Navigating back to Internship screen with uploadStatus');
-                console.log('✅ InternshipLetterScreen: Verification result data:', JSON.stringify(verificationResult.data, null, 2));
-                
                 // Extract uploadStatus from the verification response
                 const uploadStatus = verificationResult.data?.uploadStatus || 'upload';
-                console.log('✅ InternshipLetterScreen: Extracted uploadStatus:', uploadStatus);
                 
                 navigation.navigate('Internship', { 
                   courseId: courseId,
@@ -846,7 +654,6 @@ const InternshipLetterScreen = () => {
             }]
           );
         } else {
-          console.log('❌ InternshipLetterScreen: Payment verification failed:', verificationResult.message);
           showCustomAlert(
             'Payment Verification Failed',
             'Unable to verify your payment. Please contact support.',
@@ -855,9 +662,7 @@ const InternshipLetterScreen = () => {
           );
         }
       } else {
-        console.log('❌ InternshipLetterScreen: Payment verification failed - response not ok');
         const errorText = await verificationResponse.text();
-        console.log('❌ InternshipLetterScreen: Error response:', errorText);
         showCustomAlert(
           'Payment Verification Failed',
           'Unable to verify your payment. Please contact support.',
@@ -867,7 +672,6 @@ const InternshipLetterScreen = () => {
       }
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error in handleSuccessfulPayment:', error);
       showCustomAlert(
         'Payment Verification Error',
         'Unable to verify your payment. Please contact support.',
@@ -878,7 +682,6 @@ const InternshipLetterScreen = () => {
   };
 
   const handleBackPress = () => {
-    console.log('⬅️ InternshipLetterScreen: handleBackPress called');
     navigation.goBack();
   };
 
@@ -888,14 +691,10 @@ const InternshipLetterScreen = () => {
   // Function to handle downloading the internship letter to local storage
   const handleDownloadLetter = async () => {
     try {
-      console.log('📥 InternshipLetterScreen: handleDownloadLetter called');
-      console.log('📥 InternshipLetterScreen: requestData:', JSON.stringify(requestData, null, 2));
-      
       // Get download URL from the API response structure
       const downloadUrl = requestData?.internshipLetter?.downloadUrl || requestData?.internshipLetter?.internshipLetter;
       
       if (!downloadUrl) {
-        console.log('❌ InternshipLetterScreen: No download URL found');
         showCustomAlert(
           'Download Error',
           'Download link is not available. Please try again later.',
@@ -904,8 +703,6 @@ const InternshipLetterScreen = () => {
         );
         return;
       }
-      
-      console.log('🌐 InternshipLetterScreen: Download URL:', downloadUrl);
       
       // Show loading alert
       showCustomAlert(
@@ -919,12 +716,9 @@ const InternshipLetterScreen = () => {
       const fileName = `internship_letter_${courseId}.pdf`;
       
       // Use RNFS.downloadFile for direct download - this is more reliable
-      console.log('🔄 InternshipLetterScreen: Using RNFS.downloadFile for direct download...');
-      
       try {
         // Use app's documents directory which has proper permissions
         const filePath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-        console.log('📁 InternshipLetterScreen: Downloading to:', filePath);
         
         const downloadResult = await RNFS.downloadFile({
           fromUrl: downloadUrl,
@@ -934,18 +728,14 @@ const InternshipLetterScreen = () => {
           },
           progress: (res) => {
             const progress = (res.bytesWritten / res.contentLength) * 100;
-            console.log('📊 Download progress:', progress.toFixed(2) + '%');
           }
         }).promise;
-        
-        console.log('✅ InternshipLetterScreen: Download completed:', downloadResult);
         
         if (downloadResult.statusCode === 200) {
           const fileExists = await RNFS.exists(filePath);
           
           if (fileExists) {
             const fileStats = await RNFS.stat(filePath);
-            console.log('📊 InternshipLetterScreen: File stats:', fileStats);
             
             hideCustomAlert();
             showCustomAlert(
@@ -955,7 +745,6 @@ const InternshipLetterScreen = () => {
               [{ text: 'Great!', onPress: hideCustomAlert }]
             );
           } else {
-            console.log('❌ InternshipLetterScreen: File was not created successfully');
             hideCustomAlert();
             showCustomAlert(
               'Save Error',
@@ -965,7 +754,6 @@ const InternshipLetterScreen = () => {
             );
           }
         } else {
-          console.log('❌ InternshipLetterScreen: Download failed with status:', downloadResult.statusCode);
           hideCustomAlert();
           showCustomAlert(
             'Download Failed',
@@ -980,10 +768,8 @@ const InternshipLetterScreen = () => {
         
         } catch (downloadError) {
           // Suppress console errors to prevent red error warnings
-          console.log('💥 InternshipLetterScreen: Download error:', downloadError);
         
         // Fallback: Try to open the URL in browser
-        console.log('🔄 InternshipLetterScreen: Trying fallback - opening URL in browser...');
         try {
           const supported = await Linking.canOpenURL(downloadUrl);
           if (supported) {
@@ -1006,7 +792,6 @@ const InternshipLetterScreen = () => {
           }
         } catch (linkingError) {
           // Suppress console errors to prevent red error warnings
-          console.log('💥 InternshipLetterScreen: Linking error:', linkingError);
           hideCustomAlert();
           showCustomAlert(
             'Download Error',
@@ -1019,7 +804,6 @@ const InternshipLetterScreen = () => {
       
     } catch (error) {
       // Suppress console errors to prevent red error warnings
-      console.log('💥 InternshipLetterScreen: Error in handleDownloadLetter:', error);
       hideCustomAlert();
       showCustomAlert(
         'Network Error',
@@ -1033,15 +817,6 @@ const InternshipLetterScreen = () => {
     }
   };
 
-  console.log('🎨 InternshipLetterScreen: Rendering component');
-  console.log('🎨 InternshipLetterScreen: Current state:', {
-    isRequesting,
-    hasRequestData: !!requestData,
-    hasCourseData: !!courseData,
-    isLoadingCourse,
-    isRefreshing
-  });
-  console.log('🎨 InternshipLetterScreen: courseData for rendering:', JSON.stringify(courseData, null, 2));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1132,9 +907,6 @@ const InternshipLetterScreen = () => {
         {/* Status Message - Show when isEnrolled=true and uploadStatus=upload */}
         {(() => {
           const shouldShowMessage = requestData?.internshipLetter?.paymentStatus && requestData?.internshipLetter?.uploadStatus === 'upload';
-          console.log('🔍 InternshipLetterScreen: Status message logic - shouldShowMessage:', shouldShowMessage);
-          console.log('🔍 InternshipLetterScreen: paymentStatus:', requestData?.internshipLetter?.paymentStatus);
-          console.log('🔍 InternshipLetterScreen: uploadStatus:', requestData?.internshipLetter?.uploadStatus);
           
           return shouldShowMessage ? (
             <View style={styles.statusMessageContainer}>
@@ -1149,16 +921,12 @@ const InternshipLetterScreen = () => {
           const uploadStatus = requestData?.internshipLetter?.uploadStatus;
           const paymentStatus = requestData?.internshipLetter?.paymentStatus;
           
-          console.log('🔍 InternshipLetterScreen: Button logic - uploadStatus:', uploadStatus, 'paymentStatus:', paymentStatus);
-          console.log('🔍 InternshipLetterScreen: requestData:', JSON.stringify(requestData, null, 2));
-          
           // If payment is successful and letter is uploaded, show enabled download button
           if (paymentStatus && uploadStatus === 'uploaded') {
             return (
               <TouchableOpacity 
                 style={styles.downloadButton}
                 onPress={() => {
-                  console.log('📥 InternshipLetterScreen: Download letter button pressed');
                   handleDownloadLetter();
                 }}
               >
@@ -1198,13 +966,10 @@ const InternshipLetterScreen = () => {
           }
           
           // Default: Show payment button
-          console.log('🔍 InternshipLetterScreen: Button rendering - courseData:', JSON.stringify(courseData, null, 2));
-          console.log('🔍 InternshipLetterScreen: Button rendering - courseData?.price:', courseData?.price);
           return (
             <TouchableOpacity 
               style={[styles.downloadButton, (isRequesting || isLoadingCourse || !courseData) && styles.downloadButtonDisabled]}
               onPress={() => {
-                console.log('🔘 InternshipLetterScreen: Get Internship Letter button pressed');
                 requestInternshipLetter();
               }}
               disabled={isRequesting || isLoadingCourse || !courseData}

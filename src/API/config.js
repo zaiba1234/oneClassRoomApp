@@ -4,9 +4,9 @@ const API_CONFIG = {
   
   // Base URL configuration for different platforms
   BASE_URL: Platform.select({
-    android: 'http://192.168.1.34:3000', 
-    ios: 'http://192.168.1.34:3000', 
-    default: 'http://192.168.1.34:3000', 
+    android: 'http://192.168.57.143:3000', 
+    ios: 'http://192.168.57.143:3000', 
+    default: 'http://192.168.57.143:3000', 
   }),
 
   // Razorpay configuration

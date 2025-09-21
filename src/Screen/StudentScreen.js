@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import BackButton from '../Component/BackButton';
 
 // Import local assets
-const ArrowIcon = require('../assests/images/Arrow.png');
 const JohnSmithAvatar = require('../assests/images/John.png');
 const AceSmithAvatar = require('../assests/images/John.png');
 const AliceAvatar = require('../assests/images/John.png');
@@ -49,17 +49,9 @@ const StudentScreen = ({ navigation, route }) => {
 
   // Fetch enrolled students when component mounts
   useEffect(() => {
-    console.log('🔍 StudentScreen: useEffect triggered');
-    console.log('🔍 StudentScreen: subcourseId:', subcourseId);
-    console.log('🔍 StudentScreen: token:', token ? 'Present' : 'Missing');
-    
     if (subcourseId && token) {
-      console.log('✅ StudentScreen: Both subcourseId and token present, calling fetchEnrolledStudents');
       fetchEnrolledStudents();
     } else {
-      console.log('❌ StudentScreen: Missing subcourseId or token, setting loading to false');
-      console.log('❌ StudentScreen: subcourseId present:', !!subcourseId);
-      console.log('❌ StudentScreen: token present:', !!token);
       setIsLoading(false);
     }
   }, [subcourseId, token]);
@@ -70,35 +62,20 @@ const StudentScreen = ({ navigation, route }) => {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔍 StudentScreen: Starting to fetch enrolled students...');
-      console.log('🔍 StudentScreen: subcourseId:', subcourseId);
-      console.log('🔍 StudentScreen: token:', token ? 'Present' : 'Missing');
-      
       const result = await courseAPI.getEnrolledStudents(token, subcourseId);
-      
-      console.log('✅ StudentScreen: API call successful, response:', result);
-      console.log('🔍 StudentScreen: Response structure:', JSON.stringify(result, null, 2));
       
       if (result.success && result.data.success) {
         const responseData = result.data.data;
-        console.log('✅ StudentScreen: API response data:', responseData);
-        console.log('🔍 StudentScreen: Response data structure:', JSON.stringify(responseData, null, 2));
         
         // Extract users array from the response
         const apiStudents = responseData.users || responseData;
-        console.log('✅ StudentScreen: API students data:', apiStudents);
-        console.log('🔍 StudentScreen: API students count:', apiStudents ? apiStudents.length : 'undefined');
-        console.log('🔍 StudentScreen: API students type:', typeof apiStudents);
-        console.log('🔍 StudentScreen: API students is array:', Array.isArray(apiStudents));
         
         // Check if we have pagination data
         if (responseData.pagination) {
-          console.log('✅ StudentScreen: Pagination data:', responseData.pagination);
         }
         
         // Transform API data to match existing UI structure
         const transformedStudents = apiStudents.map((student, index) => {
-          console.log(`🔍 StudentScreen: Processing student ${index}:`, student);
           const studentImage = student.profileImageUrl && student.profileImageUrl.trim() !== '' 
             ? { uri: student.profileImageUrl } 
             : require('../assests/images/John.png');
@@ -109,34 +86,25 @@ const StudentScreen = ({ navigation, route }) => {
             avatar: studentImage,
           };
           
-          console.log(`✅ StudentScreen: Transformed student ${index}:`, transformedStudent);
           return transformedStudent;
         });
         
-        console.log('✅ StudentScreen: All transformed students:', transformedStudents);
         setEnrolledStudents(transformedStudents);
         
       } else {
-        console.log('❌ StudentScreen: API response not successful:', result);
-        console.log('❌ StudentScreen: Error message:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch enrolled students');
         // Keep empty array if API fails
         setEnrolledStudents([]);
       }
     } catch (error) {
-      console.error('💥 StudentScreen: Error fetching enrolled students:', error);
-      console.error('💥 StudentScreen: Error details:', error.message);
-      console.error('💥 StudentScreen: Error stack:', error.stack);
       setError(error.message || 'Network error occurred');
       // Keep empty array if error occurs
       setEnrolledStudents([]);
     } finally {
-      console.log('🏁 StudentScreen: fetchEnrolledStudents completed, setting loading to false');
       setIsLoading(false);
     }
   };
 
-  // Log subcourseId for debugging
   useEffect(() => {
   }, [subcourseId]);
 
@@ -186,15 +154,6 @@ const StudentScreen = ({ navigation, route }) => {
 
   // Use API data if available, otherwise use mock data
   const students = enrolledStudents.length > 0 ? enrolledStudents : mockStudents;
-  
-  // Debug logging for render
-  console.log('🔍 StudentScreen: Render - enrolledStudents:', enrolledStudents);
-  console.log('🔍 StudentScreen: Render - enrolledStudents.length:', enrolledStudents.length);
-  console.log('🔍 StudentScreen: Render - mockStudents.length:', mockStudents.length);
-  console.log('🔍 StudentScreen: Render - students:', students);
-  console.log('🔍 StudentScreen: Render - students.length:', students.length);
-  console.log('🔍 StudentScreen: Render - isLoading:', isLoading);
-  console.log('🔍 StudentScreen: Render - error:', error);
 
   const handleStudentPress = (student) => {
     // Navigate to student detail screen if needed
@@ -218,12 +177,7 @@ const StudentScreen = ({ navigation, route }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Image source={ArrowIcon} style={styles.backIcon} />
-        </TouchableOpacity>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>Students</Text>
         <View style={styles.placeholder} />
       </View>
@@ -267,26 +221,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: getVerticalSize(20),
-    paddingTop: Platform.OS === 'ios' ? getVerticalSize(10) : getVerticalSize(20),
+    paddingTop: Platform.OS === 'ios' ? getVerticalSize(50) : getVerticalSize(40),
     paddingBottom: getVerticalSize(15),
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
-    padding: getVerticalSize(8),
-  },
-  backIcon: {
-    width: getFontSize(24),
-    height: getFontSize(24),
-    resizeMode: 'contain',
-  },
   headerTitle: {
-    marginTop:20,
     fontSize: getFontSize(18),
     fontWeight: 'bold',
     color: '#000000',
-    textAlign: 'center',
+    marginLeft: 20,
+    flex: 1,
+    marginTop: getVerticalSize(1),
   },
   placeholder: {
     width: getFontSize(40),

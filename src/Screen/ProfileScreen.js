@@ -176,7 +176,7 @@ const ProfileScreen = ({ navigation }) => {
         handleDeleteAccount();
         break;
       default:
-        console.log('Screen not implemented yet');
+        break;
     }
   };
 
@@ -271,14 +271,11 @@ const ProfileScreen = ({ navigation }) => {
   const openPrivacyPolicyPage = async () => {
     try {
       const privacyPolicyUrl = 'https://onerupeeclassroom.learningsaint.com/delete';
-      console.log('🔗 Attempting to open URL:', privacyPolicyUrl);
       
       const supported = await Linking.canOpenURL(privacyPolicyUrl);
-      console.log('🔗 URL supported:', supported);
       
       if (supported) {
         await Linking.openURL(privacyPolicyUrl);
-        console.log('✅ URL opened successfully');
       } else {
         showCustomAlert(
           'Error',
@@ -314,8 +311,6 @@ const ProfileScreen = ({ navigation }) => {
         );
       }
     } catch (error) {
-      console.error('❌ Error opening URL:', error);
-      console.error('❌ Error details:', error.message);
       showCustomAlert(
         'Error',
         `Unable to open the privacy policy page. Error: ${error.message || 'Unknown error'}`,
@@ -394,7 +389,6 @@ const ProfileScreen = ({ navigation }) => {
   const deleteAccountAPI = async () => {
     try {
       setIsDeleting(true);
-      console.log('🗑️ Starting account deletion process...');
 
       const apiUrl = getApiUrl('/api/user/profile/delete-profile');
 
@@ -406,11 +400,8 @@ const ProfileScreen = ({ navigation }) => {
         },
       });
 
-      
-
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ Account deleted successfully:', result);
 
         showCustomAlert(
           'Account Deleted',
@@ -432,7 +423,6 @@ const ProfileScreen = ({ navigation }) => {
         );
       } else {
         const errorData = await response.json();
-        console.error('❌ Delete account failed:', errorData);
 
         showCustomAlert(
           'Delete Failed',
@@ -448,7 +438,6 @@ const ProfileScreen = ({ navigation }) => {
         );
       }
     } catch (error) {
-    
       showCustomAlert(
         'Error',
         'Something went wrong while deleting your account. Please check your internet connection and try again.',
@@ -468,12 +457,10 @@ const ProfileScreen = ({ navigation }) => {
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
-    console.log('🔄 ProfileScreen: Pull-to-refresh triggered');
     setRefreshing(true);
 
     // Simulate refresh delay and refresh user data
     setTimeout(() => {
-      console.log('✅ ProfileScreen: Pull-to-refresh completed');
       setRefreshing(false);
     }, 1000);
   };

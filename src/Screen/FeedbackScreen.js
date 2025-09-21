@@ -99,7 +99,6 @@ const FeedbackScreen = () => {
       }
       
     } catch (error) {
-      console.error('💥 FeedbackScreen: Error submitting rating:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);

@@ -9,21 +9,21 @@ export const loadUserFromStorage = createAsyncThunk(
       const userData = await AsyncStorage.getItem('userData');
       if (userData) {
         const parsedData = JSON.parse(userData);
-        console.log('🔄 userSlice: Loaded user data from storage:', parsedData);
+      
         
         // Validate the stored data
         if (isStoredUserDataValid(parsedData)) {
-          console.log('✅ userSlice: Stored user data is valid');
+         
           return parsedData;
         } else {
-          console.log('❌ userSlice: Stored user data is invalid, clearing...');
+          
           await AsyncStorage.removeItem('userData');
           return null;
         }
       }
       return null;
     } catch (error) {
-      console.error('❌ userSlice: Error loading user data from storage:', error);
+    
       return null;
     }
   }
@@ -35,10 +35,10 @@ export const saveUserToStorage = createAsyncThunk(
   async (userData) => {
     try {
       await AsyncStorage.setItem('userData', JSON.stringify(userData));
-      console.log('✅ userSlice: Saved user data to storage:', userData);
+     
       return userData;
     } catch (error) {
-      console.error('❌ userSlice: Error saving user data to storage:', error);
+      
       throw error;
     }
   }
@@ -50,10 +50,10 @@ export const clearUserFromStorage = createAsyncThunk(
   async () => {
     try {
       await AsyncStorage.removeItem('userData');
-      console.log('🗑️ userSlice: Cleared user data from storage');
+     
       return true;
     } catch (error) {
-      console.error('❌ userSlice: Error clearing user data from storage:', error);
+     
       throw error;
     }
   }
@@ -68,11 +68,11 @@ export const validateStoredToken = createAsyncThunk(
       const { token, _id } = state.user;
       
       if (!token) {
-        console.log('❌ userSlice: No token to validate');
+     
         return false;
       }
       
-      console.log('🔍 userSlice: Validating stored token...');
+     
       
       // Here you could make an API call to validate the token
       // For now, we'll just check if the token exists and has basic structure
@@ -187,7 +187,7 @@ const userSlice = createSlice({
       state.isAuthenticated = false;
       
       // Clear from storage automatically
-      console.log('🔄 userSlice: Auto-clearing user data from storage');
+     
     },
   },
   extraReducers: (builder) => {
@@ -209,35 +209,35 @@ const userSlice = createSlice({
           state.email = email || '';
           state.token = token || '';
           state.isAuthenticated = !!token;
-          console.log('✅ userSlice: User data restored from storage, isAuthenticated:', !!token);
+          
         }
       })
       .addCase(loadUserFromStorage.rejected, (state) => {
         state.isLoading = false;
-        console.log('❌ userSlice: Failed to load user data from storage');
+       
       })
       
       // Handle saving user to storage
       .addCase(saveUserToStorage.fulfilled, (state, action) => {
-        console.log('✅ userSlice: User data saved to storage successfully');
+        
       })
       .addCase(saveUserToStorage.rejected, (state, action) => {
-        console.error('❌ userSlice: Failed to save user data to storage');
+       
       })
       
       // Handle clearing user from storage
       .addCase(clearUserFromStorage.fulfilled, (state) => {
-        console.log('🗑️ userSlice: User data cleared from storage successfully');
+        
       })
       .addCase(clearUserFromStorage.rejected, (state) => {
-        console.error('❌ userSlice: Failed to clear user data from storage');
+        
       })
       
       // Handle token validation
       .addCase(validateStoredToken.fulfilled, (state, action) => {
         if (!action.payload) {
           // Token is invalid, clear user data
-          console.log('❌ userSlice: Token validation failed, clearing user data');
+         
           state._id = '';
           state.userId = '';
           state.fullName = '';
@@ -248,11 +248,11 @@ const userSlice = createSlice({
           state.token = '';
           state.isAuthenticated = false;
         } else {
-          console.log('✅ userSlice: Token validation successful');
+         
         }
       })
       .addCase(validateStoredToken.rejected, (state) => {
-        console.error('❌ userSlice: Token validation error, clearing user data');
+       
         // Clear user data on validation error
         state._id = '';
         state.userId = '';

@@ -35,20 +35,17 @@ const RegisterScreen = ({ route }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Debug: Log received mobile number
   React.useEffect(() => {
   }, [route.params?.mobileNumber, phoneNumber]);
 
   const handleRegister = async () => {
     if (!fullName.trim() || !phoneNumber) {
-      console.log('❌ RegisterScreen: Missing full name or phone number');
       return;
     }
 
     // Extract only digits and ensure it's exactly 10 digits
     const digitsOnly = phoneNumber.replace(/\D/g, '');
     if (digitsOnly.length !== 10) {
-      console.log('❌ RegisterScreen: Please enter exactly 10 digits for mobile number');
       return;
     }
 
@@ -59,30 +56,18 @@ const RegisterScreen = ({ route }) => {
     setIsLoading(true);
     
     try {
-      console.log('🔥 RegisterScreen: Starting registration process...');
-      console.log('📱 RegisterScreen: Phone number for API:', mobileNumberFormatted);
-      console.log('📱 RegisterScreen: Phone number for storage:', mobileNumberForStorage);
-      console.log('👤 RegisterScreen: Full name:', fullName.trim());
-      
       // First, register the user in the backend
       const registerResult = await authAPI.register(fullName.trim(), mobileNumberFormatted);
-      console.log('📡 RegisterScreen: Backend registration result:', registerResult);
       
       if (registerResult.success) {
-        console.log('✅ RegisterScreen: Backend registration successful, sending OTP...');
-        
         // After successful registration, send OTP using Firebase
         const otpResult = await authAPI.sendOTP(mobileNumberFormatted);
-        console.log('📡 RegisterScreen: Firebase OTP result:', otpResult);
         
         if (otpResult.success) {
-          console.log('✅ RegisterScreen: OTP sent successfully!');
-          
           // Store user data in Redux (without +91 prefix)
           dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: mobileNumberForStorage }));
           
           // Registration successful, navigate to verification with verificationId
-          console.log('🚀 RegisterScreen: Navigating to Verify screen...');
           navigation.navigate('Verify', { 
             mobileNumber: mobileNumberFormatted, // Send with +91 for verification
             fullName: fullName.trim(),
@@ -90,15 +75,12 @@ const RegisterScreen = ({ route }) => {
             isFromRegister: true  // Flag to indicate this is from register flow
           });
         } else {
-          console.log('❌ RegisterScreen: OTP sending failed:', otpResult.data?.message);
           // You can show an alert here for OTP sending failure
         }                                   
       } else {
-        console.log('❌ RegisterScreen: Backend registration failed:', registerResult.data?.message);
         // You can show an alert here for registration failure
       }
     } catch (error) {
-      console.error('💥 RegisterScreen: Registration error:', error);
       // You can show an alert here for general errors
     } finally {
       setIsLoading(false);

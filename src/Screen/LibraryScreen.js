@@ -11,12 +11,22 @@ import {
   SafeAreaView,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import BackButton from '../Component/BackButton';
 
 const { width, height } = Dimensions.get('window');
+
+// Responsive scaling factors
+const scale = width / 375; // Base width for iPhone 8
+const verticalScale = height / 812; // Base height for iPhone 8
+
+// Responsive font sizes
+const getFontSize = (size) => size * scale;
+const getVerticalSize = (size) => size * verticalScale;
 
 const LibraryScreen = ({ navigation }) => {
   // Get user data from Redux
@@ -59,7 +69,6 @@ const LibraryScreen = ({ navigation }) => {
       setHasMoreData(false);
       await fetchCourseData(1, false);
     } catch (error) {
-      console.error('💥 LibraryScreen: Error during pull-to-refresh:', error);
     } finally {
       setRefreshing(false);
     }
@@ -75,37 +84,16 @@ const LibraryScreen = ({ navigation }) => {
       }
       setCourseError(null);
 
-      console.log('🔥 LibraryScreen: Starting API call to getAllCourses...');
-      console.log('🔥 LibraryScreen: Page:', page, 'Append:', append);
-      console.log('🔥 LibraryScreen: Token provided:', !!token);
-      console.log('🔥 LibraryScreen: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
-
       const result = await courseAPI.getAllCourses(token, page, 10);
-
-      console.log('🔥 LibraryScreen: API call completed');
-      console.log('🔥 LibraryScreen: Result success:', result.success);
-      console.log('🔥 LibraryScreen: Result status:', result.status);
-      console.log('🔥 LibraryScreen: Full result object:', JSON.stringify(result, null, 2));
-      console.log('🔥 LibraryScreen: Result data:', result.data);
-      console.log('🔥 LibraryScreen: Result data type:', typeof result.data);
-      console.log('🔥 LibraryScreen: Result data.success:', result.data?.success);
-      console.log('🔥 LibraryScreen: Result data.data:', result.data?.data);
-      console.log('🔥 LibraryScreen: Result data.data type:', typeof result.data?.data);
 
       if (result.success && result.data.success) {
         // Handle new API response structure with pagination
         const coursesData = result.data.data;
         const courses = coursesData.courses || coursesData; // Handle both old and new structure
         const pagination = coursesData.pagination || {};
-        
-        console.log('🔥 LibraryScreen: API courses array:', courses);
-        console.log('🔥 LibraryScreen: API courses length:', courses?.length);
-        console.log('🔥 LibraryScreen: First course object:', courses?.[0]);
-        console.log('🔥 LibraryScreen: Pagination data:', pagination);
 
         // Check if courses is an array
         if (!Array.isArray(courses)) {
-          console.log('❌ LibraryScreen: API courses is not an array:', courses);
           setCourseError('Invalid data format received from API');
           if (!append) {
             setLibraryCourses([]);
@@ -121,12 +109,6 @@ const LibraryScreen = ({ navigation }) => {
 
         // Transform API data to match existing UI structure
         const transformedCourses = courses.map((course, index) => {
-          console.log(`🔥 LibraryScreen: Processing course ${index + 1}:`, course);
-          console.log(`🔥 LibraryScreen: Course _id:`, course._id);
-          console.log(`🔥 LibraryScreen: Course courseName:`, course.courseName);
-          console.log(`🔥 LibraryScreen: Course totalModules:`, course.totalModules);
-          console.log(`🔥 LibraryScreen: Course CoverImageUrl:`, course.CoverImageUrl);
-          
           const courseImage = course.CoverImageUrl ? { uri: course.CoverImageUrl } : require('../assests/images/Frame1.png');
           
           const transformedCourse = {
@@ -136,11 +118,8 @@ const LibraryScreen = ({ navigation }) => {
             image: courseImage,
           };
           
-          console.log(`🔥 LibraryScreen: Transformed course ${index + 1}:`, transformedCourse);
           return transformedCourse;
         });
-
-        console.log('🔥 LibraryScreen: All transformed courses:', transformedCourses);
         
         // Update courses list
         if (append && page > 1) {
@@ -150,27 +129,17 @@ const LibraryScreen = ({ navigation }) => {
         }
 
       } else {
-        console.log('❌ LibraryScreen: API call failed');
-        console.log('❌ LibraryScreen: Result success:', result.success);
-        console.log('❌ LibraryScreen: Result data success:', result.data?.success);
-        console.log('❌ LibraryScreen: Error message:', result.data?.message);
         setCourseError(result.data?.message || 'Failed to fetch courses');
         if (!append) {
           setLibraryCourses([]);
         }
       }
     } catch (error) {
-      console.error('💥 LibraryScreen: Exception caught while fetching course data');
-      console.error('💥 LibraryScreen: Error type:', typeof error);
-      console.error('💥 LibraryScreen: Error message:', error.message);
-      console.error('💥 LibraryScreen: Error stack:', error.stack);
-      console.error('💥 LibraryScreen: Full error object:', error);
       setCourseError(error.message || 'Network error occurred');
       if (!append) {
         setLibraryCourses([]);
       }
     } finally {
-      console.log('🔥 LibraryScreen: Setting loading to false');
       setIsLoadingCourses(false);
       setLoadingMore(false);
     }
@@ -179,7 +148,6 @@ const LibraryScreen = ({ navigation }) => {
   // Load more courses (next page)
   const loadMoreCourses = async () => {
     if (hasMoreData && !loadingMore && !isLoadingCourses) {
-      console.log('📚 LibraryScreen: Loading more courses, page:', currentPage + 1);
       await fetchCourseData(currentPage + 1, true);
     }
   };
@@ -209,8 +177,9 @@ const LibraryScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Library </Text>
-       
+        <BackButton onPress={() => navigation.goBack()} />
+        <Text style={styles.headerTitle}>Library</Text>
+        <View style={styles.placeholder} />
       </View>
       {refreshing && (
         <View style={styles.refreshIndicator}>
@@ -262,18 +231,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 30,
-    alignItems: 'flex-start',
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 20,
+    paddingHorizontal: getVerticalSize(20),
+    paddingTop: Platform.OS === 'ios' ? getVerticalSize(50) : getVerticalSize(40),
+    paddingBottom: getVerticalSize(15),
+    backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
+    fontSize: getFontSize(18),
+    fontWeight: 'bold',
+    color: '#000000',
+    marginLeft: 20,
+    flex: 1,
+    marginTop: getVerticalSize(1),
+  },
+  placeholder: {
+    width: getFontSize(40),
   },
   refreshButton: {
     marginTop: 30,

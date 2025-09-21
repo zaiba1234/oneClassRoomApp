@@ -15,11 +15,8 @@ class WebSocketService {
   connect(userId = null) {
     return new Promise((resolve, reject) => {
       try {
-        console.log('🔌 WebSocket: Attempting to connect...');
-        
         // Get server URL from config
         const serverUrl = getApiUrl('').replace('/api', ''); // Remove /api from base URL
-        console.log('🌐 WebSocket: Connecting to:', serverUrl);
         
         this.socket = io(serverUrl, {
           transports: ['websocket', 'polling'], // Add polling as fallback
@@ -33,7 +30,6 @@ class WebSocketService {
 
         // Set up connection timeout
         const connectionTimeout = setTimeout(() => {
-          console.warn('⏰ WebSocket: Connection timeout after 20 seconds');
           if (!this.isConnected) {
             reject(new Error('Connection timeout'));
           }
@@ -44,12 +40,10 @@ class WebSocketService {
           clearTimeout(connectionTimeout);
           this.isConnected = true;
           this.reconnectAttempts = 0;
-          console.log('✅ WebSocket: Connected successfully!');
           
           // Join user room if userId provided
           if (userId) {
             this.socket.emit('join', userId);
-            console.log('👤 WebSocket: Joined user room:', userId);
           }
           
           // Setup existing event listeners
@@ -60,7 +54,6 @@ class WebSocketService {
 
         // Connection error
         this.socket.on('connect_error', (error) => {
-          console.error('❌ WebSocket: Connection error:', error);
           this.isConnected = false;
           
           // Don't reject immediately, let reconnection handle it
@@ -83,19 +76,16 @@ class WebSocketService {
         // Reconnection attempts
         this.socket.on('reconnect_attempt', (attemptNumber) => {
           this.reconnectAttempts = attemptNumber;
-          console.log(`🔄 WebSocket: Reconnection attempt ${attemptNumber}/${this.maxReconnectAttempts}`);
         });
 
         // Reconnection successful
         this.socket.on('reconnect', (attemptNumber) => {
           this.isConnected = true;
           this.reconnectAttempts = 0;
-          console.log('✅ WebSocket: Reconnected successfully!');
         });
 
         // Reconnection failed
         this.socket.on('reconnect_failed', () => {
-          console.error('❌ WebSocket: Reconnection failed after maximum attempts');
           this.isConnected = false;
           clearTimeout(connectionTimeout);
           this.handleConnectionFailure();
@@ -108,7 +98,6 @@ class WebSocketService {
         });
 
       } catch (error) {
-        console.error('💥 WebSocket: Failed to initialize connection:', error);
         this.handleConnectionFailure();
         reject(error);
       }
@@ -118,8 +107,7 @@ class WebSocketService {
   // Handle connection failure with fallback
   handleConnectionFailure() {
     
-    // You can implement fallback logic here
-    // For example, switch to polling or show offline mode
+  
   }
 
   // Setup existing event listeners after connection
@@ -139,7 +127,6 @@ class WebSocketService {
         try {
           callback(...args);
         } catch (error) {
-          console.error(`💥 WebSocket: Error in event listener for "${eventName}":`, error);
         }
       });
     } else {
@@ -151,7 +138,6 @@ class WebSocketService {
     if (this.socket && this.isConnected) {
       this.socket.emit(eventName, data);
     } else {
-      console.warn(`⚠️ WebSocket: Cannot emit "${eventName}" - not connected`);
     }
   }
 
@@ -161,7 +147,6 @@ class WebSocketService {
       this.listeners.set(eventName, []);
     }
     this.listeners.get(eventName).push(callback);
-    
     
     // Set up socket listener if connected
     if (this.socket && this.isConnected) {

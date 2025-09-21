@@ -24,7 +24,7 @@ export const apiService = {
         status: response.status,
       };
     } catch (error) {
-      console.error(`API Error (${endpoint}):`, error);
+     
       return {
         success: false,
         data: { message: 'Network error occurred' },
@@ -97,7 +97,7 @@ export const apiService = {
         status: response.status,
       };
     } catch (error) {
-      console.error(`API Error (${endpoint}):`, error);
+     
       return {
         success: false,
         data: { message: 'Network error occurred' },

@@ -3,7 +3,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import HomeScreen from '../Screen/HomeScreen.js';
-import CategoryScreen from '../Screen/CategoryScreen.js';
 import MyCoursesScreen from '../Screen/MyCoursesScreen.js';
 import LibraryScreen from '../Screen/LibraryScreen.js';
 import FavouritesScreen from '../Screen/FavouritesScreen.js';

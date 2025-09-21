@@ -15,7 +15,7 @@ export const authAPI = {
   // Backend login check (check if user exists)
   async backendLogin(mobileNumber) {
     try {
-      console.log('🌐 authAPI.backendLogin: Calling backend login API', { mobileNumber });
+      
       
       const response = await fetch(getApiUrl(ENDPOINTS.LOGIN), {
         method: 'POST',
@@ -28,11 +28,11 @@ export const authAPI = {
       });
 
       const result = await response.json();
-      console.log('🌐 authAPI.backendLogin: Backend response', result);
+    
       
       return result;
     } catch (error) {
-      console.error('💥 authAPI.backendLogin: Error calling backend', error);
+      
       return {
         success: false,
         message: 'Backend login check failed: ' + error.message
@@ -57,7 +57,7 @@ export const authAPI = {
     }
     
     // If backend check passes, send Firebase OTP
-    console.log('✅ authAPI.login: Backend check passed, sending Firebase OTP');
+   
     return await this.sendOTP(mobileNumber);
   },
 
@@ -106,7 +106,7 @@ export const authAPI = {
         return firebaseResult;
       }
     } catch (error) {
-      console.error('💥 authAPI.verifyOTP: Error during verification:', error);
+      
       return {
         success: false,
         message: 'Verification failed: ' + error.message
@@ -123,7 +123,6 @@ export const authAPI = {
   // Backend Firebase Resend OTP
   async backendResendOTP(mobileNumber) {
     try {
-      console.log('🌐 authAPI.backendResendOTP: Calling backend resend OTP API', { mobileNumber });
       
       const response = await fetch(getApiUrl(ENDPOINTS.RESEND_OTP), {
         method: 'POST',
@@ -136,11 +135,11 @@ export const authAPI = {
       });
 
       const result = await response.json();
-      console.log('🌐 authAPI.backendResendOTP: Backend response', result);
+     
       
       return result;
     } catch (error) {
-      console.error('💥 authAPI.backendResendOTP: Error calling backend', error);
+      
       return {
         success: false,
         message: 'Backend resend OTP failed: ' + error.message

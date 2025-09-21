@@ -60,7 +60,6 @@ const CourseCertificateDownload = () => {
           return { writeStorage, readStorage };
         }
       } catch (error) {
-        console.error('❌ Error checking permissions:', error);
         return null;
       }
     }
@@ -90,7 +89,6 @@ const CourseCertificateDownload = () => {
       
       return false;
     } catch (error) {
-      console.error('❌ Downloads access test failed:', error);
       return false;
     }
   };
@@ -212,7 +210,6 @@ const CourseCertificateDownload = () => {
           return false;
         }
       } catch (err) {
-        console.error('❌ Permission request error:', err.message);
         Alert.alert('Permission Error', 'An error occurred while requesting permissions. Please check logs and try again.');
         return false;
       }
@@ -230,11 +227,9 @@ const CourseCertificateDownload = () => {
   // Function to fetch certificate description from API
   const fetchCertificateDescription = async () => {
     try {
-      console.log('📥 CourseCertificateDownload: Fetching certificate description...');
       setIsLoadingCertificate(true);
       
       const apiUrl = getApiUrl(`/api/user/course/get-CoursecertificateDesc/${courseId}`);
-      console.log('🌐 CourseCertificateDownload: Certificate API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -243,29 +238,20 @@ const CourseCertificateDownload = () => {
         },
       });
       
-      console.log('📡 CourseCertificateDownload: Certificate API response status:', response.status);
-      
       if (response.ok) {
         const result = await response.json();
-        console.log('📥 CourseCertificateDownload: Certificate data received:', result);
         
         if (result.success && result.data) {
-          console.log('📊 CourseCertificateDownload: Setting certificate data:', result.data);
-          console.log('💰 CourseCertificateDownload: Payment status - isPaymentDone:', result.data.isPaymentDone);
           setCertificateData(result.data);
         } else {
-          console.log('❌ CourseCertificateDownload: API response not successful:', result);
           Alert.alert('Error', 'Failed to fetch certificate details');
         }
       } else {
-        console.log('❌ CourseCertificateDownload: API call failed with status:', response.status);
         Alert.alert('Error', 'Failed to fetch certificate details');
       }
     } catch (error) {
-      console.log('💥 CourseCertificateDownload: Fetch certificate description error:', error);
       Alert.alert('Error', 'Failed to fetch certificate details');
     } finally {
-      console.log('🏁 CourseCertificateDownload: Certificate fetching completed');
       setIsLoadingCertificate(false);
     }
   };
@@ -273,8 +259,6 @@ const CourseCertificateDownload = () => {
   // Function to request course certificate payment
   const requestCourseCertificatePayment = async () => {
     try {
-      console.log('💳 CourseCertificateDownload: Requesting course certificate payment for courseId:', courseId);
-      
       const apiUrl = getApiUrl('/api/user/certificate/request-main-course-certificate-payment');
       
       const response = await fetch(apiUrl, {
@@ -290,16 +274,12 @@ const CourseCertificateDownload = () => {
       
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ CourseCertificateDownload: Payment request successful:', result);
         return result;
       } else {
-        console.log('❌ CourseCertificateDownload: Payment request failed:', response.status);
         const errorText = await response.text();
-        console.log('❌ CourseCertificateDownload: Error response:', errorText);
         return null;
       }
     } catch (error) {
-      console.log('💥 CourseCertificateDownload: Payment request error:', error);
       return null;
     }
   };
@@ -307,11 +287,7 @@ const CourseCertificateDownload = () => {
   // Function to verify course certificate payment
   const verifyCourseCertificatePayment = async (paymentData) => {
     try {
-      console.log('🔍 CourseCertificateDownload: Verifying course certificate payment...');
-      console.log('📤 CourseCertificateDownload: Payment details being sent:', paymentData);
-      
       const apiUrl = getApiUrl('/api/user/certificate/verify-certificate-payment');
-      console.log('🌐 CourseCertificateDownload: Verify API URL:', apiUrl);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -322,21 +298,14 @@ const CourseCertificateDownload = () => {
         body: JSON.stringify(paymentData),
       });
       
-      console.log('📡 CourseCertificateDownload: Verify API response status:', response.status);
-      
       if (response.ok) {
         const result = await response.json();
-        console.log('📥 CourseCertificateDownload: Verify payment response:', result);
-        console.log('✅ CourseCertificateDownload: Payment verification successful');
         return result;
       } else {
-        console.log('❌ CourseCertificateDownload: Payment verification failed:', response.status);
         const errorText = await response.text();
-        console.log('❌ CourseCertificateDownload: Error response:', errorText);
         return null;
       }
     } catch (error) {
-      console.log('💥 CourseCertificateDownload: Payment verification error:', error);
       return null;
     }
   };
@@ -344,29 +313,21 @@ const CourseCertificateDownload = () => {
   // Function to initiate Razorpay payment
   const initiateRazorpayPayment = async () => {
     try {
-      console.log('🚀 CourseCertificateDownload: Starting Razorpay payment flow...');
       setIsProcessingPayment(true);
       
       // Request payment from backend
-      console.log('💳 CourseCertificateDownload: Requesting payment from backend...');
       const paymentRequest = await requestCourseCertificatePayment();
-      console.log('📥 CourseCertificateDownload: Payment request response:', paymentRequest);
       
       if (!paymentRequest || !paymentRequest.success) {
-        console.log('❌ CourseCertificateDownload: Payment request failed or returned invalid response');
         Alert.alert('Error', 'First you have to complete all lessons and enroll the payment for download.');
         return;
       }
 
       const paymentData = paymentRequest.data;
-      console.log('📊 CourseCertificateDownload: Payment data received:', paymentData);
       
       // Extract the correct data from the API response
       const certificatePayment = paymentData.certificatePayment;
       const razorpayOrder = paymentData.razorpayOrder;
-      
-      console.log('📊 CourseCertificateDownload: Certificate payment:', certificatePayment);
-      console.log('📊 CourseCertificateDownload: Razorpay order:', razorpayOrder);
       
       // Configure Razorpay options
       const options = {
@@ -385,18 +346,10 @@ const CourseCertificateDownload = () => {
         theme: { color: '#FF8800' }
       };
 
-      console.log('💳 CourseCertificateDownload: Razorpay Options:', options);
-
       // Open Razorpay checkout
-      console.log('🚀 CourseCertificateDownload: Opening Razorpay checkout...');
       const razorpayResponse = await RazorpayCheckout.open(options);
-      console.log('✅ CourseCertificateDownload: Payment successful:', razorpayResponse);
 
       // Verify payment with backend
-      console.log('🔄 CourseCertificateDownload: Verifying payment with backend...');
-      console.log('📤 CourseCertificateDownload: Payment result from Razorpay:', razorpayResponse);
-      console.log('📤 CourseCertificateDownload: certificatePaymentId being sent:', certificatePayment._id);
-      
       const verificationData = {
         certificatePaymentId: certificatePayment._id,
         razorpayOrderId: razorpayResponse.razorpay_order_id,
@@ -404,14 +357,9 @@ const CourseCertificateDownload = () => {
         razorpaySignature: razorpayResponse.razorpay_signature
       };
 
-      console.log('📤 CourseCertificateDownload: Verification payload for backend:', verificationData);
-
       const verificationResult = await verifyCourseCertificatePayment(verificationData);
-      console.log('📥 CourseCertificateDownload: Verify API response:', verificationResult);
       
       if (verificationResult && verificationResult.success) {
-        console.log('✅ CourseCertificateDownload: Payment verification successful, refreshing certificate data...');
-        
         // Immediately refresh certificate data to get updated payment status
         await fetchCertificateDescription();
         
@@ -422,30 +370,21 @@ const CourseCertificateDownload = () => {
             {
               text: 'OK',
               onPress: () => {
-                console.log('✅ CourseCertificateDownload: Payment completed, user can now download certificate');
               }
             }
           ]
         );
       } else {
-        console.log('❌ CourseCertificateDownload: Payment verification failed:', verificationResult);
         Alert.alert('Payment Verification Failed', 'Please contact support if the amount was deducted.');
       }
 
     } catch (error) {
-      console.log('💥 CourseCertificateDownload: Razorpay payment error:', error);
-      console.log('💥 CourseCertificateDownload: Error code:', error.code);
-      console.log('💥 CourseCertificateDownload: Error message:', error.message);
-      
       if (error.code === 'RazorpayCheckoutCancel') {
-        console.log('❌ CourseCertificateDownload: User cancelled payment');
         Alert.alert('Payment Cancelled', 'Payment was cancelled by user.');
       } else {
-        console.log('❌ CourseCertificateDownload: Payment error occurred');
         Alert.alert('Payment Error', 'Something went wrong during payment. Please try again.');
       }
     } finally {
-      console.log('🏁 CourseCertificateDownload: Payment flow completed, setting processing to false');
       setIsProcessingPayment(false);
     }
   };
@@ -459,7 +398,6 @@ const CourseCertificateDownload = () => {
 
       // Check payment status first
       if (!certificateData?.isPaymentDone) {
-        console.log('💳 CourseCertificateDownload: Payment not done, initiating payment flow...');
         await initiateRazorpayPayment();
         return;
       }
@@ -714,7 +652,11 @@ const CourseCertificateDownload = () => {
         contentContainerStyle={styles.scrollContent} >
         {/* Congratulations Section */}
         <View style={styles.congratulationsContainer}>
-          <Text style={styles.congratulationsText}>Congratulations</Text>
+          <Image 
+            source={require('../assests/images/conge.jpeg')} 
+            style={styles.congratulationsImage}
+            resizeMode="contain"
+          />
           <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
           
           {/* Dynamic Course Name */}
@@ -789,7 +731,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: getResponsiveSize(20),
-    paddingTop: getResponsiveSize(10),
+    paddingTop: getResponsiveSize(25),
     paddingBottom: getResponsiveSize(15),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
@@ -817,13 +759,10 @@ const styles = StyleSheet.create({
     // paddingTop: getResponsiveSize(40),
     // paddingBottom: getResponsiveSize(10), // Reduced from 30 to 10
   },
-  congratulationsText: {
-    fontSize: getResponsiveSize(36),
-    fontWeight: 'bold',
-    color: '#2285FA',
-    fontStyle: 'italic',
-    // marginBottom: getResponsiveSize(8),
-    textAlign: 'center',
+  congratulationsImage: {
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(80),
+    marginBottom: getResponsiveSize(10),
   },
   congratulationsSubtext: {
     fontSize: getResponsiveSize(16),

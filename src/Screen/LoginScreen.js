@@ -35,7 +35,6 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
-      console.log('Please enter a valid mobile number');
       return;
     }
 
@@ -44,18 +43,14 @@ const LoginScreen = () => {
       // Extract only digits and ensure it's exactly 10 digits
       const digitsOnly = phoneNumber.replace(/\D/g, '');
       if (digitsOnly.length !== 10) {
-        console.log('Please enter exactly 10 digits for mobile number');
         setIsLoading(false);
         return;
       }
       
       const mobileNumberFormatted = `+91${digitsOnly}`;
-      console.log('🔥 Login: Starting login process for:', mobileNumberFormatted);
      
       // Call login API (backend check + Firebase OTP)
       const result = await authAPI.login(mobileNumberFormatted);
-      
-      console.log('🔥 Login response:', result);
       
       if (result.success) {
         // Store mobile number in Redux
@@ -64,33 +59,25 @@ const LoginScreen = () => {
         // Store verification ID for OTP verification
         const verificationId = result.data.verificationId;
         
-        console.log('🔥 Login: OTP sent successfully, navigating to verification');
         navigation.navigate('Verify', { 
           mobileNumber: mobileNumberFormatted,
           verificationId: verificationId,
           isFromLogin: true  // Flag to indicate this is from login flow
         });
       } else {
-        console.log('🔥 Login failed:', result.message || 'Failed to send OTP');
-        
         // Handle specific errors
         if (result.message?.includes('not registered') || 
             result.message?.includes('not verified') ||
             result.message?.includes('Mobile number not registered') ||
             result.message?.includes('User not found')) {
-          console.log('❌ User not registered or not verified. Navigating to Register screen.');
           
           // Navigate directly to Register screen with mobile number
           navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
         } else if (result.message?.includes('missing-client-identifier')) {
-          console.log('❌ Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console.');
         } else {
-          console.log('❌ Login failed:', result.message);
         }
       }
     } catch (error) {
-      console.error('🔥 Login error:', error);
-      console.log('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }

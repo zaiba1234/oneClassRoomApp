@@ -16,8 +16,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
+import BackButton from '../Component/BackButton';
 
 const { width, height } = Dimensions.get('window');
+
+// Responsive scaling factors
+const scale = width / 375; // Base width for iPhone 8
+const verticalScale = height / 812; // Base height for iPhone 8
+
+// Responsive font sizes
+const getFontSize = (size) => size * scale;
+const getVerticalSize = (size) => size * verticalScale;
 
 const MyCoursesScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -42,7 +51,6 @@ const MyCoursesScreen = ({ navigation }) => {
   // Fetch courses based on selected filter (first page)
   const fetchCourses = async (filter, page = 1, append = false) => {
     if (!token) {
-      console.log('❌ MyCoursesScreen: No token available');
       return;
     }
 
@@ -58,15 +66,12 @@ const MyCoursesScreen = ({ navigation }) => {
       
       switch (filter) {
         case 'All Course':
-          console.log('📚 MyCoursesScreen: Fetching purchased subcourses...');
           result = await courseAPI.getPurchasedSubcourses(token, page, 10);
           break;
         case 'In Progress':
-          console.log('📚 MyCoursesScreen: Fetching in-progress subcourses...');
           result = await courseAPI.getInProgressSubcourses(token, page, 10);
           break;
         case 'Completed':
-          console.log('📚 MyCoursesScreen: Fetching completed subcourses...');
           result = await courseAPI.getCompletedSubcourses(token, page, 10);
           break;
         default:
@@ -74,9 +79,6 @@ const MyCoursesScreen = ({ navigation }) => {
       }
 
       if (result.success && result.data.success) {
-        console.log('✅ MyCoursesScreen: Successfully fetched courses for filter:', filter);
-        console.log('✅ MyCoursesScreen:data ', result);
-
         // Handle new API response structure with pagination
         const coursesData = result.data.data;
         const courses = coursesData.subcourses || coursesData; // Handle both old and new structure
@@ -84,7 +86,6 @@ const MyCoursesScreen = ({ navigation }) => {
         
         // Ensure courses is an array
         if (!Array.isArray(courses)) {
-          console.log('❌ MyCoursesScreen: Courses data is not an array:', courses);
           setError('Invalid data format received');
           if (!append) {
             setCourseCards([]);
@@ -102,8 +103,6 @@ const MyCoursesScreen = ({ navigation }) => {
           image: course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png'),
           subcourseId: course.subcourseId,
         }));
-
-        console.log('🔄 MyCoursesScreen: Transformed courses:', transformedCourses);
         
         // Update pagination state
         setCurrentPage(pagination.currentPage || page);
@@ -118,14 +117,12 @@ const MyCoursesScreen = ({ navigation }) => {
           setCourseCards(transformedCourses);
         }
       } else {
-        console.log('❌ MyCoursesScreen: Failed to fetch courses:', result.data?.message);
         setError(result.data?.message || 'Failed to fetch courses');
         if (!append) {
           setCourseCards([]);
         }
       }
     } catch (error) {
-      console.error('💥 MyCoursesScreen: Error fetching courses:', error);
       setError('Network error occurred');
       if (!append) {
         setCourseCards([]);
@@ -139,7 +136,6 @@ const MyCoursesScreen = ({ navigation }) => {
   // Load more courses (next page)
   const loadMoreCourses = async () => {
     if (hasMoreData && !loadingMore && !isLoading) {
-      console.log('📚 MyCoursesScreen: Loading more courses, page:', currentPage + 1);
       await fetchCourses(selectedFilter, currentPage + 1, true);
     }
   };
@@ -159,7 +155,6 @@ const MyCoursesScreen = ({ navigation }) => {
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
-    console.log('🔄 MyCoursesScreen: Pull-to-refresh triggered');
     setRefreshing(true);
     try {
       // Reset pagination on refresh
@@ -168,9 +163,7 @@ const MyCoursesScreen = ({ navigation }) => {
       setTotalCourses(0);
       setHasMoreData(false);
       await fetchCourses(selectedFilter, 1, false);
-      console.log('✅ MyCoursesScreen: Pull-to-refresh completed');
     } catch (error) {
-      console.error('💥 MyCoursesScreen: Error during pull-to-refresh:', error);
     } finally {
       setRefreshing(false);
     }
@@ -249,7 +242,6 @@ const MyCoursesScreen = ({ navigation }) => {
       key={course.id} 
       style={styles.courseCard}
       onPress={() => {
-        console.log('Course clicked:', course.title);
         if (course.progress === 100) {
           navigation.navigate('Enroll', { courseId: course.subcourseId });
         } else {
@@ -281,7 +273,9 @@ const MyCoursesScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.headerTitle}>My Courses</Text>
+        <View style={styles.placeholder} />
       </View>
       {refreshing && (
         <View style={styles.refreshIndicator}>
@@ -387,16 +381,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    alignItems: 'flex-start',
-    marginTop: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: getVerticalSize(20),
+    paddingTop: Platform.OS === 'ios' ? getVerticalSize(50) : getVerticalSize(40),
+    paddingBottom: getVerticalSize(15),
+    backgroundColor: '#FFFFFF',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
+    fontSize: getFontSize(18),
+    fontWeight: 'bold',
+    color: '#000000',
+    marginLeft: 20,
+    flex: 1,
+    marginTop: getVerticalSize(1),
+  },
+  placeholder: {
+    width: getFontSize(40),
   },
   filterContainer: {
     flexDirection: 'row',

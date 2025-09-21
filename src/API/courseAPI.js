@@ -32,11 +32,7 @@ export const courseAPI = {
 
   getAllCourses: async (token, page = 1, limit = 10) => {
     try {
-      console.log('🔥 courseAPI.getAllCourses: Starting API call...');
-      console.log('🔥 courseAPI.getAllCourses: Token provided:', !!token);
-      console.log('🔥 courseAPI.getAllCourses: Page:', page, 'Limit:', limit);
-      console.log('🔥 courseAPI.getAllCourses: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
-
+      
       const url = getApiUrl(`${ENDPOINTS.GET_ALL_COURSES}?page=${page}&limit=${limit}`);
       console.log('🔥 courseAPI.getAllCourses: API URL:', url);
       
@@ -58,12 +54,7 @@ export const courseAPI = {
       console.log('🔥 courseAPI.getAllCourses: Response headers:', response.headers);
 
       const responseData = await response.json();
-      console.log('🔥 courseAPI.getAllCourses: Response data:', JSON.stringify(responseData, null, 2));
-      console.log('🔥 courseAPI.getAllCourses: Response data type:', typeof responseData);
-      console.log('🔥 courseAPI.getAllCourses: Response data.success:', responseData?.success);
-      console.log('🔥 courseAPI.getAllCourses: Response data.data:', responseData?.data);
-      console.log('🔥 courseAPI.getAllCourses: Response data.data type:', typeof responseData?.data);
-      console.log('🔥 courseAPI.getAllCourses: Response data.data isArray:', Array.isArray(responseData?.data));
+     
 
       if (response.ok) {
         console.log('✅ courseAPI.getAllCourses: API call successful');
@@ -74,11 +65,7 @@ export const courseAPI = {
         return { success: false, data: responseData, status: response.status };
       }
     } catch (error) {
-      console.error('💥 courseAPI.getAllCourses: Exception caught');
-      console.error('💥 courseAPI.getAllCourses: Error type:', typeof error);
-      console.error('💥 courseAPI.getAllCourses: Error message:', error.message);
-      console.error('💥 courseAPI.getAllCourses: Error stack:', error.stack);
-      console.error('💥 courseAPI.getAllCourses: Full error object:', error);
+      
       return { success: false, data: { message: 'Network error occurred: ' + error.message }, status: 0 };
     }
   },
@@ -385,10 +372,7 @@ export const courseAPI = {
 
   getPurchasedSubcourses: async (token, page = 1, limit = 10) => {
     try {
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Starting API call...');
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Token provided:', !!token);
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Page:', page, 'Limit:', limit);
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
+      
 
       const url = getApiUrl(`/api/user/course/purchased-subcourses?page=${page}&limit=${limit}`);
       console.log('🔥 courseAPI.getPurchasedSubcourses: API URL:', url);
@@ -411,12 +395,7 @@ export const courseAPI = {
       console.log('🔥 courseAPI.getPurchasedSubcourses: Response headers:', response.headers);
 
       const responseData = await response.json();
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data:', JSON.stringify(responseData, null, 2));
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data type:', typeof responseData);
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.success:', responseData?.success);
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.data:', responseData?.data);
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.data type:', typeof responseData?.data);
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response data.data isArray:', Array.isArray(responseData?.data));
+     
 
       if (response.ok) {
         console.log('✅ courseAPI.getPurchasedSubcourses: API call successful');
@@ -427,21 +406,14 @@ export const courseAPI = {
         return { success: false, data: responseData, status: response.status };
       }
     } catch (error) {
-      console.error('💥 courseAPI.getPurchasedSubcourses: Exception caught');
-      console.error('💥 courseAPI.getPurchasedSubcourses: Error type:', typeof error);
-      console.error('💥 courseAPI.getPurchasedSubcourses: Error message:', error.message);
-      console.error('💥 courseAPI.getPurchasedSubcourses: Error stack:', error.stack);
-      console.error('💥 courseAPI.getPurchasedSubcourses: Full error object:', error);
+      
       return { success: false, data: { message: 'Network error occurred: ' + error.message }, status: 0 };
     }
   },
 
   getInProgressSubcourses: async (token, page = 1, limit = 10) => {
     try {
-      console.log('🔥 courseAPI.getInProgressSubcourses: Starting API call...');
-      console.log('🔥 courseAPI.getInProgressSubcourses: Token provided:', !!token);
-      console.log('🔥 courseAPI.getInProgressSubcourses: Page:', page, 'Limit:', limit);
-      console.log('🔥 courseAPI.getInProgressSubcourses: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
+     
 
       const url = getApiUrl(`/api/user/course/in-progress-subcourses?page=${page}&limit=${limit}`);
       console.log('🔥 courseAPI.getInProgressSubcourses: API URL:', url);
@@ -458,10 +430,7 @@ export const courseAPI = {
         headers: headers,
       });
 
-      console.log('🔥 courseAPI.getInProgressSubcourses: Response received');
-      console.log('🔥 courseAPI.getInProgressSubcourses: Response status:', response.status);
-      console.log('🔥 courseAPI.getInProgressSubcourses: Response ok:', response.ok);
-
+     
       const responseData = await response.json();
       console.log('🔥 courseAPI.getInProgressSubcourses: Response data:', JSON.stringify(responseData, null, 2));
       console.log('🔥 courseAPI.getInProgressSubcourses: Response data.data isArray:', Array.isArray(responseData?.data));
@@ -637,11 +606,7 @@ export const courseAPI = {
 
   toggleFavorite: async (token, subcourseId) => {
     try {
-      console.log('🔥 courseAPI.toggleFavorite: Starting API call...');
-      console.log('🔥 courseAPI.toggleFavorite: Token provided:', !!token);
-      console.log('🔥 courseAPI.toggleFavorite: SubcourseId:', subcourseId);
-      console.log('🔥 courseAPI.toggleFavorite: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
-
+     
       const url = getApiUrl(ENDPOINTS.ADD_FAVORITE_COURSE);
       console.log('🔥 courseAPI.toggleFavorite: API URL:', url);
       
@@ -664,17 +629,10 @@ export const courseAPI = {
         body: body,
       });
 
-      console.log('🔥 courseAPI.toggleFavorite: Response received');
-      console.log('🔥 courseAPI.toggleFavorite: Response status:', response.status);
-      console.log('🔥 courseAPI.toggleFavorite: Response ok:', response.ok);
-      console.log('🔥 courseAPI.toggleFavorite: Response headers:', response.headers);
+     
 
       const responseData = await response.json();
-      console.log('🔥 courseAPI.toggleFavorite: Response data:', JSON.stringify(responseData, null, 2));
-      console.log('🔥 courseAPI.toggleFavorite: Response data type:', typeof responseData);
-      console.log('🔥 courseAPI.toggleFavorite: Response data.success:', responseData?.success);
-      console.log('🔥 courseAPI.toggleFavorite: Response data.data:', responseData?.data);
-
+    
       if (response.ok) {
         console.log('✅ courseAPI.toggleFavorite: API call successful');
         return { success: true, data: responseData, status: response.status };
@@ -684,11 +642,7 @@ export const courseAPI = {
         return { success: false, data: responseData, status: response.status };
       }
     } catch (error) {
-      console.error('💥 courseAPI.toggleFavorite: Exception caught');
-      console.error('💥 courseAPI.toggleFavorite: Error type:', typeof error);
-      console.error('💥 courseAPI.toggleFavorite: Error message:', error.message);
-      console.error('💥 courseAPI.toggleFavorite: Error stack:', error.stack);
-      console.error('💥 courseAPI.toggleFavorite: Full error object:', error);
+     
       return { success: false, data: { message: 'Network error occurred: ' + error.message }, status: 0 };
     }
   },
@@ -696,10 +650,7 @@ export const courseAPI = {
   // Get favorite courses
   getFavoriteCourses: async (token, page = 1, limit = 10) => {
     try {
-      console.log('🔥 courseAPI.getFavoriteCourses: Starting API call...');
-      console.log('🔥 courseAPI.getFavoriteCourses: Token provided:', !!token);
-      console.log('🔥 courseAPI.getFavoriteCourses: Page:', page, 'Limit:', limit);
-      console.log('🔥 courseAPI.getFavoriteCourses: Token value:', token ? token.substring(0, 20) + '...' : 'No token');
+     
 
       const url = getApiUrl(`${ENDPOINTS.GET_FAVORITE_COURSES}?page=${page}&limit=${limit}`);
       console.log('🔥 courseAPI.getFavoriteCourses: API URL:', url);
@@ -716,10 +667,7 @@ export const courseAPI = {
         headers: headers,
       });
 
-      console.log('🔥 courseAPI.getFavoriteCourses: Response received');
-      console.log('🔥 courseAPI.getFavoriteCourses: Response status:', response.status);
-      console.log('🔥 courseAPI.getFavoriteCourses: Response ok:', response.ok);
-      console.log('🔥 courseAPI.getFavoriteCourses: Response headers:', response.headers);
+      
 
       if (!response.ok) {
         console.log('❌ courseAPI.getFavoriteCourses: HTTP error! status:', response.status);
@@ -727,12 +675,7 @@ export const courseAPI = {
       }
 
       const responseData = await response.json();
-      console.log('🔥 courseAPI.getFavoriteCourses: Response data:', JSON.stringify(responseData, null, 2));
-      console.log('🔥 courseAPI.getFavoriteCourses: Response data type:', typeof responseData);
-      console.log('🔥 courseAPI.getFavoriteCourses: Response data.success:', responseData?.success);
-      console.log('🔥 courseAPI.getFavoriteCourses: Response data.data:', responseData?.data);
-      console.log('🔥 courseAPI.getFavoriteCourses: Response data.data type:', typeof responseData?.data);
-      console.log('🔥 courseAPI.getFavoriteCourses: Response data.data isArray:', Array.isArray(responseData?.data));
+    
 
       if (response.ok) {
         console.log('✅ courseAPI.getFavoriteCourses: API call successful');
@@ -743,11 +686,7 @@ export const courseAPI = {
         return { success: false, data: responseData, status: response.status };
       }
     } catch (error) {
-      console.error('💥 courseAPI.getFavoriteCourses: Exception caught');
-      console.error('💥 courseAPI.getFavoriteCourses: Error type:', typeof error);
-      console.error('💥 courseAPI.getFavoriteCourses: Error message:', error.message);
-      console.error('💥 courseAPI.getFavoriteCourses: Error stack:', error.stack);
-      console.error('💥 courseAPI.getFavoriteCourses: Full error object:', error);
+      
       return { success: false, data: { message: 'Network error occurred: ' + error.message }, status: 0 };
     }
   },
