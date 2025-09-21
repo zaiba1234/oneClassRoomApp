@@ -1156,20 +1156,24 @@ const EnrollScreen = ({ navigation, route }) => {
   };
 
   const renderLessons = () => {
-    // Add extra safety check
-    if (!courseData.lessons || !Array.isArray(courseData.lessons) || courseData.lessons.length === 0) {
-      // Show alert and return empty view
-      Alert.alert(
-        'No Lessons Available',
-        'Lessons not added yet',
-        [
-          {
-            text: 'OK',
-            style: 'default'
-          }
-        ]
-      );
-      
+    // Debug log for lessons data
+    console.log('🔍 EnrollScreen: renderLessons Debug:', {
+      totalLessons: courseData.totalLessons,
+      lessonsArray: courseData.lessons,
+      lessonsLength: courseData.lessons?.length,
+      isLessonsArray: Array.isArray(courseData.lessons)
+    });
+    
+    // Add extra safety check - check both totalLessons and lessons array
+    const hasNoLessons = !courseData.lessons || 
+                        !Array.isArray(courseData.lessons) || 
+                        courseData.lessons.length === 0 || 
+                        courseData.totalLessons === 0;
+    
+    console.log('🔍 EnrollScreen: hasNoLessons result:', hasNoLessons);
+    
+    if (hasNoLessons) {
+      // Return empty view without alert
       return (
         <View style={styles.lessonsContainer}>
           <View style={styles.emptyLessonsContainer}>

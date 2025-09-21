@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   ScrollView,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Orientation from 'react-native-orientation-locker';
@@ -76,7 +77,12 @@ const LessonVideoScreen = ({ navigation, route }) => {
       fetchLessonDetails();
     } else {
       console.log('⚠️ LessonVideoScreen: No lessonId or token available');
-      setIsLoadingLesson(false);
+      // Keep loading state true to show loader until we have both lessonId and token
+      if (!lessonId || !token) {
+        setIsLoadingLesson(true);
+      } else {
+        setIsLoadingLesson(false);
+      }
     }
   }, [lessonId, token]);
 
@@ -417,6 +423,7 @@ const LessonVideoScreen = ({ navigation, route }) => {
       >
         {isLoadingLesson ? (
           <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FF6B35" />
             <Text style={styles.loadingText}>Loading lesson details...</Text>
           </View>
         ) : lessonError ? (
@@ -675,11 +682,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: getVerticalSize(20),
+    padding: getVerticalSize(40),
+    minHeight: getVerticalSize(300),
   },
   loadingText: {
     fontSize: getFontSize(18),
     color: '#666666',
+    marginTop: getVerticalSize(15),
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,

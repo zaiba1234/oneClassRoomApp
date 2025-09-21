@@ -1398,7 +1398,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: getResponsiveSize(20),
-    paddingTop: Platform.OS === 'ios' ? insets.top + getResponsiveSize(20) : StatusBar.currentHeight + getResponsiveSize(60),
+    paddingTop: Platform.OS === 'ios' ? insets.top + getResponsiveSize(20) : StatusBar.currentHeight + getResponsiveSize(20),
     paddingBottom: getResponsiveSize(20),
   },
   headerTop: {
