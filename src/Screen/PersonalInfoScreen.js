@@ -311,13 +311,20 @@ const PersonalInfoScreen = ({ navigation }) => {
       includeBase64: false,
       maxHeight: 2000,
       maxWidth: 2000,
+      quality: 0.8,
+      // Use Android Photo Picker for better privacy compliance
+      selectionLimit: 1,
     };
 
     launchCamera(options, (response) => {
       if (response.didCancel) {
+        console.log('User cancelled camera');
       } else if (response.error) {
-      } else {
+        console.log('Camera Error: ', response.error);
+        Alert.alert('Camera Error', 'Failed to open camera. Please try again.');
+      } else if (response.assets && response.assets.length > 0) {
         setProfileImage({ uri: response.assets[0].uri });
+        console.log('Image captured successfully');
       }
     });
   };
@@ -328,13 +335,20 @@ const PersonalInfoScreen = ({ navigation }) => {
       includeBase64: false,
       maxHeight: 2000,
       maxWidth: 2000,
+      quality: 0.8,
+      // Use Android Photo Picker for better privacy compliance
+      selectionLimit: 1,
     };
 
     launchImageLibrary(options, (response) => {
       if (response.didCancel) {
+        console.log('User cancelled image picker');
       } else if (response.error) {
-      } else {
+        console.log('ImagePicker Error: ', response.error);
+        Alert.alert('Gallery Error', 'Failed to select image. Please try again.');
+      } else if (response.assets && response.assets.length > 0) {
         setProfileImage({ uri: response.assets[0].uri });
+        console.log('Image selected successfully');
       }
     });
   };

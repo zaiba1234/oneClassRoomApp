@@ -11,7 +11,6 @@ import {
   SafeAreaView,
   Alert,
   Linking,
-  PermissionsAndroid,
   Platform,
   RefreshControl,
 } from 'react-native';
@@ -47,25 +46,11 @@ const CourseCertificateDownload = () => {
   // Get courseId from route params (coming from EnrollScreen)
   const courseId = route.params?.courseId;
 
-  // Function to check current permission status
+  // Function to check current permission status - Simplified for Google Play compliance
   const checkCurrentPermissions = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        
-        if (Platform.Version >= 33) {
-          const readMediaImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
-          const readMediaVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
-          return { readMediaImages, readMediaVideo };
-        } else {
-          const writeStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE);
-          const readStorage = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-          return { writeStorage, readStorage };
-        }
-      } catch (error) {
-        return null;
-      }
-    }
-    return null;
+    // For all platforms, downloads to Downloads folder don't require media permissions
+    console.log('📱 No media permissions needed for certificate downloads');
+    return { hasPermission: true };
   };
 
   // Function to test if we can actually write to downloads directory
@@ -95,134 +80,11 @@ const CourseCertificateDownload = () => {
     }
   };
 
-  // Function to request storage permissions
+  // Function to request storage permissions - Simplified for Google Play compliance
   const requestStoragePermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        let granted = false;
-
-        if (Platform.Version >= 33) {
-          // Android 13+ requires READ_MEDIA_IMAGES and READ_MEDIA_VIDEO
-          console.log('📱 Android 13+ detected, requesting media permissions...');
-          
-          // First check if permissions are already granted
-          const hasImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
-          const hasVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
-          
-          console.log('📱 Current permissions - Images:', hasImages, 'Video:', hasVideo);
-          
-          if (hasImages && hasVideo) {
-            console.log('✅ Media permissions already granted');
-            return true;
-          }
-          
-          // Request READ_MEDIA_IMAGES permission
-          const readMediaImages = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-            {
-              title: 'Media Access Permission',
-              message: 'App needs access to media to download certificates. Please grant this permission.',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'Grant',
-            }
-          );
-          
-          console.log('📱 READ_MEDIA_IMAGES result:', readMediaImages);
-          
-          // Request READ_MEDIA_VIDEO permission
-          const readMediaVideo = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
-            {
-              title: 'Media Access Permission',
-              message: 'App needs access to media to download certificates. Please grant this permission.',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'Grant',
-            }
-          );
-          
-          console.log('📱 READ_MEDIA_VIDEO result:', readMediaVideo);
-          
-          granted = (readMediaImages === PermissionsAndroid.RESULTS.GRANTED && 
-                    readMediaVideo === PermissionsAndroid.RESULTS.GRANTED);
-          
-          console.log('📱 Final Media Permissions Result - Images:', readMediaImages, 'Video:', readMediaVideo, 'Granted:', granted);
-          
-          if (!granted) {
-            // Show detailed explanation for Android 13+
-            Alert.alert(
-              'Permission Required for Android 13+',
-              'This app needs media access permissions to download certificates. Please:\n\n1. Go to Settings > Apps > LearningSaint > Permissions\n2. Enable "Photos and videos" permission\n3. Try downloading again',
-              [
-                { text: 'OK' },
-                { 
-                  text: 'Open Settings', 
-                  onPress: () => {
-                    Linking.openSettings();
-                  }
-                }
-              ]
-            );
-          }
-          
-        } else if (Platform.Version >= 29) {
-          // Android 10-12
-          
-          const writePermission = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-            {
-              title: 'Storage Permission',
-              message: 'App needs access to storage to download certificates',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
-          
-          const readPermission = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
-            {
-              title: 'Storage Permission',
-              message: 'App needs access to storage to download certificates',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
-          
-          granted = (writePermission === PermissionsAndroid.RESULTS.GRANTED && 
-                    readPermission === PermissionsAndroid.RESULTS.GRANTED);
-          
-          
-        } else {
-          // Android 9 and below
-          
-          const writePermission = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-            {
-              title: 'Storage Permission',
-              message: 'App needs access to storage to download certificates',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
-          
-          granted = writePermission === PermissionsAndroid.RESULTS.GRANTED;
-        }
-
-        if (granted) {
-          return true;
-        } else {
-          return false;
-        }
-      } catch (err) {
-        Alert.alert('Permission Error', 'An error occurred while requesting permissions. Please check logs and try again.');
-        return false;
-      }
-    }
-    return true; // iOS doesn't need this permission
+    // For all platforms, downloads to Downloads folder don't require media permissions
+    console.log('📱 No permissions needed for certificate downloads');
+    return true;
   };
 
   // Fetch certificate description data when component mounts
