@@ -103,13 +103,16 @@ const CourseCertificateDownload = () => {
 
         if (Platform.Version >= 33) {
           // Android 13+ requires READ_MEDIA_IMAGES and READ_MEDIA_VIDEO
+          console.log('📱 Android 13+ detected, requesting media permissions...');
           
           // First check if permissions are already granted
           const hasImages = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
           const hasVideo = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO);
           
+          console.log('📱 Current permissions - Images:', hasImages, 'Video:', hasVideo);
           
           if (hasImages && hasVideo) {
+            console.log('✅ Media permissions already granted');
             return true;
           }
           
@@ -125,6 +128,7 @@ const CourseCertificateDownload = () => {
             }
           );
           
+          console.log('📱 READ_MEDIA_IMAGES result:', readMediaImages);
           
           // Request READ_MEDIA_VIDEO permission
           const readMediaVideo = await PermissionsAndroid.request(
@@ -138,10 +142,12 @@ const CourseCertificateDownload = () => {
             }
           );
           
+          console.log('📱 READ_MEDIA_VIDEO result:', readMediaVideo);
           
           granted = (readMediaImages === PermissionsAndroid.RESULTS.GRANTED && 
                     readMediaVideo === PermissionsAndroid.RESULTS.GRANTED);
           
+          console.log('📱 Final Media Permissions Result - Images:', readMediaImages, 'Video:', readMediaVideo, 'Granted:', granted);
           
           if (!granted) {
             // Show detailed explanation for Android 13+

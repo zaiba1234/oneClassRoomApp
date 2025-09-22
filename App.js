@@ -210,26 +210,11 @@ const AppContent = ({ alertManagerRef }) => {
         // User logged out, cleanup
         console.log('👋 App: User logged out, cleaning up...');
         
-        // Clean up FCM token from backend
-        try {
-          console.log('🔔 App: Removing FCM token from backend on logout...');
-          const fcmToken = await fcmService.getCurrentFCMToken();
-          if (fcmToken) {
-            const userToken = store.getState().user?.token;
-            if (userToken) {
-              const removed = await notificationService.removeFCMTokenFromBackend(fcmToken, userToken);
-              if (removed) {
-                console.log('✅ App: FCM token removed from backend successfully');
-              } else {
-                console.log('⚠️ App: Failed to remove FCM token from backend');
-              }
-            }
-          }
-        } catch (error) {
-          console.error('💥 App: Error removing FCM token on logout:', error);
-        }
+        // Note: FCM token removal is now handled in ProfileScreen.js before logout
+        // This ensures the user token is still available when removing FCM token
+        console.log('ℹ️ App: FCM token removal handled in ProfileScreen before logout');
         
-        // Clean up notification service
+        // Clean up notification service (local cleanup only)
         await notificationService.cleanup();
       }
     };

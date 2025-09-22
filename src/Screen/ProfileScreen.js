@@ -24,6 +24,8 @@ import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { logout, clearUserFromStorage } from '../Redux/userSlice';
 import { useNavigation } from '@react-navigation/native';
 import { getApiUrl } from '../API/config';
+import notificationService from '../services/notificationService';
+import { getStoredFCMToken } from '../services/firebaseConfig';
 
 
 const ProfileScreen = ({ navigation }) => {
@@ -195,10 +197,74 @@ const ProfileScreen = ({ navigation }) => {
           text: 'Logout',
           onPress: async () => {
             hideCustomAlert();
-            // Clear from storage first, then logout
-            await dispatch(clearUserFromStorage());
-            dispatch(logout());
-            nav.navigate('Login');
+            
+            try {
+              // Show loading state
+              showCustomAlert(
+                'Logging Out',
+                'Please wait while we log you out...',
+                'loading',
+                [],
+                true
+              );
+
+              // Remove FCM token from backend before logout
+              console.log('🔔 ProfileScreen: Starting logout process with FCM token removal...');
+              
+              // Get FCM token and user token before clearing user data
+              const fcmToken = await getStoredFCMToken();
+              const userToken = token; // Get token from Redux state before clearing
+              
+              if (fcmToken && userToken) {
+                console.log('🔔 ProfileScreen: Removing FCM token from backend...');
+                const removed = await notificationService.removeFCMTokenFromBackend(fcmToken, userToken);
+                if (removed) {
+                  console.log('✅ ProfileScreen: FCM token removed from backend successfully');
+                } else {
+                  console.log('⚠️ ProfileScreen: Failed to remove FCM token from backend');
+                }
+              } else {
+                console.log('ℹ️ ProfileScreen: No FCM token or user token to remove');
+              }
+              
+              // Clear local FCM token and notifications
+              await notificationService.cleanup();
+              
+              console.log('✅ ProfileScreen: FCM cleanup completed');
+              
+              // Clear from storage and logout
+              await dispatch(clearUserFromStorage());
+              dispatch(logout());
+              
+              // Hide loading alert
+              hideCustomAlert();
+              
+              // Navigate to login
+              nav.navigate('Login');
+              
+            } catch (error) {
+              console.error('❌ ProfileScreen: Error during logout:', error);
+              
+              // Hide loading alert
+              hideCustomAlert();
+              
+              // Show error but still proceed with logout
+              showCustomAlert(
+                'Logout Warning',
+                'There was an issue removing your notification settings, but you have been logged out successfully.',
+                'warning',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      hideCustomAlert();
+                      nav.navigate('Login');
+                    },
+                    style: 'primary',
+                  },
+                ]
+              );
+            }
           },
           style: 'danger',
         },
@@ -402,6 +468,34 @@ const ProfileScreen = ({ navigation }) => {
 
       if (response.ok) {
         const result = await response.json();
+
+        // Remove FCM token from backend before clearing user data
+        try {
+          console.log('🔔 ProfileScreen: Removing FCM token during account deletion...');
+          
+          // Get FCM token and user token before clearing user data
+          const fcmToken = await getStoredFCMToken();
+          const userToken = token; // Get token from Redux state before clearing
+          
+          if (fcmToken && userToken) {
+            console.log('🔔 ProfileScreen: Removing FCM token from backend...');
+            const removed = await notificationService.removeFCMTokenFromBackend(fcmToken, userToken);
+            if (removed) {
+              console.log('✅ ProfileScreen: FCM token removed from backend successfully');
+            } else {
+              console.log('⚠️ ProfileScreen: Failed to remove FCM token from backend');
+            }
+          } else {
+            console.log('ℹ️ ProfileScreen: No FCM token or user token to remove');
+          }
+          
+          // Clear local FCM token and notifications
+          await notificationService.cleanup();
+          console.log('✅ ProfileScreen: FCM cleanup completed during account deletion');
+        } catch (fcmError) {
+          console.error('⚠️ ProfileScreen: Error removing FCM token during account deletion:', fcmError);
+          // Continue with account deletion even if FCM cleanup fails
+        }
 
         showCustomAlert(
           'Account Deleted',

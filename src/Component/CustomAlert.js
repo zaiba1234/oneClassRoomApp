@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import LinearGradient from 'react-native-linear-gradient';
@@ -209,9 +210,15 @@ const CustomAlert = ({
           
           {/* Message */}
           {message && (
-            <Text style={[styles.message, { color: config.messageColor }]}>
-              {message}
-            </Text>
+            <ScrollView 
+              style={styles.messageScrollContainer}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+            >
+              <Text style={[styles.message, { color: config.messageColor }]}>
+                {message}
+              </Text>
+            </ScrollView>
           )}
 
           {/* Buttons */}
@@ -304,12 +311,15 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     lineHeight: 28,
   },
+  messageScrollContainer: {
+    maxHeight: 200,
+    marginBottom: 25,
+  },
   message: {
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
     fontWeight: '400',
-    marginBottom: 25,
   },
   buttonContainer: {
     flexDirection: 'row',

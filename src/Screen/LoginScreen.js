@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { authAPI } from '../API/authAPI';
 import { useAppDispatch } from '../Redux/hooks';
 import { setMobileNumber } from '../Redux/userSlice';
@@ -17,10 +17,10 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
-  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+import CustomAlertManager from '../Component/CustomAlertManager';
 
 const logo = require('../assests/images/Learningsaintlogo.png');
 const graduationCap = require('../assests/images/Degree.png');
@@ -32,9 +32,17 @@ const LoginScreen = () => {
   const dispatch = useAppDispatch();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const customAlertRef = useRef(null);
 
   const handleLogin = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
+      customAlertRef.current?.show({
+        title: 'Error',
+        message: 'Please enter a valid mobile number',
+        type: 'error',
+        showCancel: false,
+        confirmText: 'OK'
+      });
       return;
     }
 
@@ -43,6 +51,13 @@ const LoginScreen = () => {
       // Extract only digits and ensure it's exactly 10 digits
       const digitsOnly = phoneNumber.replace(/\D/g, '');
       if (digitsOnly.length !== 10) {
+        customAlertRef.current?.show({
+          title: 'Error',
+          message: 'Please enter exactly 10 digits for mobile number',
+          type: 'error',
+          showCancel: false,
+          confirmText: 'OK'
+        });
         setIsLoading(false);
         return;
       }
@@ -74,10 +89,32 @@ const LoginScreen = () => {
           // Navigate directly to Register screen with mobile number
           navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
         } else if (result.message?.includes('missing-client-identifier')) {
+          customAlertRef.current?.show({
+            title: 'Configuration Error',
+            message: 'Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console.',
+            type: 'error',
+            showCancel: false,
+            confirmText: 'OK'
+          });
         } else {
+          const errorMessage = result.data?.message || result.message || 'Failed to send OTP';
+          customAlertRef.current?.show({
+            title: 'Login Failed',
+            message: errorMessage,
+            type: 'error',
+            showCancel: false,
+            confirmText: 'OK'
+          });
         }
       }
     } catch (error) {
+      customAlertRef.current?.show({
+        title: 'Error',
+        message: 'Network error. Please try again.',
+        type: 'error',
+        showCancel: false,
+        confirmText: 'OK'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -147,23 +184,19 @@ const LoginScreen = () => {
               >
                 <TouchableOpacity
                   onPress={handleLogin}
-                  style={styles.buttonTouchable}
+                  style={{ width: '100%', alignItems: 'center' }}
                   disabled={isLoading}
                 >
-                  {isLoading ? (
-                    <View style={styles.loadingContainer}>
-                      <ActivityIndicator size="small" color="#fff" />
-                      <Text style={styles.buttonText}>Sending OTP...</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.buttonText}>Log In</Text>
-                  )}
+                  <Text style={styles.buttonText}>{isLoading ? 'Checking...' : 'Log In'}</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
+      
+      {/* Custom Alert Manager */}
+      <CustomAlertManager ref={customAlertRef} />
     </KeyboardAvoidingView>
   );
 };
@@ -266,19 +299,9 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     paddingVertical: 16,
   },
-  buttonTouchable: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   buttonText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
-    marginLeft: 8,
   },
 });
