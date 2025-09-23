@@ -75,27 +75,29 @@ export class FCMTokenService {
   // Refresh FCM token and send to backend
   async refreshAndSendToken() {
     try {
+      console.log('🔄 [FCM Service] Refreshing FCM token...');
       
-      // Import refresh function
-      const { refreshFCMToken } = require('./firebaseConfig');
-      
-      // Refresh token
-      const newToken = await refreshFCMToken();
+      // Get new FCM token
+      const newToken = await getFCMToken();
       if (!newToken) {
+        console.error('🔄 [FCM Service] Failed to get new FCM token');
         return false;
       }
 
       // Get user token
       const userToken = this.getCurrentUserToken();
       if (!userToken) {
+        console.error('🔄 [FCM Service] No user token available');
         return false;
       }
 
       // Send to backend
       const success = await sendFCMTokenToBackend(newToken, userToken);
       if (success) {
+        console.log('✅ [FCM Service] Token refreshed and sent successfully');
         return true;
       } else {
+        console.error('🔄 [FCM Service] Failed to send refreshed token to backend');
         return false;
       }
     } catch (error) {

@@ -8,6 +8,7 @@ import store from '../Redux/store';
 import { getApiUrl } from '../API/config';
 import { getFCMTokenService } from '../services/fcmTokenService';
 import notificationService from '../services/notificationService';
+import { setCustomAlertRef } from '../services/firebaseAuthService';
 import {
   TextInput,
   View,
@@ -47,6 +48,11 @@ const VerificationScreen = ({ route }) => {
   const verificationId = route.params?.verificationId || null;
   const isFromLogin = route.params?.isFromLogin || false;
   const isFromRegister = route.params?.isFromRegister || false;
+
+  // Set custom alert reference for Firebase Auth service
+  useEffect(() => {
+    setCustomAlertRef(customAlertRef);
+  }, []);
 
   useEffect(() => {
     // Component mounted
@@ -169,9 +175,12 @@ console.log('🔔 [handleResendOTP] Response:', response);
       setIsResending(true);
 
       try {
+        console.log('🔄 [VerificationScreen] Resending OTP for:', mobileNumber);
         const result = await authAPI.resendOTP(mobileNumber);
+        console.log('🔄 [VerificationScreen] Resend OTP Response:', JSON.stringify(result, null, 2));
 
         if (result.success) {
+          console.log('✅ [VerificationScreen] OTP resent successfully');
           customAlertRef.current?.show({
             title: 'Success',
             message: 'OTP resent successfully!',
@@ -184,18 +193,23 @@ console.log('🔔 [handleResendOTP] Response:', response);
           otpRefs.current[0]?.focus();
         } else {
           const errorMessage = result.data?.message || result.message || 'Failed to resend OTP';
+          const fullErrorDetails = `Resend OTP Error: ${errorMessage}\n\nFull Response: ${JSON.stringify(result, null, 2)}`;
+          
           customAlertRef.current?.show({
-            title: 'Error',
-            message: errorMessage,
+            title: 'Resend OTP Failed - Debug Info',
+            message: fullErrorDetails,
             type: 'error',
             showCancel: false,
             confirmText: 'OK'
           });
         }
       } catch (error) {
+        console.error('💥 [VerificationScreen] Resend OTP error:', error);
+        const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
+        
         customAlertRef.current?.show({
-          title: 'Error',
-          message: 'Failed to resend OTP. Please try again.',
+          title: 'Resend OTP Error - Debug Info',
+          message: errorDetails,
           type: 'error',
           showCancel: false,
           confirmText: 'OK'
@@ -304,27 +318,44 @@ console.log('🔔 [handleResendOTP] Response:', response);
     }
 
     setIsLoading(true);
+    console.log('🔐 [VerificationScreen] Starting OTP verification:', { 
+      mobileNumber, 
+      otpString, 
+      verificationId, 
+      isFromRegister, 
+      isFromLogin 
+    });
 
     try {
       let result;
       if (isFromRegister) {
+        console.log('📝 [VerificationScreen] Verifying OTP for registration flow');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       } else if (isFromLogin) {
+        console.log('🔑 [VerificationScreen] Verifying OTP for login flow');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       } else {
+        console.log('🔄 [VerificationScreen] Verifying OTP for general flow');
         result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
       }
 
+      console.log('🔐 [VerificationScreen] OTP Verification Response:', JSON.stringify(result, null, 2));
+
       if (result.success) {
+        console.log('✅ [VerificationScreen] OTP verification successful');
         const token = result.data?.data?.token || result.data?.token;
+        console.log('🔑 [VerificationScreen] Token received:', token ? 'Yes' : 'No');
 
         if (token) {
           try {
+            console.log('👤 [VerificationScreen] Fetching user profile...');
             const profileResult = await profileAPI.getUserProfile(token);
+            console.log('👤 [VerificationScreen] Profile API Response:', JSON.stringify(profileResult, null, 2));
 
             if (profileResult.success && profileResult.data.success) {
               const userData = profileResult.data.data;
               const isNewUser = isFromRegister || !userData.address || !userData.email;
+              console.log('👤 [VerificationScreen] User data loaded, isNewUser:', isNewUser);
 
               const completeUserData = {
                 _id: userData._id,
@@ -342,8 +373,10 @@ console.log('🔔 [handleResendOTP] Response:', response);
               dispatch(saveUserToStorage(completeUserData));
 
               try {
+                console.log('🔔 [VerificationScreen] Sending FCM token to backend...');
                 const fcmService = getFCMTokenService(store);
                 const fcmSent = await fcmService.sendStoredTokenToBackend();
+                console.log('🔔 [VerificationScreen] FCM token sent:', fcmSent);
                 if (!fcmSent) {
                   customAlertRef.current?.show({
                   title: 'Warning',
@@ -354,6 +387,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
                 });
                 }
               } catch (fcmError) {
+                console.error('🔔 [VerificationScreen] FCM error:', fcmError);
                 customAlertRef.current?.show({
                   title: 'Warning',
                   message: 'Failed to register for notifications',
@@ -363,6 +397,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
                 });
               }
             } else {
+              console.log('⚠️ [VerificationScreen] Profile fetch failed, using fallback data');
               const fallbackUserData = {
                 mobileNumber: mobileNumber,
                 token: token,
@@ -377,8 +412,10 @@ console.log('🔔 [handleResendOTP] Response:', response);
               dispatch(saveUserToStorage(fallbackUserData));
 
               try {
+                console.log('🔔 [VerificationScreen] Sending FCM token to backend (fallback)...');
                 const fcmService = getFCMTokenService(store);
                 const fcmSent = await fcmService.sendStoredTokenToBackend();
+                console.log('🔔 [VerificationScreen] FCM token sent (fallback):', fcmSent);
                 if (!fcmSent) {
                   customAlertRef.current?.show({
                   title: 'Warning',
@@ -389,6 +426,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
                 });
                 }
               } catch (fcmError) {
+                console.error('🔔 [VerificationScreen] FCM error (fallback):', fcmError);
                 customAlertRef.current?.show({
                   title: 'Warning',
                   message: 'Failed to register for notifications',
@@ -399,6 +437,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
               }
             }
           } catch (profileError) {
+            console.error('💥 [VerificationScreen] Profile fetch error:', profileError);
             const fallbackUserData = {
               mobileNumber: mobileNumber,
               token: token,
@@ -413,8 +452,10 @@ console.log('🔔 [handleResendOTP] Response:', response);
             dispatch(saveUserToStorage(fallbackUserData));
 
             try {
+              console.log('🔔 [VerificationScreen] Sending FCM token to backend (error fallback)...');
               const fcmService = getFCMTokenService(store);
               const fcmSent = await fcmService.sendStoredTokenToBackend();
+              console.log('🔔 [VerificationScreen] FCM token sent (error fallback):', fcmSent);
               if (!fcmSent) {
                 customAlertRef.current?.show({
                   title: 'Warning',
@@ -425,6 +466,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
                 });
               }
             } catch (fcmError) {
+              console.error('🔔 [VerificationScreen] FCM error (error fallback):', fcmError);
               customAlertRef.current?.show({
                   title: 'Warning',
                   message: 'Failed to register for notifications',
@@ -435,6 +477,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
             }
           }
         } else {
+          console.log('❌ [VerificationScreen] No token received in response');
           const fallbackUserData = {
             isNewUser: isFromRegister
           };
@@ -454,23 +497,30 @@ console.log('🔔 [handleResendOTP] Response:', response);
 
         const userState = store.getState().user;
         const isNewUser = userState.isNewUser;
+        console.log('🏠 [VerificationScreen] Navigation decision - isNewUser:', isNewUser);
 
         if (isNewUser) {
+          console.log('🏠 [VerificationScreen] Navigating to Category screen');
           navigation.navigate('Category');
         } else {
+          console.log('🏠 [VerificationScreen] Navigating to Home screen');
           navigation.navigate('Home');
         }
       } else {
+        console.log('❌ [VerificationScreen] OTP verification failed:', result);
         if (result.message?.includes('not registered') ||
             result.message?.includes('Mobile number not registered') ||
             result.message?.includes('not verified') ||
             result.message?.includes('User not found')) {
+          console.log('🔄 [VerificationScreen] User not found, navigating to register');
           navigation.navigate('Register', { mobileNumber: mobileNumber });
         } else {
           const errorMessage = result.message || 'OTP verification failed. Please try again.';
+          const fullErrorDetails = `OTP Verification Error: ${errorMessage}\n\nFull Response: ${JSON.stringify(result, null, 2)}`;
+          
           customAlertRef.current?.show({
-            title: 'Error',
-            message: errorMessage,
+            title: 'OTP Verification Failed - Debug Info',
+            message: fullErrorDetails,
             type: 'error',
             showCancel: false,
             confirmText: 'OK'
@@ -478,9 +528,12 @@ console.log('🔔 [handleResendOTP] Response:', response);
         }
       }
     } catch (error) {
+      console.error('💥 [VerificationScreen] OTP verification error:', error);
+      const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
+      
       customAlertRef.current?.show({
-        title: 'Error',
-        message: 'OTP verification failed. Please try again.',
+        title: 'OTP Verification Error - Debug Info',
+        message: errorDetails,
         type: 'error',
         showCancel: false,
         confirmText: 'OK'

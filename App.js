@@ -143,6 +143,28 @@ const AppContent = ({ alertManagerRef }) => {
     global.checkFirebase = () => checkFirebaseStatus();
     global.testConfig = () => testFirebaseConfig();
     
+    // Add permission testing functions
+    global.checkNotificationPermission = async () => {
+      const { checkNotificationPermission } = require('./src/services/firebaseConfig');
+      return await checkNotificationPermission();
+    };
+    
+    global.requestNotificationPermission = async () => {
+      const { requestNotificationPermissionManually } = require('./src/services/firebaseConfig');
+      return await requestNotificationPermissionManually();
+    };
+    
+    // Add new FCM notification test functions
+    global.testFCMNotifications = async () => {
+      const { testFCMNotifications } = require('./src/services/fcmNotificationTest');
+      return await testFCMNotifications();
+    };
+    
+    global.getFCMStatus = async () => {
+      const { getFCMStatus } = require('./src/services/fcmNotificationTest');
+      return await getFCMStatus();
+    };
+    
     // Set global navigation reference for notification handlers
     global.navigationRef = navigationRef;
     

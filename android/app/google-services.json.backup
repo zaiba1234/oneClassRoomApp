@@ -22,14 +22,6 @@
           }
         },
         {
-          "client_id": "830620644032-mhgvmr91t63iftj1sflf35ie3eetg72v.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.learningsaint",
-            "certificate_hash": "d2cc6ae72a74592db68c1dd0a6782e8b8a7e94bd"
-          }
-        },
-        {
           "client_id": "830620644032-qm3vdethm05jfb0tf7blo8mg9a6h8j5t.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

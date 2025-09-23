@@ -1,8 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
 import { useAppDispatch } from '../Redux/hooks';
 import { setMobileNumber } from '../Redux/userSlice';
+import { setCustomAlertRef } from '../services/firebaseAuthService';
 import {
   View,
   Text,
@@ -34,6 +35,11 @@ const LoginScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const customAlertRef = useRef(null);
 
+  // Set custom alert reference for Firebase Auth service
+  useEffect(() => {
+    setCustomAlertRef(customAlertRef);
+  }, []);
+
   const handleLogin = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       customAlertRef.current?.show({
@@ -63,11 +69,14 @@ const LoginScreen = () => {
       }
       
       const mobileNumberFormatted = `+91${digitsOnly}`;
+      console.log('🔐 [LoginScreen] Attempting login for:', mobileNumberFormatted);
      
       // Call login API (backend check + Firebase OTP)
       const result = await authAPI.login(mobileNumberFormatted);
+      console.log('🔐 [LoginScreen] Login API Response:', JSON.stringify(result, null, 2));
       
       if (result.success) {
+        console.log('✅ [LoginScreen] Login successful, navigating to verification');
         // Store mobile number in Redux
         dispatch(setMobileNumber(mobileNumberFormatted));
         
@@ -80,12 +89,14 @@ const LoginScreen = () => {
           isFromLogin: true  // Flag to indicate this is from login flow
         });
       } else {
+        console.log('❌ [LoginScreen] Login failed:', result);
         // Handle specific errors
         if (result.message?.includes('not registered') || 
             result.message?.includes('not verified') ||
             result.message?.includes('Mobile number not registered') ||
             result.message?.includes('User not found')) {
           
+          console.log('🔄 [LoginScreen] User not registered, navigating to register');
           // Navigate directly to Register screen with mobile number
           navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
         } else if (result.message?.includes('missing-client-identifier')) {
@@ -98,9 +109,11 @@ const LoginScreen = () => {
           });
         } else {
           const errorMessage = result.data?.message || result.message || 'Failed to send OTP';
+          const fullErrorDetails = `Error: ${errorMessage}\n\nFull Response: ${JSON.stringify(result, null, 2)}`;
+          
           customAlertRef.current?.show({
-            title: 'Login Failed',
-            message: errorMessage,
+            title: 'Login Failed - Debug Info',
+            message: fullErrorDetails,
             type: 'error',
             showCancel: false,
             confirmText: 'OK'
@@ -108,9 +121,12 @@ const LoginScreen = () => {
         }
       }
     } catch (error) {
+      console.error('💥 [LoginScreen] Login error:', error);
+      const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
+      
       customAlertRef.current?.show({
-        title: 'Error',
-        message: 'Network error. Please try again.',
+        title: 'Network Error - Debug Info',
+        message: errorDetails,
         type: 'error',
         showCancel: false,
         confirmText: 'OK'

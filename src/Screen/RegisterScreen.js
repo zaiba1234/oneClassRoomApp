@@ -1,8 +1,9 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
 import { useAppDispatch } from '../Redux/hooks';
 import { setProfileData } from '../Redux/userSlice';
+import { setCustomAlertRef } from '../services/firebaseAuthService';
 import {
   View,
   Text,
@@ -32,6 +33,11 @@ const RegisterScreen = ({ route }) => {
   const [isLoading, setIsLoading] = useState(false);
   const customAlertRef = useRef(null);
 
+  // Set custom alert reference for Firebase Auth service
+  useEffect(() => {
+    setCustomAlertRef(customAlertRef);
+  }, []);
+
   // Debug: Log received mobile number
   React.useEffect(() => {
   }, [route.params?.mobileNumber, phoneNumber]);
@@ -51,14 +57,20 @@ const RegisterScreen = ({ route }) => {
     setIsLoading(true);
     
     try {
+      console.log('📝 [RegisterScreen] Starting registration for:', { fullName: fullName.trim(), phoneNumber });
+      
       // First, register the user in the backend
       const registerResult = await authAPI.register(fullName.trim(), phoneNumber);
+      console.log('📝 [RegisterScreen] Register API Response:', JSON.stringify(registerResult, null, 2));
       
       if (registerResult.success) {
+        console.log('✅ [RegisterScreen] Registration successful, sending OTP');
         // After successful registration, send OTP using Firebase
         const otpResult = await authAPI.sendOTP(phoneNumber);
+        console.log('📱 [RegisterScreen] Send OTP Response:', JSON.stringify(otpResult, null, 2));
         
         if (otpResult.success) {
+          console.log('✅ [RegisterScreen] OTP sent successfully, navigating to verification');
           // Store user data in Redux
           dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
           
@@ -71,9 +83,11 @@ const RegisterScreen = ({ route }) => {
           });
         } else {
           const errorMessage = otpResult.data?.message || otpResult.message || 'Failed to send OTP. Please try again.';
+          const fullErrorDetails = `OTP Send Error: ${errorMessage}\n\nFull OTP Response: ${JSON.stringify(otpResult, null, 2)}`;
+          
           customAlertRef.current?.show({
-            title: 'Error',
-            message: errorMessage,
+            title: 'OTP Send Failed - Debug Info',
+            message: fullErrorDetails,
             type: 'error',
             showCancel: false,
             confirmText: 'OK'
@@ -81,18 +95,23 @@ const RegisterScreen = ({ route }) => {
         }                                   
       } else {
         const errorMessage = registerResult.data?.message || registerResult.message || 'Failed to register. Please try again.';
+        const fullErrorDetails = `Registration Error: ${errorMessage}\n\nFull Register Response: ${JSON.stringify(registerResult, null, 2)}`;
+        
         customAlertRef.current?.show({
-          title: 'Registration Failed',
-          message: errorMessage,
+          title: 'Registration Failed - Debug Info',
+          message: fullErrorDetails,
           type: 'error',
           showCancel: false,
           confirmText: 'OK'
         });
       }
     } catch (error) {
+      console.error('💥 [RegisterScreen] Registration error:', error);
+      const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
+      
       customAlertRef.current?.show({
-        title: 'Error',
-        message: 'Registration failed. Please check your internet connection and try again.',
+        title: 'Registration Error - Debug Info',
+        message: errorDetails,
         type: 'error',
         showCancel: false,
         confirmText: 'OK'

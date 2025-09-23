@@ -82,17 +82,12 @@ export const getFCMTokenInfo = async () => {
 // Test Firebase configuration
 export const testFirebaseConfig = () => {
   try {
+    // Check if Firebase app is initialized (config is loaded from google-services.json)
+    const { checkFirebaseStatus } = require('./firebaseConfig');
     
-    const { firebaseConfig } = require('./firebaseConfig');
+    const isFirebaseReady = checkFirebaseStatus();
     
-    const requiredFields = ['apiKey', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
-    const missingFields = requiredFields.filter(field => !firebaseConfig[field]);
-    
-    if (missingFields.length > 0) {
-      return false;
-    }
-    
-    if (firebaseConfig.apiKey === 'undefined' || firebaseConfig.apiKey === 'null') {
+    if (!isFirebaseReady) {
       return false;
     }
     
