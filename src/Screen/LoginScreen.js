@@ -3,7 +3,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
 import { useAppDispatch } from '../Redux/hooks';
 import { setMobileNumber } from '../Redux/userSlice';
-import { setCustomAlertRef } from '../services/firebaseAuthService';
+// FIREBASE AUTH - COMMENTED OUT FOR 2FACTOR INTEGRATION
+// import { setCustomAlertRef } from '../services/firebaseAuthService';
+
+// 2FACTOR AUTH - NEW INTEGRATION
+import twofactorAuthService from '../services/twofactorAuthService';
 import {
   View,
   Text,
@@ -32,19 +36,33 @@ const LoginScreen = () => {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [displayPhoneNumber, setDisplayPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const customAlertRef = useRef(null);
 
-  // Set custom alert reference for Firebase Auth service
+  // Set custom alert reference for 2Factor Auth service
   useEffect(() => {
-    setCustomAlertRef(customAlertRef);
+    twofactorAuthService.setCustomAlertRef(customAlertRef);
   }, []);
 
+  // Handle phone number input changes
+  const handlePhoneNumberChange = (text) => {
+    // Remove any non-digit characters
+    const digitsOnly = text.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (digitsOnly.length <= 10) {
+      setDisplayPhoneNumber(digitsOnly);
+      // Automatically prepend +91 for the actual phone number
+      setPhoneNumber(digitsOnly ? `+91${digitsOnly}` : '');
+    }
+  };
+
   const handleLogin = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
+    if (!displayPhoneNumber || displayPhoneNumber.length !== 10) {
       customAlertRef.current?.show({
         title: 'Error',
-        message: 'Please enter a valid mobile number',
+        message: 'Please enter exactly 10 digits for mobile number',
         type: 'error',
         showCancel: false,
         confirmText: 'OK'
@@ -54,52 +72,59 @@ const LoginScreen = () => {
 
     setIsLoading(true);
     try {
-      // Extract only digits and ensure it's exactly 10 digits
-      const digitsOnly = phoneNumber.replace(/\D/g, '');
-      if (digitsOnly.length !== 10) {
-        customAlertRef.current?.show({
-          title: 'Error',
-          message: 'Please enter exactly 10 digits for mobile number',
-          type: 'error',
-          showCancel: false,
-          confirmText: 'OK'
-        });
-        setIsLoading(false);
-        return;
-      }
-      
-      const mobileNumberFormatted = `+91${digitsOnly}`;
-      console.log('🔐 [LoginScreen] Attempting login for:', mobileNumberFormatted);
+      const mobileNumberFormatted = phoneNumber; // Already has +91 prepended
+      console.log('🔐 [LoginScreen] Attempting 2Factor login for:', mobileNumberFormatted);
      
-      // Call login API (backend check + Firebase OTP)
+      // Call 2Factor login API
       const result = await authAPI.login(mobileNumberFormatted);
-      console.log('🔐 [LoginScreen] Login API Response:', JSON.stringify(result, null, 2));
+      console.log('🔐 [LoginScreen] 2Factor Login API Response:', JSON.stringify(result, null, 2));
       
       if (result.success) {
         console.log('✅ [LoginScreen] Login successful, navigating to verification');
         // Store mobile number in Redux
         dispatch(setMobileNumber(mobileNumberFormatted));
         
-        // Store verification ID for OTP verification
-        const verificationId = result.data.verificationId;
+        // Store session ID for OTP verification
+        const sessionId = result.data.sessionId;
         
         navigation.navigate('Verify', { 
           mobileNumber: mobileNumberFormatted,
-          verificationId: verificationId,
+          sessionId: sessionId, // 2Factor session ID
+          verificationId: null, // Not used in 2Factor
           isFromLogin: true  // Flag to indicate this is from login flow
         });
       } else {
         console.log('❌ [LoginScreen] Login failed:', result);
-        // Handle specific errors
-        if (result.message?.includes('not registered') || 
-            result.message?.includes('not verified') ||
-            result.message?.includes('Mobile number not registered') ||
-            result.message?.includes('User not found')) {
+        // Handle specific errors - check both result.message and result.data.message
+        const errorMessage = result.data?.message || result.message || '';
+        
+        if (errorMessage.includes('not registered') || 
+            errorMessage.includes('not verified') ||
+            errorMessage.includes('Mobile number not registered') ||
+            errorMessage.includes('User not found') ||
+            errorMessage.includes('Please register first')) {
           
-          console.log('🔄 [LoginScreen] User not registered, navigating to register');
-          // Navigate directly to Register screen with mobile number
-          navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
-        } else if (result.message?.includes('missing-client-identifier')) {
+          console.log('🔄 [LoginScreen] User not registered, showing confirmation alert');
+          console.log('📱 [LoginScreen] Error message:', errorMessage);
+          
+          // Show confirmation alert before navigating to register
+          customAlertRef.current?.show({
+            title: 'User Not Registered',
+            message: `You are not registered with ${mobileNumberFormatted}. Would you like to register now?`,
+            type: 'info',
+            showCancel: true,
+            confirmText: 'Register',
+            cancelText: 'Cancel',
+            onConfirm: () => {
+              console.log('✅ [LoginScreen] User confirmed registration, navigating to Register screen');
+              console.log('📱 [LoginScreen] Mobile number:', mobileNumberFormatted);
+              navigation.navigate('Register', { mobileNumber: mobileNumberFormatted });
+            },
+            onCancel: () => {
+              console.log('❌ [LoginScreen] User cancelled registration');
+            }
+          });
+        } else if (errorMessage.includes('missing-client-identifier')) {
           customAlertRef.current?.show({
             title: 'Configuration Error',
             message: 'Firebase configuration error. Please add SHA-1 fingerprint to Firebase Console.',
@@ -108,12 +133,11 @@ const LoginScreen = () => {
             confirmText: 'OK'
           });
         } else {
-          const errorMessage = result.data?.message || result.message || 'Failed to send OTP';
-          const fullErrorDetails = `Error: ${errorMessage}\n\nFull Response: ${JSON.stringify(result, null, 2)}`;
+          const errorMessage = result.data?.message || result.message || 'Failed to login. Please try again.';
           
           customAlertRef.current?.show({
-            title: 'Login Failed - Debug Info',
-            message: fullErrorDetails,
+            title: 'Login Failed',
+            message: errorMessage,
             type: 'error',
             showCancel: false,
             confirmText: 'OK'
@@ -122,11 +146,10 @@ const LoginScreen = () => {
       }
     } catch (error) {
       console.error('💥 [LoginScreen] Login error:', error);
-      const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
       
       customAlertRef.current?.show({
-        title: 'Network Error - Debug Info',
-        message: errorDetails,
+        title: 'Network Error',
+        message: 'Unable to connect to server. Please check your internet connection and try again.',
         type: 'error',
         showCancel: false,
         confirmText: 'OK'
@@ -179,12 +202,12 @@ const LoginScreen = () => {
                   </View>
                   <TextInput
                     style={styles.input}
-                    placeholder="123-432-1234"
+                    placeholder="1234567890"
                     placeholderTextColor="#FF8A65"
                     keyboardType="phone-pad"
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    maxLength={14}
+                    value={displayPhoneNumber}
+                    onChangeText={handlePhoneNumberChange}
+                    maxLength={10}
                   />
                 </View>
               </View>

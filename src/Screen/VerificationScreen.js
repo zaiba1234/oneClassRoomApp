@@ -8,7 +8,11 @@ import store from '../Redux/store';
 import { getApiUrl } from '../API/config';
 import { getFCMTokenService } from '../services/fcmTokenService';
 import notificationService from '../services/notificationService';
-import { setCustomAlertRef } from '../services/firebaseAuthService';
+// FIREBASE AUTH - COMMENTED OUT FOR 2FACTOR INTEGRATION
+// import { setCustomAlertRef } from '../services/firebaseAuthService';
+
+// 2FACTOR AUTH - NEW INTEGRATION
+import twofactorAuthService from '../services/twofactorAuthService';
 import {
   TextInput,
   View,
@@ -45,13 +49,14 @@ const VerificationScreen = ({ route }) => {
   const fullName = route.params?.fullName || '';
   const email = route.params?.email || '';
   const isEmailVerification = route.params?.isEmailVerification || false;
-  const verificationId = route.params?.verificationId || null;
+  const verificationId = route.params?.verificationId || null; // Firebase verification ID (commented out)
+  const sessionId = route.params?.sessionId || null; // 2Factor session ID
   const isFromLogin = route.params?.isFromLogin || false;
   const isFromRegister = route.params?.isFromRegister || false;
 
-  // Set custom alert reference for Firebase Auth service
+  // Set custom alert reference for 2Factor Auth service
   useEffect(() => {
-    setCustomAlertRef(customAlertRef);
+    twofactorAuthService.setCustomAlertRef(customAlertRef);
   }, []);
 
   useEffect(() => {
@@ -175,12 +180,18 @@ console.log('🔔 [handleResendOTP] Response:', response);
       setIsResending(true);
 
       try {
-        console.log('🔄 [VerificationScreen] Resending OTP for:', mobileNumber);
+        console.log('🔄 [VerificationScreen] Resending 2Factor OTP for:', mobileNumber);
         const result = await authAPI.resendOTP(mobileNumber);
-        console.log('🔄 [VerificationScreen] Resend OTP Response:', JSON.stringify(result, null, 2));
+        console.log('🔄 [VerificationScreen] 2Factor Resend OTP Response:', JSON.stringify(result, null, 2));
 
         if (result.success) {
-          console.log('✅ [VerificationScreen] OTP resent successfully');
+          console.log('✅ [VerificationScreen] 2Factor OTP resent successfully');
+          // Update sessionId with new one from resend response
+          if (result.data.sessionId) {
+            // Update the route params with new sessionId
+            route.params.sessionId = result.data.sessionId;
+          }
+          
           customAlertRef.current?.show({
             title: 'Success',
             message: 'OTP resent successfully!',
@@ -192,12 +203,11 @@ console.log('🔔 [handleResendOTP] Response:', response);
           setOtp(['', '', '', '', '', '']);
           otpRefs.current[0]?.focus();
         } else {
-          const errorMessage = result.data?.message || result.message || 'Failed to resend OTP';
-          const fullErrorDetails = `Resend OTP Error: ${errorMessage}\n\nFull Response: ${JSON.stringify(result, null, 2)}`;
+          const errorMessage = result.data?.message || result.message || 'Failed to resend OTP. Please try again.';
           
           customAlertRef.current?.show({
-            title: 'Resend OTP Failed - Debug Info',
-            message: fullErrorDetails,
+            title: 'Resend OTP Failed',
+            message: errorMessage,
             type: 'error',
             showCancel: false,
             confirmText: 'OK'
@@ -205,11 +215,10 @@ console.log('🔔 [handleResendOTP] Response:', response);
         }
       } catch (error) {
         console.error('💥 [VerificationScreen] Resend OTP error:', error);
-        const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
         
         customAlertRef.current?.show({
-          title: 'Resend OTP Error - Debug Info',
-          message: errorDetails,
+          title: 'Resend OTP Error',
+          message: 'Unable to resend OTP. Please check your internet connection and try again.',
           type: 'error',
           showCancel: false,
           confirmText: 'OK'
@@ -317,36 +326,42 @@ console.log('🔔 [handleResendOTP] Response:', response);
       return;
     }
 
+    // Check if sessionId is available for 2Factor
+    if (!sessionId) {
+      customAlertRef.current?.show({
+        title: 'Error',
+        message: 'Session ID not found. Please try again.',
+        type: 'error',
+        showCancel: false,
+        confirmText: 'OK'
+      });
+      return;
+    }
+
     setIsLoading(true);
-    console.log('🔐 [VerificationScreen] Starting OTP verification:', { 
+    console.log('🔐 [VerificationScreen] Starting 2Factor OTP verification:', { 
       mobileNumber, 
       otpString, 
-      verificationId, 
+      sessionId, 
       isFromRegister, 
       isFromLogin 
     });
 
     try {
-      let result;
-      if (isFromRegister) {
-        console.log('📝 [VerificationScreen] Verifying OTP for registration flow');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
-      } else if (isFromLogin) {
-        console.log('🔑 [VerificationScreen] Verifying OTP for login flow');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
-      } else {
-        console.log('🔄 [VerificationScreen] Verifying OTP for general flow');
-        result = await authAPI.verifyOTP(mobileNumber, otpString, verificationId);
-      }
+      // Use 2Factor verification with sessionId
+      console.log('✅ [VerificationScreen] Verifying OTP with 2Factor');
+      const result = await authAPI.verifyOTP(mobileNumber, otpString, sessionId);
 
-      console.log('🔐 [VerificationScreen] OTP Verification Response:', JSON.stringify(result, null, 2));
+      console.log('🔐 [VerificationScreen] 2Factor OTP Verification Response:', JSON.stringify(result, null, 2));
 
       if (result.success) {
-        console.log('✅ [VerificationScreen] OTP verification successful');
-        const token = result.data?.data?.token || result.data?.token;
+        console.log('✅ [VerificationScreen] 2Factor OTP verification successful');
+        const token = result.data?.token;
+        const user = result.data?.user;
         console.log('🔑 [VerificationScreen] Token received:', token ? 'Yes' : 'No');
+        console.log('👤 [VerificationScreen] User data received:', user ? 'Yes' : 'No');
 
-        if (token) {
+        if (token && user) {
           try {
             console.log('👤 [VerificationScreen] Fetching user profile...');
             const profileResult = await profileAPI.getUserProfile(token);
@@ -376,16 +391,16 @@ console.log('🔔 [handleResendOTP] Response:', response);
                 console.log('🔔 [VerificationScreen] Sending FCM token to backend...');
                 const fcmService = getFCMTokenService(store);
                 const fcmSent = await fcmService.sendStoredTokenToBackend();
-                console.log('🔔 [VerificationScreen] FCM token sent:', fcmSent);
-                if (!fcmSent) {
-                  customAlertRef.current?.show({
-                  title: 'Warning',
-                  message: 'Failed to register for notifications',
-                  type: 'warning',
-                  showCancel: false,
-                  confirmText: 'OK'
-                });
-                }
+                // console.log('🔔 [VerificationScreen] FCM token sent:', fcmSent);
+                // if (!fcmSent) {
+                //   customAlertRef.current?.show({
+                //   title: 'Warning',
+                //   message: 'Failed to register for notifications',
+                //   type: 'warning',
+                //   showCancel: false,
+                //   confirmText: 'OK'
+                // });
+                // }
               } catch (fcmError) {
                 console.error('🔔 [VerificationScreen] FCM error:', fcmError);
                 customAlertRef.current?.show({
@@ -397,16 +412,16 @@ console.log('🔔 [handleResendOTP] Response:', response);
                 });
               }
             } else {
-              console.log('⚠️ [VerificationScreen] Profile fetch failed, using fallback data');
+              console.log('⚠️ [VerificationScreen] Profile fetch failed, using 2Factor user data');
               const fallbackUserData = {
-                mobileNumber: mobileNumber,
+                _id: user.id,
+                userId: user.id,
+                fullName: user.fullName,
+                mobileNumber: user.mobileNumber,
                 token: token,
-                isNewUser: isFromRegister
+                isNewUser: isFromRegister,
+                isVerified: user.isVerified
               };
-
-              if (fullName) {
-                fallbackUserData.fullName = fullName;
-              }
 
               dispatch(setUserData(fallbackUserData));
               dispatch(saveUserToStorage(fallbackUserData));
@@ -508,19 +523,61 @@ console.log('🔔 [handleResendOTP] Response:', response);
         }
       } else {
         console.log('❌ [VerificationScreen] OTP verification failed:', result);
+        
+        // Handle specific error types from 2Factor backend
+        const errorMessage = result.data?.message || result.message || 'OTP verification failed. Please try again.';
+        const errorType = result.data?.error || '';
+        
+        console.log('🔍 [VerificationScreen] Error details:', { errorMessage, errorType });
+        
         if (result.message?.includes('not registered') ||
             result.message?.includes('Mobile number not registered') ||
             result.message?.includes('not verified') ||
             result.message?.includes('User not found')) {
           console.log('🔄 [VerificationScreen] User not found, navigating to register');
           navigation.navigate('Register', { mobileNumber: mobileNumber });
-        } else {
-          const errorMessage = result.message || 'OTP verification failed. Please try again.';
-          const fullErrorDetails = `OTP Verification Error: ${errorMessage}\n\nFull Response: ${JSON.stringify(result, null, 2)}`;
-          
+        } else if (errorType === 'INVALID_OTP' || errorMessage.includes('Invalid OTP')) {
+          // Handle wrong OTP
           customAlertRef.current?.show({
-            title: 'OTP Verification Failed - Debug Info',
-            message: fullErrorDetails,
+            title: 'Invalid OTP',
+            message: 'The OTP you entered is incorrect. Please check and try again.',
+            type: 'error',
+            showCancel: false,
+            confirmText: 'Try Again'
+          });
+          // Clear OTP fields for retry
+          setOtp(['', '', '', '', '', '']);
+          otpRefs.current[0]?.focus();
+        } else if (errorType === 'OTP_EXPIRED' || errorMessage.includes('expired')) {
+          // Handle expired OTP
+          customAlertRef.current?.show({
+            title: 'OTP Expired',
+            message: 'The OTP has expired. Please request a new OTP.',
+            type: 'warning',
+            showCancel: true,
+            confirmText: 'Resend OTP',
+            cancelText: 'Cancel',
+            onConfirm: () => {
+              handleResendOTP();
+            }
+          });
+        } else if (errorType === 'SESSION_EXPIRED' || errorMessage.includes('Session expired')) {
+          // Handle session expired
+          customAlertRef.current?.show({
+            title: 'Session Expired',
+            message: 'Your verification session has expired. Please start the login process again.',
+            type: 'error',
+            showCancel: false,
+            confirmText: 'OK',
+            onConfirm: () => {
+              navigation.goBack(); // Go back to login screen
+            }
+          });
+        } else {
+          // Generic error handling
+          customAlertRef.current?.show({
+            title: 'OTP Verification Failed',
+            message: errorMessage,
             type: 'error',
             showCancel: false,
             confirmText: 'OK'
@@ -529,11 +586,10 @@ console.log('🔔 [handleResendOTP] Response:', response);
       }
     } catch (error) {
       console.error('💥 [VerificationScreen] OTP verification error:', error);
-      const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
       
       customAlertRef.current?.show({
-        title: 'OTP Verification Error - Debug Info',
-        message: errorDetails,
+        title: 'OTP Verification Error',
+        message: 'Unable to verify OTP. Please check your internet connection and try again.',
         type: 'error',
         showCancel: false,
         confirmText: 'OK'

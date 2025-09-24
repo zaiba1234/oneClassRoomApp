@@ -6,7 +6,7 @@ export const ENV_CONFIG = {
   // API Configuration
   API_BASE_URL: 'https://main.learningsaint.com',
 
-  // API_BASE_URL:'https://192.168.1.14:3000',
+  // API_BASE_URL:'http://192.168.29.119:3000',
   
   
   // Other Environment Variables

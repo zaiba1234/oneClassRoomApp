@@ -3,7 +3,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { authAPI } from '../API/authAPI';
 import { useAppDispatch } from '../Redux/hooks';
 import { setProfileData } from '../Redux/userSlice';
-import { setCustomAlertRef } from '../services/firebaseAuthService';
+// FIREBASE AUTH - COMMENTED OUT FOR 2FACTOR INTEGRATION
+// import { setCustomAlertRef } from '../services/firebaseAuthService';
+
+// 2FACTOR AUTH - NEW INTEGRATION
+import twofactorAuthService from '../services/twofactorAuthService';
 import {
   View,
   Text,
@@ -30,20 +34,34 @@ const RegisterScreen = ({ route }) => {
   const dispatch = useAppDispatch();
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState(route.params?.mobileNumber || '');
+  const [displayPhoneNumber, setDisplayPhoneNumber] = useState(route.params?.mobileNumber?.replace('+91', '') || '');
   const [isLoading, setIsLoading] = useState(false);
   const customAlertRef = useRef(null);
 
-  // Set custom alert reference for Firebase Auth service
+  // Set custom alert reference for 2Factor Auth service
   useEffect(() => {
-    setCustomAlertRef(customAlertRef);
+    twofactorAuthService.setCustomAlertRef(customAlertRef);
   }, []);
 
   // Debug: Log received mobile number
   React.useEffect(() => {
   }, [route.params?.mobileNumber, phoneNumber]);
 
+  // Handle phone number input changes
+  const handlePhoneNumberChange = (text) => {
+    // Remove any non-digit characters
+    const digitsOnly = text.replace(/\D/g, '');
+    
+    // Limit to 10 digits
+    if (digitsOnly.length <= 10) {
+      setDisplayPhoneNumber(digitsOnly);
+      // Automatically prepend +91 for the actual phone number
+      setPhoneNumber(digitsOnly ? `+91${digitsOnly}` : '');
+    }
+  };
+
   const handleRegister = async () => {
-    if (!fullName.trim() || !phoneNumber) {
+    if (!fullName.trim() || !displayPhoneNumber) {
       customAlertRef.current?.show({
         title: 'Error',
         message: 'Please enter both full name and phone number',
@@ -54,52 +72,45 @@ const RegisterScreen = ({ route }) => {
       return;
     }
 
+    if (displayPhoneNumber.length !== 10) {
+      customAlertRef.current?.show({
+        title: 'Error',
+        message: 'Please enter exactly 10 digits for mobile number',
+        type: 'error',
+        showCancel: false,
+        confirmText: 'OK'
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      console.log('📝 [RegisterScreen] Starting registration for:', { fullName: fullName.trim(), phoneNumber });
+      console.log('📝 [RegisterScreen] Starting 2Factor registration for:', { fullName: fullName.trim(), phoneNumber });
       
-      // First, register the user in the backend
+      // Register user with 2Factor (includes OTP sending)
       const registerResult = await authAPI.register(fullName.trim(), phoneNumber);
-      console.log('📝 [RegisterScreen] Register API Response:', JSON.stringify(registerResult, null, 2));
+      console.log('📝 [RegisterScreen] 2Factor Register API Response:', JSON.stringify(registerResult, null, 2));
       
       if (registerResult.success) {
-        console.log('✅ [RegisterScreen] Registration successful, sending OTP');
-        // After successful registration, send OTP using Firebase
-        const otpResult = await authAPI.sendOTP(phoneNumber);
-        console.log('📱 [RegisterScreen] Send OTP Response:', JSON.stringify(otpResult, null, 2));
+        console.log('✅ [RegisterScreen] 2Factor registration successful, OTP sent');
+        // Store user data in Redux
+        dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
         
-        if (otpResult.success) {
-          console.log('✅ [RegisterScreen] OTP sent successfully, navigating to verification');
-          // Store user data in Redux
-          dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
-          
-          // Registration successful, navigate to verification with verificationId
-          navigation.navigate('Verify', { 
-            mobileNumber: phoneNumber, 
-            fullName: fullName.trim(),
-            verificationId: otpResult.data.verificationId,
-            isFromRegister: true  // Flag to indicate this is from register flow
-          });
-        } else {
-          const errorMessage = otpResult.data?.message || otpResult.message || 'Failed to send OTP. Please try again.';
-          const fullErrorDetails = `OTP Send Error: ${errorMessage}\n\nFull OTP Response: ${JSON.stringify(otpResult, null, 2)}`;
-          
-          customAlertRef.current?.show({
-            title: 'OTP Send Failed - Debug Info',
-            message: fullErrorDetails,
-            type: 'error',
-            showCancel: false,
-            confirmText: 'OK'
-          });
-        }                                   
+        // Registration successful, navigate to verification with sessionId
+        navigation.navigate('Verify', { 
+          mobileNumber: phoneNumber, 
+          fullName: fullName.trim(),
+          sessionId: registerResult.data.sessionId, // 2Factor session ID
+          verificationId: null, // Not used in 2Factor
+          isFromRegister: true  // Flag to indicate this is from register flow
+        });
       } else {
         const errorMessage = registerResult.data?.message || registerResult.message || 'Failed to register. Please try again.';
-        const fullErrorDetails = `Registration Error: ${errorMessage}\n\nFull Register Response: ${JSON.stringify(registerResult, null, 2)}`;
         
         customAlertRef.current?.show({
-          title: 'Registration Failed - Debug Info',
-          message: fullErrorDetails,
+          title: 'Registration Failed',
+          message: errorMessage,
           type: 'error',
           showCancel: false,
           confirmText: 'OK'
@@ -107,11 +118,10 @@ const RegisterScreen = ({ route }) => {
       }
     } catch (error) {
       console.error('💥 [RegisterScreen] Registration error:', error);
-      const errorDetails = `Network/API Error: ${error.message}\n\nStack: ${error.stack}\n\nFull Error: ${JSON.stringify(error, null, 2)}`;
       
       customAlertRef.current?.show({
-        title: 'Registration Error - Debug Info',
-        message: errorDetails,
+        title: 'Registration Error',
+        message: 'Unable to connect to server. Please check your internet connection and try again.',
         type: 'error',
         showCancel: false,
         confirmText: 'OK'
@@ -164,15 +174,15 @@ const RegisterScreen = ({ route }) => {
                    <View style={styles.countryCodeBox}>
                      <Text style={styles.countryCode}>+91</Text>
                    </View>
-                   <TextInput
-                     style={styles.input}
-                     placeholder="123-432-1234"
-                     placeholderTextColor="#FF8A65"
-                     keyboardType="phone-pad"
-                     value={phoneNumber}
-                     onChangeText={setPhoneNumber}
-                     maxLength={14}
-                   />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="1234567890"
+                    placeholderTextColor="#FF8A65"
+                    keyboardType="phone-pad"
+                    value={displayPhoneNumber}
+                    onChangeText={handlePhoneNumberChange}
+                    maxLength={10}
+                  />
                  </View>
                </View>
 
