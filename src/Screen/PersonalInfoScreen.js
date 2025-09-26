@@ -12,12 +12,13 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
+  PermissionsAndroid,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useAppSelector, useAppDispatch } from '../Redux/hooks';
-import { setFullName, setMobileNumber, setProfileData } from '../Redux/userSlice';
+import {  setProfileData } from '../Redux/userSlice';
 import { profileAPI } from '../API/profileAPI';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import BackButton from '../Component/BackButton';
@@ -25,7 +26,6 @@ import BackButton from '../Component/BackButton';
 const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
   const { fullName, mobileNumber, token, profileImageUrl, address, email } = useAppSelector((state) => state.user);
-
   const [name, setName] = useState(fullName || '');
   const [userAddress, setUserAddress] = useState(address || '');
   const [userEmail, setUserEmail] = useState(email || '');
@@ -75,9 +75,11 @@ const PersonalInfoScreen = ({ navigation }) => {
       }
       
       const result = await profileAPI.getUserProfile(token);
+      console.log('📱 [PersonalInfoScreen] getUserProfile API Response:', JSON.stringify(result, null, 2));
 
       if (result.success && result.data.success) {
         const profileData = result.data.data;
+        console.log('📱 [PersonalInfoScreen] Profile Data:', JSON.stringify(profileData, null, 2));
 
         // Update Redux store with fetched data
         dispatch(setProfileData(profileData));
@@ -106,6 +108,7 @@ const PersonalInfoScreen = ({ navigation }) => {
   const testNetworkConnectivity = async () => {
     try {
       const testUrl = getApiUrl('/api/user/profile/get-profile');
+      console.log('🌐 [PersonalInfoScreen] Testing network connectivity with URL:', testUrl);
 
       const response = await fetch(testUrl, {
         method: 'GET',
@@ -114,8 +117,10 @@ const PersonalInfoScreen = ({ navigation }) => {
         },
       });
 
+      console.log('🌐 [PersonalInfoScreen] Network test response status:', response.status, response.ok);
       return response.ok;
     } catch (error) {
+      console.log('🌐 [PersonalInfoScreen] Network test error:', error.message);
       return false;
     }
   };
@@ -160,6 +165,7 @@ const PersonalInfoScreen = ({ navigation }) => {
       setIsLoading(true);
      
       // Call send-emailotp API with correct endpoint and headers
+      console.log('📧 [PersonalInfoScreen] Sending email OTP request for:', userEmail.trim());
       const response = await fetch(getApiUrl('/api/auth/send-emailotp'), {
         method: 'POST',
         headers: {
@@ -171,16 +177,21 @@ const PersonalInfoScreen = ({ navigation }) => {
         })
       });
 
+      console.log('📧 [PersonalInfoScreen] Email OTP Response Status:', response.status, response.statusText);
+
       // Check if response is ok before parsing JSON
       if (!response.ok) {
         const errorText = await response.text();
+        console.log('📧 [PersonalInfoScreen] Email OTP Error Response:', errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       let result;
       try {
         result = await response.json();
+        console.log('📧 [PersonalInfoScreen] Email OTP API Response:', JSON.stringify(result, null, 2));
       } catch (parseError) {
+        console.log('📧 [PersonalInfoScreen] Email OTP Parse Error:', parseError);
         throw new Error('Invalid response from server. Please try again.');
       }
 
@@ -239,7 +250,9 @@ const PersonalInfoScreen = ({ navigation }) => {
         email: userEmail,
       };
 
+      console.log('💾 [PersonalInfoScreen] Updating profile with data:', JSON.stringify(profileData, null, 2));
       const result = await profileAPI.updateUserProfile(token, profileData);
+      console.log('💾 [PersonalInfoScreen] Update Profile API Response:', JSON.stringify(result, null, 2));
 
       if (result.success && result.data.success) {
         // Update Redux store with new data
@@ -258,7 +271,9 @@ const PersonalInfoScreen = ({ navigation }) => {
             email: userEmail,
           };
 
+          console.log('💾 [PersonalInfoScreen] Fallback update with data:', JSON.stringify(fallbackProfileData, null, 2));
           const fallbackResult = await profileAPI.updateUserProfile(token, fallbackProfileData);
+          console.log('💾 [PersonalInfoScreen] Fallback Update Profile API Response:', JSON.stringify(fallbackResult, null, 2));
 
           if (fallbackResult.success && fallbackResult.data.success) {
             // Update Redux store with new data
@@ -305,7 +320,46 @@ const PersonalInfoScreen = ({ navigation }) => {
     );
   };
 
-  const openCamera = () => {
+  const requestCameraPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Camera Permission',
+            message: 'This app needs access to your camera to take photos for your profile picture.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true; // iOS handles permissions automatically
+  };
+
+  const openCamera = async () => {
+    // Check camera permission first
+    const hasPermission = await requestCameraPermission();
+    
+    if (!hasPermission) {
+      Alert.alert(
+        'Camera Permission Required',
+        'You need to grant camera permission to take photos. Please go to your device settings and allow camera access for this app.',
+        [
+          {
+            text: 'OK',
+            style: 'default'
+          }
+        ]
+      );
+      return;
+    }
+
     const options = {
       mediaType: 'photo',
       includeBase64: false,
@@ -321,7 +375,20 @@ const PersonalInfoScreen = ({ navigation }) => {
         console.log('User cancelled camera');
       } else if (response.error) {
         console.log('Camera Error: ', response.error);
-        Alert.alert('Camera Error', 'Failed to open camera. Please try again.');
+        if (response.error.code === 'camera_unavailable') {
+          Alert.alert(
+            'Camera Permission Required',
+            'Camera access is not available. Please check if you have granted camera permission in your device settings.',
+            [
+              {
+                text: 'OK',
+                style: 'default'
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Camera Error', 'Failed to open camera. Please try again.');
+        }
       } else if (response.assets && response.assets.length > 0) {
         setProfileImage({ uri: response.assets[0].uri });
         console.log('Image captured successfully');
@@ -462,6 +529,8 @@ const PersonalInfoScreen = ({ navigation }) => {
               keyboardType="email-address"
               editable={!isEmailVerified}
               selectTextOnFocus={!isEmailVerified}
+              placeholder={!userEmail ? "Enter your email" : ""}
+              placeholderTextColor="#999"
             />
             <TouchableOpacity 
               style={[

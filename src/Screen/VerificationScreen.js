@@ -60,7 +60,12 @@ const VerificationScreen = ({ route }) => {
   }, []);
 
   useEffect(() => {
-    // Component mounted
+    // Clear OTP fields when component mounts or user navigates back
+    setOtp(['', '', '', '', '', '']);
+    // Focus on first input field
+    setTimeout(() => {
+      otpRefs.current[0]?.focus();
+    }, 100);
   }, []);
 
   useEffect(() => {
@@ -391,16 +396,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
                 console.log('🔔 [VerificationScreen] Sending FCM token to backend...');
                 const fcmService = getFCMTokenService(store);
                 const fcmSent = await fcmService.sendStoredTokenToBackend();
-                // console.log('🔔 [VerificationScreen] FCM token sent:', fcmSent);
-                // if (!fcmSent) {
-                //   customAlertRef.current?.show({
-                //   title: 'Warning',
-                //   message: 'Failed to register for notifications',
-                //   type: 'warning',
-                //   showCancel: false,
-                //   confirmText: 'OK'
-                // });
-                // }
+               
               } catch (fcmError) {
                 console.error('🔔 [VerificationScreen] FCM error:', fcmError);
                 customAlertRef.current?.show({

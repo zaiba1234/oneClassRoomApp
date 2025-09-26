@@ -18,7 +18,7 @@ import { getFCMTokenService } from './src/services/fcmTokenService';
 import { testFCMTokenGeneration, getFCMTokenInfo, testFirebaseConfig } from './src/services/fcmTest';
 import notificationService from './src/services/notificationService';
 import notificationTester from './src/services/notificationTester';
-import globalNotificationService from './src/services/globalNotificationService';
+import globalNotificationService from './src/services/globalNotificationService';  
 import CustomAlertManager from './src/Component/CustomAlertManager';
 import notificationAlertService from './src/services/notificationAlertService';
 import SplashScreen from './src/Screen/SplashScreen';
@@ -48,7 +48,6 @@ import TermsConditionScreen from './src/Screen/TermsConditionScreen';
 import ContactUsScreen from './src/Screen/ContactUsScreen';
 import SubCourseScreen from './src/Screen/SubCourseScreen';
 import GlobalNotificationTester from './src/Component/GlobalNotificationTester';
-
 import CourseCertificateDownload from './src/Screen/CourseCertificateDownload';
 import InternshipLetterScreen from './src/Screen/InternshipLetterScreen';
 
