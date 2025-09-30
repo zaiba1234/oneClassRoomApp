@@ -56,6 +56,7 @@ export const profileAPI = {
     try {
       const url = getApiUrl('/api/user/profile/update-profile');
       
+      // DETAILED API REQUEST DEBUG FOR UPDATE PROFILE
       
       // Check if FormData is available
       if (typeof FormData === 'undefined') {
@@ -66,8 +67,11 @@ export const profileAPI = {
       // Create FormData for the request
       const formData = new FormData();
       
+      console.log('🔥 Creating FormData for profile update...');
+      
       // Add profile image if it's a file URI
       if (profileData.profileImageUrl && profileData.profileImageUrl.uri) {
+        console.log('🔥 Adding profile image to FormData:', profileData.profileImageUrl.uri);
         // Check if it's a local file or network image
         if (profileData.profileImageUrl.uri.startsWith('file://') || profileData.profileImageUrl.uri.startsWith('content://')) {
           const imageFile = {
@@ -76,19 +80,24 @@ export const profileAPI = {
             name: 'profile-image.jpg',
           };
           formData.append('profileImageUrl', imageFile);
+          console.log('🔥 Added image file to FormData:', imageFile);
         } else {
           // If it's a network image, just send the URL as string
           formData.append('profileImageUrl', profileData.profileImageUrl.uri);
+          console.log('🔥 Added image URL to FormData:', profileData.profileImageUrl.uri);
         }
+      } else {
+        console.log('🔥 No profile image to add to FormData');
       }
       
-      // Add other fields
-      if (profileData.address) {
-        formData.append('address', profileData.address);
-      }
-      if (profileData.email) {
-        formData.append('email', profileData.email);
-      }
+      // Add other fields - always add them, even if empty
+      formData.append('address', profileData.address || '');
+      console.log('🔥 Added address to FormData:', profileData.address || '');
+      
+      formData.append('email', profileData.email || '');
+      console.log('🔥 Added email to FormData:', profileData.email || '');
+      
+      console.log('🔥 FormData creation completed');
       
       // Safely log FormData contents
       try {
@@ -105,17 +114,26 @@ export const profileAPI = {
         'Authorization': `Bearer ${token}`,
       };
       
+      console.log('🔥 Making fetch request with headers:', headers);
+      console.log('🔥 Request method: PUT');
+      console.log('🔥 Request body type: FormData');
       
       // Create AbortController for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
+      console.log('🔥 Sending fetch request...');
       const response = await fetch(url, {
         method: 'PUT',
         headers: headers,
         body: formData,
         signal: controller.signal,
       });
+      
+      console.log('🔥 Fetch request completed');
+      console.log('🔥 Response status:', response.status);
+      console.log('🔥 Response ok:', response.ok);
+      console.log('🔥 Response headers:', Object.fromEntries(response.headers.entries()));
       
       clearTimeout(timeoutId);
       
@@ -163,37 +181,58 @@ export const profileAPI = {
     try {
       const url = getApiUrl('/api/user/profile/update-profile');
       
+      // DETAILED API REQUEST DEBUG FOR JSON FALLBACK
+      console.log('🔥🔥🔥 UPDATE USER PROFILE JSON FALLBACK REQUEST DEBUG 🔥🔥🔥');
+      console.log('🔥 API Name: updateUserProfileJSON (Fallback)');
+      console.log('🔥 Endpoint: /api/user/profile/update-profile');
+      console.log('🔥 URL:', url);
+      console.log('🔥 Token:', token ? `${token.substring(0, 10)}...` : 'Missing');
+      console.log('🔥 Profile Data:', JSON.stringify(profileData, null, 2));
+      console.log('🔥🔥🔥 END JSON FALLBACK REQUEST DEBUG 🔥🔥🔥');
       
       // Prepare JSON data (without image file)
       const jsonData = {};
       
       if (profileData.address) {
         jsonData.address = profileData.address;
+        console.log('🔥 JSON: Adding address:', profileData.address);
       }
       if (profileData.email) {
         jsonData.email = profileData.email;
+        console.log('🔥 JSON: Adding email:', profileData.email);
       }
       // Note: We can't send image files via JSON, so we'll skip the image
       if (profileData.profileImageUrl && profileData.profileImageUrl.uri) {
+        console.log('🔥 JSON: Skipping image (not supported in JSON)');
       }
       
+      console.log('🔥 JSON Data prepared:', JSON.stringify(jsonData, null, 2));
       
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
       
+      console.log('🔥 JSON: Making fetch request with headers:', headers);
+      console.log('🔥 JSON: Request method: PUT');
+      console.log('🔥 JSON: Request body type: JSON');
       
       // Create AbortController for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
+      console.log('🔥 JSON: Sending fetch request...');
       const response = await fetch(url, {
         method: 'PUT',
         headers: headers,
         body: JSON.stringify(jsonData),
         signal: controller.signal,
       });
+      
+      console.log('🔥 JSON: Fetch request completed');
+      console.log('🔥 JSON: Response status:', response.status);
+      console.log('🔥 JSON: Response ok:', response.ok);
+      console.log('🔥 JSON: Response headers:', Object.fromEntries(response.headers.entries()));
       
       clearTimeout(timeoutId);
       

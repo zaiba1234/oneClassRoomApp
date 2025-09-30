@@ -29,6 +29,17 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [name, setName] = useState(fullName || '');
   const [userAddress, setUserAddress] = useState(address || '');
   const [userEmail, setUserEmail] = useState(email || '');
+  
+  // Debug current state values
+  console.log('🔍 [PersonalInfoScreen] Current state values:', {
+    userEmail: userEmail,
+    emailFromRedux: email,
+    isEmailVerified: isEmailVerified,
+    userEmailEmpty: userEmail === '',
+    emailFromReduxEmpty: email === '',
+    userEmailType: typeof userEmail,
+    emailFromReduxType: typeof email
+  });
   const [phone, setPhone] = useState(mobileNumber || '+91');
   const [profileImage, setProfileImage] = useState(profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png'));
   const [isLoading, setIsLoading] = useState(false);
@@ -75,8 +86,15 @@ const PersonalInfoScreen = ({ navigation }) => {
       setUserAddress(address);
     }
     if (email !== undefined) {
-      console.log('🔄 [PersonalInfoScreen] Updating email from Redux:', email);
+      console.log('🔄 [PersonalInfoScreen] Updating email from Redux:', {
+        email: email,
+        isEmpty: email === '',
+        isEmailVerified: isEmailVerified,
+        emailType: typeof email
+      });
+      // Always update email from Redux, regardless of verification status
       setUserEmail(email);
+      console.log('🔄 [PersonalInfoScreen] Email updated from Redux:', email);
     }
     if (profileImageUrl) {
       console.log('🔄 [PersonalInfoScreen] Updating profile image from Redux:', profileImageUrl);
@@ -130,12 +148,30 @@ const fetchUserProfile = async (isRefresh = false) => {
     });
     
     const result = await profileAPI.getUserProfile(token);
-    console.log('📱 [PersonalInfoScreen] getUserProfile API Response:', {
-      success: result.success,
-      status: result.status,
-      dataKeys: result.data ? Object.keys(result.data) : 'No data',
-      fullResponse: JSON.stringify(result, null, 2)
-    });
+    
+    // DETAILED API RESPONSE DEBUG FOR DEBUGGER
+    console.log('🔥🔥🔥 GET USER PROFILE API RESPONSE DEBUG 🔥🔥🔥');
+    console.log('🔥 API Name: getUserProfile');
+    console.log('🔥 Endpoint: /api/user/profile/get-profile');
+    console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+    console.log('🔥 Response Success:', result.success);
+    console.log('🔥 Response Status:', result.status);
+    console.log('🔥 Response Data:', result.data);
+    console.log('🔥 Response Data Success:', result.data?.success);
+    console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+    console.log('🔥 Response Data Message:', result.data?.message);
+    console.log('🔥 Response Data Data:', result.data?.data);
+    console.log('🔥 Response Data Data Keys:', result.data?.data ? Object.keys(result.data.data) : 'No data');
+    if (result.data?.data) {
+      console.log('🔥 Profile Data Details:');
+      console.log('🔥 - fullName:', result.data.data.fullName);
+      console.log('🔥 - mobileNumber:', result.data.data.mobileNumber);
+      console.log('🔥 - email:', result.data.data.email);
+      console.log('🔥 - address:', result.data.data.address);
+      console.log('🔥 - isEmailVerified:', result.data.data.isEmailVerified);
+      console.log('🔥 - profileImageUrl:', result.data.data.profileImageUrl);
+    }
+    console.log('🔥🔥🔥 END GET USER PROFILE DEBUG 🔥🔥🔥');
 
     if (result.success && result.data.success) {
       const profileData = result.data.data;
@@ -157,8 +193,17 @@ const fetchUserProfile = async (isRefresh = false) => {
       const profileDataForRedux = {
         ...profileData,
         email: profileData.email || userEmail || '', // Keep current email if API doesn't provide it
-        address: profileData.address || userAddress || '' // Keep current address if API doesn't provide it
+        address: profileData.address || userAddress || '', // Keep current address if API doesn't provide it
+        mobileNumber: profileData.mobileNumber || phone || '', // Ensure mobile number is included
+        fullName: profileData.fullName || name || '' // Ensure full name is included
       };
+      
+      console.log('🔄 [PersonalInfoScreen] Profile data for Redux (before dispatch):', {
+        email: profileDataForRedux.email,
+        address: profileDataForRedux.address,
+        isEmailVerified: profileDataForRedux.isEmailVerified,
+        fullData: profileDataForRedux
+      });
       
       console.log('🔄 [PersonalInfoScreen] Profile data for Redux:', profileDataForRedux);
       dispatch(setProfileData(profileDataForRedux));
@@ -171,13 +216,17 @@ const fetchUserProfile = async (isRefresh = false) => {
       
       // Handle email field - if email is undefined but isEmailVerified is true, 
       // it means email was verified but not stored in profile, so we keep the current email
-      if (profileData.email !== undefined && profileData.email !== null) {
+      if (profileData.email !== undefined && profileData.email !== null && profileData.email !== '') {
         console.log('🔄 [PersonalInfoScreen] Setting email from API:', profileData.email);
         setUserEmail(profileData.email);
       } else if (profileData.isEmailVerified) {
-        console.log('⚠️ [PersonalInfoScreen] Email verified but not in profile data, keeping current email field or showing placeholder');
+        console.log('⚠️ [PersonalInfoScreen] Email verified but not in profile data, keeping current email field');
         // If email is verified but not in profile data, keep current email or show placeholder
-        if (!userEmail) {
+        if (userEmail && userEmail.trim() !== '') {
+          console.log('🔄 [PersonalInfoScreen] Keeping existing email:', userEmail);
+          // Keep the existing email if it exists
+        } else {
+          console.log('🔄 [PersonalInfoScreen] No existing email, showing placeholder');
           setUserEmail(''); // Show placeholder
         }
       } else {
@@ -326,7 +375,18 @@ const handleEmailVerification = async () => {
     }
 
     const result = await response.json();
-    console.log('📧 [PersonalInfoScreen] Email OTP API Response:', result);
+    
+    // DETAILED API RESPONSE DEBUG FOR EMAIL OTP
+    console.log('🔥🔥🔥 EMAIL OTP API RESPONSE DEBUG 🔥🔥🔥');
+    console.log('🔥 API Name: send-emailotp');
+    console.log('🔥 Endpoint: /api/auth/send-emailotp');
+    console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+    console.log('🔥 Response Success:', result.success);
+    console.log('🔥 Response Status:', response.status);
+    console.log('🔥 Response Data:', result.data);
+    console.log('🔥 Response Message:', result.message);
+    console.log('🔥 Response Keys:', Object.keys(result));
+    console.log('🔥🔥🔥 END EMAIL OTP DEBUG 🔥🔥🔥');
 
     if (result.success) {
       console.log('✅ [PersonalInfoScreen] Email OTP sent successfully, navigating to Verify page');
@@ -409,13 +469,30 @@ const handleSaveProfile = async () => {
     });
     
     const result = await profileAPI.updateUserProfile(token, profileData);
-    console.log('💾 [PersonalInfoScreen] Update Profile API Response:', {
-      success: result.success,
-      status: result.status,
-      dataSuccess: result.data?.success,
-      message: result.data?.message,
-      fullResponse: JSON.stringify(result, null, 2)
-    });
+    
+    // DETAILED API RESPONSE DEBUG FOR UPDATE PROFILE
+    console.log('🔥🔥🔥 UPDATE USER PROFILE API RESPONSE DEBUG 🔥🔥🔥');
+    console.log('🔥 API Name: updateUserProfile');
+    console.log('🔥 Endpoint: /api/user/profile/update-profile');
+    console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+    console.log('🔥 Response Success:', result.success);
+    console.log('🔥 Response Status:', result.status);
+    console.log('🔥 Response Data:', result.data);
+    console.log('🔥 Response Data Success:', result.data?.success);
+    console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+    console.log('🔥 Response Data Message:', result.data?.message);
+    console.log('🔥 Response Data Data:', result.data?.data);
+    console.log('🔥 Response Data Data Keys:', result.data?.data ? Object.keys(result.data.data) : 'No data');
+    if (result.data?.data) {
+      console.log('🔥 Updated Profile Data Details:');
+      console.log('🔥 - fullName:', result.data.data.fullName);
+      console.log('🔥 - mobileNumber:', result.data.data.mobileNumber);
+      console.log('🔥 - email:', result.data.data.email);
+      console.log('🔥 - address:', result.data.data.address);
+      console.log('🔥 - isEmailVerified:', result.data.data.isEmailVerified);
+      console.log('🔥 - profileImageUrl:', result.data.data.profileImageUrl);
+    }
+    console.log('🔥🔥🔥 END UPDATE USER PROFILE DEBUG 🔥🔥🔥');
 
     if (result.success && result.data.success) {
       console.log('✅ [PersonalInfoScreen] Profile updated successfully');
@@ -447,13 +524,30 @@ const handleSaveProfile = async () => {
         });
         
         const fallbackResult = await profileAPI.updateUserProfile(token, fallbackProfileData);
-        console.log('💾 [PersonalInfoScreen] Fallback Update Profile API Response:', {
-          success: fallbackResult.success,
-          status: fallbackResult.status,
-          dataSuccess: fallbackResult.data?.success,
-          message: fallbackResult.data?.message,
-          fullResponse: JSON.stringify(fallbackResult, null, 2)
-        });
+        
+        // DETAILED API RESPONSE DEBUG FOR FALLBACK UPDATE PROFILE
+        console.log('🔥🔥🔥 FALLBACK UPDATE USER PROFILE API RESPONSE DEBUG 🔥🔥🔥');
+        console.log('🔥 API Name: updateUserProfile (Fallback)');
+        console.log('🔥 Endpoint: /api/user/profile/update-profile');
+        console.log('🔥 Full API Response:', JSON.stringify(fallbackResult, null, 2));
+        console.log('🔥 Response Success:', fallbackResult.success);
+        console.log('🔥 Response Status:', fallbackResult.status);
+        console.log('🔥 Response Data:', fallbackResult.data);
+        console.log('🔥 Response Data Success:', fallbackResult.data?.success);
+        console.log('🔥 Response Data Keys:', fallbackResult.data ? Object.keys(fallbackResult.data) : 'No data');
+        console.log('🔥 Response Data Message:', fallbackResult.data?.message);
+        console.log('🔥 Response Data Data:', fallbackResult.data?.data);
+        console.log('🔥 Response Data Data Keys:', fallbackResult.data?.data ? Object.keys(fallbackResult.data.data) : 'No data');
+        if (fallbackResult.data?.data) {
+          console.log('🔥 Fallback Updated Profile Data Details:');
+          console.log('🔥 - fullName:', fallbackResult.data.data.fullName);
+          console.log('🔥 - mobileNumber:', fallbackResult.data.data.mobileNumber);
+          console.log('🔥 - email:', fallbackResult.data.data.email);
+          console.log('🔥 - address:', fallbackResult.data.data.address);
+          console.log('🔥 - isEmailVerified:', fallbackResult.data.data.isEmailVerified);
+          console.log('🔥 - profileImageUrl:', fallbackResult.data.data.profileImageUrl);
+        }
+        console.log('🔥🔥🔥 END FALLBACK UPDATE USER PROFILE DEBUG 🔥🔥🔥');
 
         if (fallbackResult.success && fallbackResult.data.success) {
           console.log('✅ [PersonalInfoScreen] Fallback profile update successful (image update failed)');
