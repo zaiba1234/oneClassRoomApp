@@ -94,7 +94,9 @@ const LibraryScreen = ({ navigation }) => {
       console.log('🔥🔥🔥 LIBRARY COURSES API RESPONSE DEBUG 🔥🔥🔥');
       console.log('🔥 API Name: getAllCourses');
       console.log('🔥 Endpoint: /api/course/get-all-courses');
-      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      if (__DEV__) {
+        console.log('🔥 API Response Success:', result.success);
+      }
       console.log('🔥 Response Success:', result.success);
       console.log('🔥 Response Status:', result.status);
       console.log('🔥 Response Data:', result.data);
@@ -240,7 +242,7 @@ const LibraryScreen = ({ navigation }) => {
             </View>
           ) : libraryCourses.length > 0 ? (
             <>
-              {libraryCourses.map((course) => renderLibraryCard(course))}
+              {(libraryCourses || []).map((course) => renderLibraryCard(course))}
               
               {/* Pagination Info */}
               <View style={styles.paginationInfo}>

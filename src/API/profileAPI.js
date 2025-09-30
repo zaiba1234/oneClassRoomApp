@@ -14,7 +14,7 @@ export const profileAPI = {
       
       // Create AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for better UX
       
       const response = await fetch(url, {
         method: 'GET',
@@ -67,11 +67,15 @@ export const profileAPI = {
       // Create FormData for the request
       const formData = new FormData();
       
-      console.log('🔥 Creating FormData for profile update...');
+      if (__DEV__) {
+        console.log('🔥 Creating FormData for profile update...');
+      }
       
       // Add profile image if it's a file URI
       if (profileData.profileImageUrl && profileData.profileImageUrl.uri) {
-        console.log('🔥 Adding profile image to FormData:', profileData.profileImageUrl.uri);
+        if (__DEV__) {
+          console.log('🔥 Adding profile image to FormData');
+        }
         // Check if it's a local file or network image
         if (profileData.profileImageUrl.uri.startsWith('file://') || profileData.profileImageUrl.uri.startsWith('content://')) {
           const imageFile = {
@@ -80,22 +84,15 @@ export const profileAPI = {
             name: 'profile-image.jpg',
           };
           formData.append('profileImageUrl', imageFile);
-          console.log('🔥 Added image file to FormData:', imageFile);
         } else {
           // If it's a network image, just send the URL as string
           formData.append('profileImageUrl', profileData.profileImageUrl.uri);
-          console.log('🔥 Added image URL to FormData:', profileData.profileImageUrl.uri);
         }
-      } else {
-        console.log('🔥 No profile image to add to FormData');
       }
       
       // Add other fields - always add them, even if empty
       formData.append('address', profileData.address || '');
-      console.log('🔥 Added address to FormData:', profileData.address || '');
-      
       formData.append('email', profileData.email || '');
-      console.log('🔥 Added email to FormData:', profileData.email || '');
       
       console.log('🔥 FormData creation completed');
       
@@ -120,7 +117,7 @@ export const profileAPI = {
       
       // Create AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for better UX
       
       console.log('🔥 Sending fetch request...');
       const response = await fetch(url, {
@@ -187,7 +184,9 @@ export const profileAPI = {
       console.log('🔥 Endpoint: /api/user/profile/update-profile');
       console.log('🔥 URL:', url);
       console.log('🔥 Token:', token ? `${token.substring(0, 10)}...` : 'Missing');
-      console.log('🔥 Profile Data:', JSON.stringify(profileData, null, 2));
+      if (__DEV__) {
+        console.log('🔥 Profile Data Keys:', Object.keys(profileData));
+      }
       console.log('🔥🔥🔥 END JSON FALLBACK REQUEST DEBUG 🔥🔥🔥');
       
       // Prepare JSON data (without image file)
@@ -206,7 +205,9 @@ export const profileAPI = {
         console.log('🔥 JSON: Skipping image (not supported in JSON)');
       }
       
-      console.log('🔥 JSON Data prepared:', JSON.stringify(jsonData, null, 2));
+      if (__DEV__) {
+        console.log('🔥 JSON Data prepared with keys:', Object.keys(jsonData));
+      }
       
       const headers = {
         'Authorization': `Bearer ${token}`,
@@ -219,7 +220,7 @@ export const profileAPI = {
       
       // Create AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for better UX
       
       console.log('🔥 JSON: Sending fetch request...');
       const response = await fetch(url, {

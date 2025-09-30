@@ -64,13 +64,12 @@ const HomeScreen = () => {
     promos: []
   });
 
-  // Debug: Log banner data changes
+  // Debug: Log banner data changes (production-safe)
   useEffect(() => {
-    console.log('🏠 HomeScreen: Banner data state changed:', JSON.stringify(bannerData, null, 2));
-    console.log('🏠 HomeScreen: Banner data - recentSubcourse:', bannerData.recentSubcourse);
-    console.log('🏠 HomeScreen: Banner data - recentPurchasedSubcourse:', bannerData.recentPurchasedSubcourse);
-    console.log('🏠 HomeScreen: Banner data - promos:', bannerData.promos);
-    console.log('🏠 HomeScreen: Banner data - promos length:', bannerData.promos?.length);
+    if (__DEV__) {
+      console.log('🏠 HomeScreen: Banner data state changed');
+      console.log('🏠 HomeScreen: Banner data - promos length:', bannerData.promos?.length || 0);
+    }
   }, [bannerData]);
 
 
@@ -288,7 +287,9 @@ useEffect(() => {
 
       // Set a timeout to prevent infinite loading
       loadingTimeoutRef.current = setTimeout(() => {
-        console.log('⏰ HomeScreen: Course loading timeout, stopping loader');
+        if (__DEV__) {
+          console.log('⏰ HomeScreen: Course loading timeout, stopping loader');
+        }
         setIsLoadingCourses(false);
       }, 10000); // 10 second timeout
 
@@ -302,38 +303,20 @@ useEffect(() => {
         loadingTimeoutRef.current = null;
       }
 
-      console.log('📱 [HomeScreen] getAllSubcourses API Response:', {
-        success: result.success,
-        status: result.status,
-        dataKeys: result.data ? Object.keys(result.data) : 'No data',
-        fullResponse: JSON.stringify(result, null, 2)
-      });
-
-      // DETAILED API RESPONSE DEBUG FOR ALL COURSES
-      console.log('🔥🔥🔥 ALL COURSES API RESPONSE DEBUG 🔥🔥🔥');
-      console.log('🔥 API Name: getAllSubcourses');
-      console.log('🔥 Endpoint: /api/course/get-all-subcourses');
-      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
-      console.log('🔥 Response Success:', result.success);
-      console.log('🔥 Response Status:', result.status);
-      console.log('🔥 Response Data:', result.data);
-      console.log('🔥 Response Data Success:', result.data?.success);
-      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
-      console.log('🔥 Courses Array:', result.data?.data);
-      console.log('🔥 Courses Count:', result.data?.data?.length);
-      console.log('🔥 Pagination Info:', result.data?.pagination);
-      console.log('🔥 Has Pagination:', !!result.data?.pagination);
-      if (result.data?.pagination) {
-        console.log('🔥 Pagination Details:');
-        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
-        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
-        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
-        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
-        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
-        console.log('🔥 - limit:', result.data.pagination.limit);
-        console.log('🔥 - offset:', result.data.pagination.offset);
+      if (__DEV__) {
+        console.log('📱 [HomeScreen] getAllSubcourses API Response:', {
+          success: result.success,
+          status: result.status,
+          dataKeys: result.data ? Object.keys(result.data) : 'No data'
+        });
       }
-      console.log('🔥🔥🔥 END ALL COURSES DEBUG 🔥🔥🔥');
+
+      // Production-safe API response logging
+      if (__DEV__) {
+        console.log('🔥 API Response Success:', result.success);
+        console.log('🔥 Courses Count:', result.data?.data?.length || 0);
+        console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      }
 
       // Debug pagination structure for All Courses
       console.log('🔍 [DEBUG] All Courses API Response Structure:');
@@ -456,7 +439,9 @@ useEffect(() => {
       console.log('🔥🔥🔥 POPULAR COURSES API RESPONSE DEBUG 🔥🔥🔥');
       console.log('🔥 API Name: getPopularSubcourses');
       console.log('🔥 Endpoint: /api/course/get-popular-subcourses');
-      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      if (__DEV__) {
+        console.log('🔥 API Response Success:', result.success);
+      }
       console.log('🔥 Response Success:', result.success);
       console.log('🔥 Response Status:', result.status);
       console.log('🔥 Response Data:', result.data);
@@ -594,7 +579,9 @@ useEffect(() => {
       console.log('🔥🔥🔥 NEWEST COURSES API RESPONSE DEBUG 🔥🔥🔥');
       console.log('🔥 API Name: getNewestSubcourses');
       console.log('🔥 Endpoint: /api/course/get-newest-subcourses');
-      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      if (__DEV__) {
+        console.log('🔥 API Response Success:', result.success);
+      }
       console.log('🔥 Response Success:', result.success);
       console.log('🔥 Response Status:', result.status);
       console.log('🔥 Response Data:', result.data);
@@ -733,7 +720,9 @@ useEffect(() => {
       if (response.ok) {
         const result = await response.json();
         
-        console.log('🏠 HomeScreen: Raw API response:', JSON.stringify(result, null, 2));
+        if (__DEV__) {
+          console.log('🏠 HomeScreen: Raw API response success:', result.success);
+        }
         console.log('🏠 HomeScreen: Response success:', result.success);
         console.log('🏠 HomeScreen: Response data:', result.data);
         console.log('🏠 HomeScreen: Response message:', result.message);
@@ -1461,7 +1450,9 @@ useEffect(() => {
               (bannerData.promos && bannerData.promos.length > 0);
             const hasFeaturedContent = featuredCourses.length > 0;
 
-            console.log('🏠 HomeScreen: Carousel render check - bannerData:', JSON.stringify(bannerData, null, 2));
+            if (__DEV__) {
+              console.log('🏠 HomeScreen: Carousel render check - bannerData promos:', bannerData.promos?.length || 0);
+            }
             console.log('🏠 HomeScreen: Carousel render check - hasBannerContent:', hasBannerContent);
             console.log('🏠 HomeScreen: Carousel render check - hasFeaturedContent:', hasFeaturedContent);
             console.log('🏠 HomeScreen: Carousel render check - featuredCourses:', featuredCourses);
@@ -1794,7 +1785,7 @@ useEffect(() => {
                   <Text style={styles.searchResultsText}>Search results for "{searchKeyword}"</Text>
                   <Text style={styles.searchResultsCount}>({filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''})</Text>
                 </View>
-                {filteredCourses.map((course) => renderCourseCard(course))}
+                {(filteredCourses || []).map((course) => renderCourseCard(course))}
               </>
             )
           ) : (
@@ -1804,7 +1795,9 @@ useEffect(() => {
                 <Text style={styles.emptyText}>No courses available</Text>
               </View>
             ) : (
-              courseCards.map((course) => renderCourseCard(course))
+              <>
+                {(courseCards || []).map((course) => renderCourseCard(course))}
+              </>
             )
           )}
         </View>

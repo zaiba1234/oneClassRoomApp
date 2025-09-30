@@ -320,7 +320,7 @@ const FavouritesScreen = ({ navigation }) => {
             </View>
           ) : (
             <>
-              {favouriteCourses.map((course) => renderCourseCard(course))}
+              {(favouriteCourses || []).map((course) => renderCourseCard(course))}
               
               {/* Pagination Info */}
               <View style={styles.paginationInfo}>

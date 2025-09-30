@@ -30,16 +30,14 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [userAddress, setUserAddress] = useState(address || '');
   const [userEmail, setUserEmail] = useState(email || '');
   
-  // Debug current state values
-  console.log('🔍 [PersonalInfoScreen] Current state values:', {
-    userEmail: userEmail,
-    emailFromRedux: email,
-    isEmailVerified: isEmailVerified,
-    userEmailEmpty: userEmail === '',
-    emailFromReduxEmpty: email === '',
-    userEmailType: typeof userEmail,
-    emailFromReduxType: typeof email
-  });
+  // Debug current state values (production-safe)
+  if (__DEV__) {
+    console.log('🔍 [PersonalInfoScreen] Current state values:', {
+      userEmail: userEmail,
+      emailFromRedux: email,
+      isEmailVerified: isEmailVerified
+    });
+  }
   const [phone, setPhone] = useState(mobileNumber || '+91');
   const [profileImage, setProfileImage] = useState(profileImageUrl ? { uri: profileImageUrl } : require('../assests/images/Profile.png'));
   const [isLoading, setIsLoading] = useState(false);
@@ -153,7 +151,9 @@ const fetchUserProfile = async (isRefresh = false) => {
     console.log('🔥🔥🔥 GET USER PROFILE API RESPONSE DEBUG 🔥🔥🔥');
     console.log('🔥 API Name: getUserProfile');
     console.log('🔥 Endpoint: /api/user/profile/get-profile');
-    console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+    if (__DEV__) {
+      console.log('🔥 API Response Success:', result.success);
+    }
     console.log('🔥 Response Success:', result.success);
     console.log('🔥 Response Status:', result.status);
     console.log('🔥 Response Data:', result.data);
@@ -380,7 +380,9 @@ const handleEmailVerification = async () => {
     console.log('🔥🔥🔥 EMAIL OTP API RESPONSE DEBUG 🔥🔥🔥');
     console.log('🔥 API Name: send-emailotp');
     console.log('🔥 Endpoint: /api/auth/send-emailotp');
-    console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+    if (__DEV__) {
+      console.log('🔥 API Response Success:', result.success);
+    }
     console.log('🔥 Response Success:', result.success);
     console.log('🔥 Response Status:', response.status);
     console.log('🔥 Response Data:', result.data);
@@ -459,7 +461,13 @@ const handleSaveProfile = async () => {
       timestamp: new Date().toISOString()
     };
     
-    console.log('💾 [PersonalInfoScreen] Profile Update Request Details:', JSON.stringify(requestData, null, 2));
+    if (__DEV__) {
+      console.log('💾 [PersonalInfoScreen] Profile Update Request Details:', {
+        hasProfileImage: !!requestData.profileImageUrl,
+        address: requestData.address || 'Empty',
+        email: requestData.email || 'Empty'
+      });
+    }
     
     console.log('💾 [PersonalInfoScreen] Updating profile with data:', {
       address: profileData.address,
@@ -474,7 +482,9 @@ const handleSaveProfile = async () => {
     console.log('🔥🔥🔥 UPDATE USER PROFILE API RESPONSE DEBUG 🔥🔥🔥');
     console.log('🔥 API Name: updateUserProfile');
     console.log('🔥 Endpoint: /api/user/profile/update-profile');
-    console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+    if (__DEV__) {
+      console.log('🔥 API Response Success:', result.success);
+    }
     console.log('🔥 Response Success:', result.success);
     console.log('🔥 Response Status:', result.status);
     console.log('🔥 Response Data:', result.data);
@@ -529,7 +539,9 @@ const handleSaveProfile = async () => {
         console.log('🔥🔥🔥 FALLBACK UPDATE USER PROFILE API RESPONSE DEBUG 🔥🔥🔥');
         console.log('🔥 API Name: updateUserProfile (Fallback)');
         console.log('🔥 Endpoint: /api/user/profile/update-profile');
-        console.log('🔥 Full API Response:', JSON.stringify(fallbackResult, null, 2));
+        if (__DEV__) {
+          console.log('🔥 Fallback API Response Success:', fallbackResult.success);
+        }
         console.log('🔥 Response Success:', fallbackResult.success);
         console.log('🔥 Response Status:', fallbackResult.status);
         console.log('🔥 Response Data:', fallbackResult.data);

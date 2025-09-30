@@ -483,7 +483,9 @@ export const courseAPI = {
 
      
       const responseData = await response.json();
-      console.log('🔥 courseAPI.getInProgressSubcourses: Response data:', JSON.stringify(responseData, null, 2));
+      if (__DEV__) {
+        console.log('🔥 courseAPI.getInProgressSubcourses: Response success:', responseData.success);
+      }
       console.log('🔥 courseAPI.getInProgressSubcourses: Response data.data isArray:', Array.isArray(responseData?.data));
 
       if (response.ok) {
@@ -518,7 +520,9 @@ export const courseAPI = {
       });
 
       const responseData = await response.json();
-      console.log('🔥 courseAPI.getCompletedSubcourses: Response data:', JSON.stringify(responseData, null, 2));
+      if (__DEV__) {
+        console.log('🔥 courseAPI.getCompletedSubcourses: Response success:', responseData.success);
+      }
 
       if (response.ok) {
         console.log('✅ courseAPI.getCompletedSubcourses: API call successful');
