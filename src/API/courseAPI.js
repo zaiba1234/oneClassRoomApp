@@ -2,13 +2,14 @@
 import { getApiUrl, getApiHeaders, ENDPOINTS } from './config';
 
 export const courseAPI = {
-  getAllSubcourses: async (token) => {
+  getAllSubcourses: async (token, options = {}) => {
     try {
+      const { page = 1, limit = 5 } = options;
       console.log('🔍 [API DEBUG] getAllSubcourses called');
-      console.log('🔍 [API DEBUG] - No pagination parameters (page, limit)');
-      console.log('🔍 [API DEBUG] - This API returns all courses at once');
+      console.log('🔍 [API DEBUG] - Page:', page, 'Limit:', limit);
+      console.log('🔍 [API DEBUG] - Pagination enabled');
 
-      const url = getApiUrl(ENDPOINTS.GET_ALL_SUBCOURSES);
+      const url = getApiUrl(`${ENDPOINTS.GET_ALL_SUBCOURSES}?page=${page}&limit=${limit}`);
       console.log('🔍 [API DEBUG] getAllSubcourses URL:', url);
       
       const headers = {
@@ -16,7 +17,6 @@ export const courseAPI = {
         'Authorization': `Bearer ${token}`,
       };
       console.log('🔍 [API DEBUG] getAllSubcourses headers:', headers);
-
 
       const response = await fetch(url, {
         method: 'GET',
@@ -29,10 +29,21 @@ export const courseAPI = {
       console.log('🔥🔥🔥 API LEVEL - ALL COURSES RESPONSE DEBUG 🔥🔥🔥');
       console.log('🔥 API Name: getAllSubcourses');
       console.log('🔥 Endpoint: /api/course/get-all-subcourses');
-     
+      console.log('🔥 Full URL:', url);
+      console.log('🔥 Response Status:', response.status);
+      console.log('🔥 Response Success:', responseData.success);
+      console.log('🔥 Response Data:', responseData.data);
+      console.log('🔥 Courses Count:', responseData.data?.length);
+      console.log('🔥 Has Pagination:', !!responseData.pagination);
       if (responseData.pagination) {
         console.log('🔥 Pagination Details:');
-       
+        console.log('🔥 - currentPage:', responseData.pagination.currentPage);
+        console.log('🔥 - totalPages:', responseData.pagination.totalPages);
+        console.log('🔥 - totalCourses:', responseData.pagination.totalCourses);
+        console.log('🔥 - hasNextPage:', responseData.pagination.hasNextPage);
+        console.log('🔥 - hasPrevPage:', responseData.pagination.hasPrevPage);
+        console.log('🔥 - limit:', responseData.pagination.limit);
+        console.log('🔥 - offset:', responseData.pagination.offset);
       }
       console.log('🔥🔥🔥 END API LEVEL - ALL COURSES DEBUG 🔥🔥🔥');
 

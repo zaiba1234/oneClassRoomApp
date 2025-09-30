@@ -117,6 +117,7 @@ const initialState = {
   profileImageUrl: '',
   address: '',
   email: '',
+  isEmailVerified: false,
   token: '',
   isAuthenticated: false,
   isLoading: false,
@@ -127,7 +128,7 @@ const userSlice = createSlice({
   initialState,
   reducers: {
     setUserData: (state, action) => {
-      const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, token } = action.payload;
+      const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, isEmailVerified, token } = action.payload;
       state._id = _id || '';
       state.userId = userId || '';
       state.fullName = fullName || '';
@@ -135,6 +136,7 @@ const userSlice = createSlice({
       state.profileImageUrl = profileImageUrl || '';
       state.address = address || '';
       state.email = email || '';
+      state.isEmailVerified = isEmailVerified || false;
       state.token = token || '';
       state.isAuthenticated = !!token;
       
@@ -154,8 +156,19 @@ const userSlice = createSlice({
     setMobileNumber: (state, action) => {
       state.mobileNumber = action.payload;
     },
+    setEmail: (state, action) => {
+      state.email = action.payload || '';
+    },
+    setEmailVerification: (state, action) => {
+      state.isEmailVerified = action.payload;
+    },
+    updateEmailAndVerification: (state, action) => {
+      const { email, isEmailVerified } = action.payload;
+      state.email = email || '';
+      state.isEmailVerified = isEmailVerified || false;
+    },
     setProfileData: (state, action) => {
-      const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email } = action.payload;
+      const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, isEmailVerified } = action.payload;
       state._id = _id || '';
       state.userId = userId || '';
       state.fullName = fullName || '';
@@ -163,6 +176,7 @@ const userSlice = createSlice({
       state.profileImageUrl = profileImageUrl || '';
       state.address = address || '';
       state.email = email || '';
+      state.isEmailVerified = isEmailVerified || false;
     },
     clearUserData: (state) => {
       state._id = '';
@@ -172,6 +186,7 @@ const userSlice = createSlice({
       state.profileImageUrl = '';
       state.address = '';
       state.email = '';
+      state.isEmailVerified = false;
       state.token = '';
       state.isAuthenticated = false;
     },
@@ -183,6 +198,7 @@ const userSlice = createSlice({
       state.profileImageUrl = '';
       state.address = '';
       state.email = '';
+      state.isEmailVerified = false;
       state.token = '';
       state.isAuthenticated = false;
       
@@ -199,7 +215,7 @@ const userSlice = createSlice({
       .addCase(loadUserFromStorage.fulfilled, (state, action) => {
         state.isLoading = false;
         if (action.payload) {
-          const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, token } = action.payload;
+          const { _id, userId, fullName, mobileNumber, profileImageUrl, address, email, isEmailVerified, token } = action.payload;
           state._id = _id || '';
           state.userId = userId || '';
           state.fullName = fullName || '';
@@ -207,6 +223,7 @@ const userSlice = createSlice({
           state.profileImageUrl = profileImageUrl || '';
           state.address = address || '';
           state.email = email || '';
+          state.isEmailVerified = isEmailVerified || false;
           state.token = token || '';
           state.isAuthenticated = !!token;
           
@@ -245,6 +262,7 @@ const userSlice = createSlice({
           state.profileImageUrl = '';
           state.address = '';
           state.email = '';
+          state.isEmailVerified = false;
           state.token = '';
           state.isAuthenticated = false;
         } else {
@@ -261,6 +279,7 @@ const userSlice = createSlice({
         state.profileImageUrl = '';
         state.address = '';
         state.email = '';
+        state.isEmailVerified = false;
         state.token = '';
         state.isAuthenticated = false;
       });
@@ -272,6 +291,9 @@ export const {
   setToken,
   setFullName,
   setMobileNumber,
+  setEmail,
+  setEmailVerification,
+  updateEmailAndVerification,
   setProfileData,
   clearUserData,
   logout,

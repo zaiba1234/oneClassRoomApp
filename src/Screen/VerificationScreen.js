@@ -26,6 +26,7 @@ import {
   Keyboard,
   StatusBar,
   Image,
+  BackHandler,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -67,6 +68,33 @@ const VerificationScreen = ({ route }) => {
       otpRefs.current[0]?.focus();
     }, 100);
   }, []);
+
+  // Clear OTP fields when screen comes into focus (from any page)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('🔄 [VerificationScreen] Screen focused - clearing OTP fields');
+      setOtp(['', '', '', '', '', '']);
+      // Focus on first input field after clearing
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 100);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Handle hardware back button for Android
+  useEffect(() => {
+    const backAction = () => {
+      console.log('🔙 [VerificationScreen] Hardware back button pressed');
+      navigation.goBack();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+    return () => backHandler.remove();
+  }, [navigation]);
 
   useEffect(() => {
     let interval;
@@ -291,7 +319,7 @@ console.log('🔔 [handleResendOTP] Response:', response);
           showCancel: false,
           confirmText: 'OK',
           onConfirm: () => {
-            navigation.navigate('PersonalInfo');
+            navigation.goBack();
           }
         });
       } else {

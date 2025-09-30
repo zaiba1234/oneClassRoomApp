@@ -90,6 +90,14 @@ const HomeScreen = () => {
   // State for refreshing
   const [refreshing, setRefreshing] = useState(false);
 
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCourses, setTotalCourses] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   // Ref to track last fetch time to prevent too frequent API calls
   const lastFetchTimeRef = useRef(0);
 
@@ -267,20 +275,23 @@ useEffect(() => {
   };
 
   // Function to fetch course data from API
-  const fetchCourseData = async () => {
+  const fetchCourseData = async (page = 1, limit = 5) => {
     try {
       console.log('🚀 [HomeScreen] fetchCourseData called - getAllSubcourses API');
       console.log('🚀 [HomeScreen] API Request Details:', {
         api: 'courseAPI.getAllSubcourses',
         endpoint: '/api/course/get-all-subcourses',
+        page: page,
+        limit: limit,
         token: token ? `${token.substring(0, 10)}...` : 'Missing',
         timestamp: new Date().toISOString()
       });
 
       // Debug API call parameters
       console.log('🔍 [DEBUG] All Courses API Call Parameters:');
-      console.log('🔍 [DEBUG] - No pagination parameters sent (this API does not support pagination yet)');
-      console.log('🔍 [DEBUG] - This API returns all courses at once');
+      console.log('🔍 [DEBUG] - Page:', page);
+      console.log('🔍 [DEBUG] - Limit:', limit);
+      console.log('🔍 [DEBUG] - Pagination enabled');
 
       setIsLoadingCourses(true);
       setCourseError(null);
@@ -294,7 +305,7 @@ useEffect(() => {
       }, 10000); // 10 second timeout
 
       console.log('🚀 CALLING getAllSubcourses API NOW...');
-      const result = await courseAPI.getAllSubcourses(token);
+      const result = await courseAPI.getAllSubcourses(token, { page, limit });
       console.log('✅ getAllSubcourses API CALL COMPLETED');
 
       // Clear timeout if API call completes
@@ -303,13 +314,20 @@ useEffect(() => {
         loadingTimeoutRef.current = null;
       }
 
-      if (__DEV__) {
-        console.log('📱 [HomeScreen] getAllSubcourses API Response:', {
-          success: result.success,
-          status: result.status,
-          dataKeys: result.data ? Object.keys(result.data) : 'No data'
-        });
+      // DETAILED API RESPONSE DEBUG FOR ALL COURSES
+      
+      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+      console.log('🔥 Courses Array:', result.data?.data);
+      console.log('🔥 Courses Count:', result.data?.data?.length);
+      console.log('🔥 Pagination Info:', result.data?.pagination);
+      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      if (result.data?.pagination) {
+        console.log('🔥 Pagination Details:');
+        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
+        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
+       
       }
+      console.log('🔥🔥🔥 END ALL COURSES DEBUG 🔥🔥🔥');
 
       // Production-safe API response logging
       if (__DEV__) {
@@ -322,22 +340,14 @@ useEffect(() => {
       console.log('🔍 [DEBUG] All Courses API Response Structure:');
       console.log('🔍 [DEBUG] result.success:', result.success);
       console.log('🔍 [DEBUG] result.data:', result.data);
-      console.log('🔍 [DEBUG] result.data.success:', result.data?.success);
-      console.log('🔍 [DEBUG] result.data.data:', result.data?.data);
-      console.log('🔍 [DEBUG] result.data.pagination:', result.data?.pagination);
-      console.log('🔍 [DEBUG] result.data.data type:', typeof result.data?.data);
-      console.log('🔍 [DEBUG] result.data.data isArray:', Array.isArray(result.data?.data));
-      console.log('🔍 [DEBUG] result.data.data length:', result.data?.data?.length);
+     
       
       if (result.data?.pagination) {
         console.log('🔍 [DEBUG] Pagination Details:');
         console.log('🔍 [DEBUG] - currentPage:', result.data.pagination.currentPage);
         console.log('🔍 [DEBUG] - totalPages:', result.data.pagination.totalPages);
         console.log('🔍 [DEBUG] - totalCourses:', result.data.pagination.totalCourses);
-        console.log('🔍 [DEBUG] - hasNextPage:', result.data.pagination.hasNextPage);
-        console.log('🔍 [DEBUG] - hasPrevPage:', result.data.pagination.hasPrevPage);
-        console.log('🔍 [DEBUG] - limit:', result.data.pagination.limit);
-        console.log('🔍 [DEBUG] - offset:', result.data.pagination.offset);
+      
       } else {
         console.log('🔍 [DEBUG] No pagination data found in response');
       }
@@ -356,6 +366,15 @@ useEffect(() => {
           hasPagination: !!result.data.pagination
         });
 
+        // Update pagination state
+        if (result.data.pagination) {
+          setCurrentPage(result.data.pagination.currentPage || page);
+          setTotalPages(result.data.pagination.totalPages || 1);
+          setTotalCourses(result.data.pagination.totalCourses || apiCourses.length);
+          setHasNextPage(result.data.pagination.hasNextPage || false);
+          setHasPrevPage(result.data.pagination.hasPrevPage || false);
+        }
+
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
@@ -372,7 +391,12 @@ useEffect(() => {
           };
         });
 
-        setCourseCards(transformedCourses);
+        // If it's the first page, replace courses; otherwise append
+        if (page === 1) {
+          setCourseCards(transformedCourses);
+        } else {
+          setCourseCards(prevCourses => [...prevCourses, ...transformedCourses]);
+        }
         console.log('✅ HomeScreen: Course data loaded successfully - Total courses:', transformedCourses.length);
 
       } else {
@@ -713,7 +737,7 @@ useEffect(() => {
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers,
-      });
+      }); 
 
       console.log('🏠 HomeScreen: Banner response status:', response.status);
 
@@ -731,9 +755,7 @@ useEffect(() => {
           console.log('🏠 HomeScreen: Banner data fetched successfully:', result.data);
           console.log('🏠 HomeScreen: Banner data details - recentSubcourse:', result.data.recentSubcourse);
           console.log('🏠 HomeScreen: Banner data details - recentPurchasedSubcourse:', result.data.recentPurchasedSubcourse);
-          console.log('🏠 HomeScreen: Banner data details - promos:', result.data.promos);
-          console.log('🏠 HomeScreen: Banner data details - promos length:', result.data.promos?.length);
-          console.log('🏠 HomeScreen: Banner data details - promos is array:', Array.isArray(result.data.promos));
+        
           setBannerData(result.data);
         } else {
           console.log('❌ HomeScreen: Banner API response not successful:', result);
@@ -938,6 +960,23 @@ useEffect(() => {
         stack: error.stack,
         timestamp: new Date().toISOString()
       });
+    }
+  };
+
+  // Function to load more courses (pagination)
+  const loadMoreCourses = async () => {
+    if (isLoadingMore || !hasNextPage) return;
+    
+    try {
+      setIsLoadingMore(true);
+      const nextPage = currentPage + 1;
+      console.log('📄 [HomeScreen] Loading more courses - Page:', nextPage);
+      
+      await fetchCourseData(nextPage, 5);
+    } catch (error) {
+      console.error('💥 HomeScreen: Error loading more courses:', error);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -1797,6 +1836,30 @@ useEffect(() => {
             ) : (
               <>
                 {(courseCards || []).map((course) => renderCourseCard(course))}
+                
+                {/* Pagination Info */}
+                {totalCourses > 0 && (
+                  <View style={styles.paginationInfo}>
+                    <Text style={styles.paginationText}>
+                      Page {currentPage} of {totalPages} • Showing {courseCards.length} of {totalCourses} courses
+                    </Text>
+                  </View>
+                )}
+                
+                {/* Load More Button */}
+                {hasNextPage && (
+                  <TouchableOpacity
+                    style={styles.loadMoreButton}
+                    onPress={loadMoreCourses}
+                    disabled={isLoadingMore}
+                  >
+                    {isLoadingMore ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.loadMoreButtonText}>Load More Courses</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
               </>
             )
           )}
@@ -2342,5 +2405,35 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
-  // Removed unused refresh indicator styles
+  paginationInfo: {
+    paddingVertical: getResponsiveSize(15),
+    paddingHorizontal: getResponsiveSize(20),
+    backgroundColor: '#f8f9fa',
+    borderRadius: getResponsiveSize(10),
+    marginVertical: getResponsiveSize(10),
+    alignItems: 'center',
+  },
+  paginationText: {
+    fontSize: getResponsiveSize(14),
+    color: '#666',
+    fontWeight: '500',
+  },
+  loadMoreButton: {
+    backgroundColor: '#FF8800',
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(24),
+    borderRadius: getResponsiveSize(25),
+    alignItems: 'center',
+    marginVertical: getResponsiveSize(15),
+    shadowColor: '#FF8800',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  loadMoreButtonText: {
+    color: '#fff',
+    fontSize: getResponsiveSize(16),
+    fontWeight: '600',
+  },
 });

@@ -156,15 +156,12 @@ const EnrollScreen = ({ navigation, route }) => {
       setIsLoadingCourse(true);
       setCourseError(null);
 
-      console.log('🔍 EnrollScreen: Fetching course details for courseId:', courseId);
-      console.log('🔍 EnrollScreen: Using token:', token ? 'Present' : 'Missing');
+  
 
       const result = await courseAPI.getSubcourseById(token, courseId);
 
       console.log('📥 EnrollScreen: getSubcourseById API Response:', result);
-      console.log('📥 EnrollScreen: API Success:', result.success);
-      console.log('📥 EnrollScreen: API Data:', result.data);
-
+     
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
         console.log('📥 EnrollScreen: Course data from API:', apiCourse);
