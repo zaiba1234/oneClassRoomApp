@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import NotificationIcon from '../Component/NotificationIcon';
 import { useAppSelector } from '../Redux/hooks';
 import notificationService from '../services/notificationService';
+import BackButton from '../Component/BackButton';
 
 // Import local assets
 const ArrowIcon = require('../assests/images/Arrow.png');
@@ -274,12 +275,10 @@ const NotificationScreen = ({ navigation }) => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Image source={ArrowIcon} style={styles.backIcon} />
-        </TouchableOpacity>
+        <BackButton onPress={() => {
+          console.log('🔙 [NotificationScreen] Back button pressed');
+          navigation.goBack();
+        }} />
         <Text style={styles.headerTitle}>Notifications</Text>
         <View style={styles.headerActions}>
           {unreadCount > 0 && (
@@ -342,28 +341,23 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: getVerticalSize(20),
     paddingTop: Platform.OS === 'ios' ? getVerticalSize(50) : getVerticalSize(20),
-    paddingBottom: getVerticalSize(15),
+    paddingBottom: getVerticalSize(10),
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
+    gap: 10,
   },
   backButton: {
     padding: getVerticalSize(8),
   },
-  backIcon: {
-    width: getFontSize(24),
-    height: getFontSize(24),
-    resizeMode: 'contain',
-  },
+  
   headerTitle: {
-    marginTop:20,
     fontSize: getFontSize(20),
     fontWeight: 'bold',
     color: '#000000',
-    textAlign: 'center',
+    flex: 1,
   },
   placeholder: {
     width: getFontSize(40),

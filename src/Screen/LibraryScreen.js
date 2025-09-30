@@ -84,7 +84,37 @@ const LibraryScreen = ({ navigation }) => {
       }
       setCourseError(null);
 
+      console.log('🚀 CALLING getAllCourses API NOW...');
+      console.log('🚀 API Parameters:', { page, limit: 10, token: token ? `${token.substring(0, 10)}...` : 'Missing' });
+      
       const result = await courseAPI.getAllCourses(token, page, 10);
+      console.log('✅ getAllCourses API CALL COMPLETED');
+      
+      // DETAILED API RESPONSE DEBUG FOR LIBRARY COURSES
+      console.log('🔥🔥🔥 LIBRARY COURSES API RESPONSE DEBUG 🔥🔥🔥');
+      console.log('🔥 API Name: getAllCourses');
+      console.log('🔥 Endpoint: /api/course/get-all-courses');
+      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      console.log('🔥 Response Success:', result.success);
+      console.log('🔥 Response Status:', result.status);
+      console.log('🔥 Response Data:', result.data);
+      console.log('🔥 Response Data Success:', result.data?.success);
+      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+      console.log('🔥 Courses Array:', result.data?.data);
+      console.log('🔥 Courses Count:', result.data?.data?.length);
+      console.log('🔥 Pagination Info:', result.data?.pagination);
+      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      if (result.data?.pagination) {
+        console.log('🔥 Pagination Details:');
+        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
+        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
+        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔥 - limit:', result.data.pagination.limit);
+        console.log('🔥 - offset:', result.data.pagination.offset);
+      }
+      console.log('🔥🔥🔥 END LIBRARY COURSES DEBUG 🔥🔥🔥');
 
       if (result.success && result.data.success) {
         // Handle new API response structure with pagination
@@ -211,6 +241,29 @@ const LibraryScreen = ({ navigation }) => {
           ) : libraryCourses.length > 0 ? (
             <>
               {libraryCourses.map((course) => renderLibraryCard(course))}
+              
+              {/* Pagination Info */}
+              <View style={styles.paginationInfo}>
+                <Text style={styles.paginationText}>
+                  Page {currentPage} of {totalPages}
+                </Text>
+                <Text style={styles.paginationText}>
+                  Showing {libraryCourses.length} of {totalCourses} courses
+                </Text>
+              </View>
+              
+              {/* Load More Button */}
+              {hasMoreData && (
+                <TouchableOpacity 
+                  style={[styles.loadMoreButton, loadingMore && styles.loadMoreButtonDisabled]} 
+                  onPress={loadMoreCourses}
+                  disabled={loadingMore || isLoadingCourses}
+                >
+                  <Text style={styles.loadMoreButtonText}>
+                    {loadingMore ? 'Loading...' : 'Load More Courses'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </>
           ) : (
             <View style={styles.emptyContainer}>

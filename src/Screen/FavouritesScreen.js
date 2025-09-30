@@ -84,7 +84,37 @@ const FavouritesScreen = ({ navigation }) => {
       }
       setError(null);
       
+      console.log('🚀 CALLING getFavoriteCourses API NOW...');
+      console.log('🚀 API Parameters:', { page, limit: 10, token: token ? `${token.substring(0, 10)}...` : 'Missing' });
+      
       const result = await courseAPI.getFavoriteCourses(token, page, 10);
+      console.log('✅ getFavoriteCourses API CALL COMPLETED');
+      
+      // DETAILED API RESPONSE DEBUG FOR FAVORITE COURSES
+      console.log('🔥🔥🔥 FAVORITE COURSES API RESPONSE DEBUG 🔥🔥🔥');
+      console.log('🔥 API Name: getFavoriteCourses');
+      console.log('🔥 Endpoint: /api/course/get-favorite-courses');
+      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      console.log('🔥 Response Success:', result.success);
+      console.log('🔥 Response Status:', result.status);
+      console.log('🔥 Response Data:', result.data);
+      console.log('🔥 Response Data Success:', result.data?.success);
+      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+      console.log('🔥 Courses Array:', result.data?.data);
+      console.log('🔥 Courses Count:', result.data?.data?.length);
+      console.log('🔥 Pagination Info:', result.data?.pagination);
+      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      if (result.data?.pagination) {
+        console.log('🔥 Pagination Details:');
+        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
+        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
+        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔥 - limit:', result.data.pagination.limit);
+        console.log('🔥 - offset:', result.data.pagination.offset);
+      }
+      console.log('🔥🔥🔥 END FAVORITE COURSES DEBUG 🔥🔥🔥');
       
       if (result.success && result.data.success) {
         // Handle new API response structure with pagination
@@ -291,6 +321,16 @@ const FavouritesScreen = ({ navigation }) => {
           ) : (
             <>
               {favouriteCourses.map((course) => renderCourseCard(course))}
+              
+              {/* Pagination Info */}
+              <View style={styles.paginationInfo}>
+                <Text style={styles.paginationText}>
+                  Page {currentPage} of {totalPages}
+                </Text>
+                <Text style={styles.paginationText}>
+                  Showing {favouriteCourses.length} of {totalCourses} courses
+                </Text>
+              </View>
               
               {/* Load More Button */}
               {hasMoreData && (

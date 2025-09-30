@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -35,6 +34,7 @@ const { width, height } = Dimensions.get('window');
 // Responsive scaling factors
 const scale = width / 375;
 const verticalScale = height / 812;
+
 
 // Responsive font sizes
 const getFontSize = (size) => size * scale;
@@ -168,7 +168,13 @@ const EnrollScreen = ({ navigation, route }) => {
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
         console.log('📥 EnrollScreen: Course data from API:', apiCourse);
-       
+        
+        // Check if subcourse data exists
+        if (!apiCourse || !apiCourse._id) {
+          console.log('❌ EnrollScreen: No subcourse data found in API response');
+          setCourseError('No subcourse added');
+          return;
+        }
 
         const transformedCourse = {
           _id: apiCourse._id || courseId, // Add the subcourse ID
@@ -192,8 +198,6 @@ const EnrollScreen = ({ navigation, route }) => {
           isCompleted: Boolean(apiCourse.isCompleted), // Ensure boolean conversion
         };
 
-      
-
         // Check each lesson for startTime
         if (transformedCourse.lessons && transformedCourse.lessons.length > 0) {
           transformedCourse.lessons.forEach((lesson, index) => {
@@ -207,11 +211,18 @@ const EnrollScreen = ({ navigation, route }) => {
           transformedCourse.isCompleted = true;
         }
 
-      
         setCourseData(transformedCourse);
 
       } else {
-        setCourseError(result.data?.message || 'Failed to fetch course details');
+        // Check if it's a "no subcourse found" error
+        const errorMessage = result.data?.message || 'Failed to fetch course details';
+        if (errorMessage.toLowerCase().includes('not found') || 
+            errorMessage.toLowerCase().includes('no subcourse') ||
+            result.status === 404) {
+          setCourseError('No subcourse added');
+        } else {
+          setCourseError(errorMessage);
+        }
       }
     } catch (error) {
       setCourseError(error.message || 'Network error occurred');
@@ -665,8 +676,7 @@ const EnrollScreen = ({ navigation, route }) => {
 
   // Function to get user profile data for Razorpay prefill
   const getUserProfileData = () => {
-    // You can get this from Redux store or API
-    // For now, using placeholder data
+    
     return {
       email: 'student@learningsaint.com',
       contact: '9876543210',
@@ -1173,12 +1183,12 @@ const EnrollScreen = ({ navigation, route }) => {
     console.log('🔍 EnrollScreen: hasNoLessons result:', hasNoLessons);
     
     if (hasNoLessons) {
-      // Return empty view without alert
+      // Return empty view with proper message
       return (
         <View style={styles.lessonsContainer}>
           <View style={styles.emptyLessonsContainer}>
             <Icon name="book-outline" size={60} color="#CCCCCC" />
-            <Text style={styles.emptyLessonsText}>No lessons added</Text>
+            <Text style={styles.emptyLessonsText}>No lessons added yet</Text>
             <Text style={styles.emptyLessonsSubText}>Please check back later</Text>
           </View>
         </View>
@@ -1381,7 +1391,9 @@ const EnrollScreen = ({ navigation, route }) => {
           </View>
         ) : courseError ? (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>Error: {courseError}</Text>
+            <Text style={styles.errorText}>
+              {courseError === 'No subcourse added' ? 'No subcourse added' : `Error: ${courseError}`}
+            </Text>
             <TouchableOpacity style={styles.retryButton} onPress={fetchCourseDetails}>
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>

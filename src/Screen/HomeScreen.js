@@ -14,6 +14,8 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
+  BackHandler, // यह add करें
+  Alert, 
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -95,6 +97,40 @@ const HomeScreen = () => {
   // Ref to track loading timeout
   const loadingTimeoutRef = useRef(null);
 
+  // Debug: Log pagination status
+  useEffect(() => {
+    
+    console.log('   3. Add loadMoreCourses function');
+    console.log('   4. Add pagination UI (Load More button, pagination info)');
+  }, []);
+
+  // Component के अंदर, existing useEffect के बाद add करें
+useEffect(() => {
+  const backAction = () => {
+    // HomeScreen से back करने पर app बंद करें
+    Alert.alert(
+      "Exit App",
+      "Are you sure you want to exit?",
+      [
+        {
+          text: "Cancel",
+          onPress: () => null,
+          style: "cancel"
+        },
+        {
+          text: "Exit",
+          onPress: () => BackHandler.exitApp()
+        }
+      ]
+    );
+    return true;
+  };
+
+  const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+
+  return () => backHandler.remove();
+}, []);
+
   // Fetch course data when component mounts or token changes
   useEffect(() => {
     // Initialize data regardless of token status for better UX
@@ -146,20 +182,44 @@ const HomeScreen = () => {
   // Function to fetch featured courses from API
   const fetchFeaturedCourses = async () => {
     try {
+      console.log('🚀 [HomeScreen] fetchFeaturedCourses called - getPurchasedCourse API');
+      console.log('🚀 [HomeScreen] API Request Details:', {
+        api: 'courseAPI.getPurchasedCourse',
+        endpoint: '/api/course/get-purchased-course',
+        token: token ? `${token.substring(0, 10)}...` : 'Missing',
+        timestamp: new Date().toISOString()
+      });
+
       setIsLoadingFeatured(true);
       setFeaturedError(null);
 
       const result = await courseAPI.getPurchasedCourse(token);
 
+      console.log('📱 [HomeScreen] getPurchasedCourse API Response:', {
+        success: result.success,
+        status: result.status,
+        dataKeys: result.data ? Object.keys(result.data) : 'No data',
+        fullResponse: JSON.stringify(result, null, 2)
+      });
+
       if (result.success && result.data.success) {
         const responseData = result.data.data;
-        console.log('🏠 HomeScreen: Featured courses API data:', responseData);
+        console.log('📱 [HomeScreen] Featured Courses Data Details:', {
+          responseData: responseData,
+          subcourses: responseData.subcourses,
+          subcoursesLength: responseData.subcourses?.length || 0,
+          paginationInfo: result.data.pagination || 'No pagination data',
+          hasPagination: !!result.data.pagination
+        });
         
         // Extract courses array from the response
         const apiCourses = responseData.subcourses || responseData;
-        console.log('🏠 HomeScreen: Featured courses extracted:', apiCourses);
-        console.log('🏠 HomeScreen: Featured courses type:', typeof apiCourses);
-        console.log('🏠 HomeScreen: Featured courses is array:', Array.isArray(apiCourses));
+        console.log('📱 [HomeScreen] Featured courses extracted:', {
+          apiCourses: apiCourses,
+          type: typeof apiCourses,
+          isArray: Array.isArray(apiCourses),
+          length: apiCourses?.length || 0
+        });
 
         // Transform API data to match existing UI structure
         const transformedFeaturedCourses = apiCourses.slice(0, 3).map((course, index) => {
@@ -177,20 +237,29 @@ const HomeScreen = () => {
           };
         });
 
-        console.log('🏠 HomeScreen: Transformed featured courses:', transformedFeaturedCourses);
+        console.log('✅ HomeScreen: Featured courses loaded successfully - Total courses:', transformedFeaturedCourses.length);
         setFeaturedCourses(transformedFeaturedCourses);
 
       } else {
         const errorMessage = result.data?.message || 'Failed to fetch featured courses';
-        console.log('❌ HomeScreen: Featured courses API failed:', errorMessage);
-        console.log('❌ HomeScreen: Featured courses result:', result);
+        console.log('❌ HomeScreen: Featured courses API failed:', {
+          resultSuccess: result.success,
+          dataSuccess: result.data?.success,
+          errorMessage: errorMessage,
+          status: result.status,
+          fullResult: JSON.stringify(result, null, 2)
+        });
         setFeaturedError(errorMessage);
         // Keep existing featured courses if API fails
       }
     } catch (error) {
       const errorMessage = error.message || 'Network error occurred';
-      console.log('💥 HomeScreen: Featured courses error:', errorMessage);
-      console.log('💥 HomeScreen: Featured courses error details:', error);
+      console.error('💥 HomeScreen: Featured courses error:', {
+        message: errorMessage,
+        name: error.name,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       setFeaturedError(errorMessage);
       // Keep existing featured courses if error occurs
     } finally {
@@ -201,6 +270,19 @@ const HomeScreen = () => {
   // Function to fetch course data from API
   const fetchCourseData = async () => {
     try {
+      console.log('🚀 [HomeScreen] fetchCourseData called - getAllSubcourses API');
+      console.log('🚀 [HomeScreen] API Request Details:', {
+        api: 'courseAPI.getAllSubcourses',
+        endpoint: '/api/course/get-all-subcourses',
+        token: token ? `${token.substring(0, 10)}...` : 'Missing',
+        timestamp: new Date().toISOString()
+      });
+
+      // Debug API call parameters
+      console.log('🔍 [DEBUG] All Courses API Call Parameters:');
+      console.log('🔍 [DEBUG] - No pagination parameters sent (this API does not support pagination yet)');
+      console.log('🔍 [DEBUG] - This API returns all courses at once');
+
       setIsLoadingCourses(true);
       setCourseError(null);
 
@@ -210,7 +292,9 @@ const HomeScreen = () => {
         setIsLoadingCourses(false);
       }, 10000); // 10 second timeout
 
+      console.log('🚀 CALLING getAllSubcourses API NOW...');
       const result = await courseAPI.getAllSubcourses(token);
+      console.log('✅ getAllSubcourses API CALL COMPLETED');
 
       // Clear timeout if API call completes
       if (loadingTimeoutRef.current) {
@@ -218,8 +302,76 @@ const HomeScreen = () => {
         loadingTimeoutRef.current = null;
       }
 
+      console.log('📱 [HomeScreen] getAllSubcourses API Response:', {
+        success: result.success,
+        status: result.status,
+        dataKeys: result.data ? Object.keys(result.data) : 'No data',
+        fullResponse: JSON.stringify(result, null, 2)
+      });
+
+      // DETAILED API RESPONSE DEBUG FOR ALL COURSES
+      console.log('🔥🔥🔥 ALL COURSES API RESPONSE DEBUG 🔥🔥🔥');
+      console.log('🔥 API Name: getAllSubcourses');
+      console.log('🔥 Endpoint: /api/course/get-all-subcourses');
+      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      console.log('🔥 Response Success:', result.success);
+      console.log('🔥 Response Status:', result.status);
+      console.log('🔥 Response Data:', result.data);
+      console.log('🔥 Response Data Success:', result.data?.success);
+      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+      console.log('🔥 Courses Array:', result.data?.data);
+      console.log('🔥 Courses Count:', result.data?.data?.length);
+      console.log('🔥 Pagination Info:', result.data?.pagination);
+      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      if (result.data?.pagination) {
+        console.log('🔥 Pagination Details:');
+        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
+        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
+        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔥 - limit:', result.data.pagination.limit);
+        console.log('🔥 - offset:', result.data.pagination.offset);
+      }
+      console.log('🔥🔥🔥 END ALL COURSES DEBUG 🔥🔥🔥');
+
+      // Debug pagination structure for All Courses
+      console.log('🔍 [DEBUG] All Courses API Response Structure:');
+      console.log('🔍 [DEBUG] result.success:', result.success);
+      console.log('🔍 [DEBUG] result.data:', result.data);
+      console.log('🔍 [DEBUG] result.data.success:', result.data?.success);
+      console.log('🔍 [DEBUG] result.data.data:', result.data?.data);
+      console.log('🔍 [DEBUG] result.data.pagination:', result.data?.pagination);
+      console.log('🔍 [DEBUG] result.data.data type:', typeof result.data?.data);
+      console.log('🔍 [DEBUG] result.data.data isArray:', Array.isArray(result.data?.data));
+      console.log('🔍 [DEBUG] result.data.data length:', result.data?.data?.length);
+      
+      if (result.data?.pagination) {
+        console.log('🔍 [DEBUG] Pagination Details:');
+        console.log('🔍 [DEBUG] - currentPage:', result.data.pagination.currentPage);
+        console.log('🔍 [DEBUG] - totalPages:', result.data.pagination.totalPages);
+        console.log('🔍 [DEBUG] - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔍 [DEBUG] - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔍 [DEBUG] - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔍 [DEBUG] - limit:', result.data.pagination.limit);
+        console.log('🔍 [DEBUG] - offset:', result.data.pagination.offset);
+      } else {
+        console.log('🔍 [DEBUG] No pagination data found in response');
+      }
+
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
+        console.log('📱 [HomeScreen] Course Data Details:', {
+          coursesCount: apiCourses.length,
+          firstCourse: apiCourses[0] ? {
+            id: apiCourses[0]._id,
+            title: apiCourses[0].subcourseName,
+            price: apiCourses[0].price,
+            lessons: apiCourses[0].totalLessons
+          } : 'No courses',
+          paginationInfo: result.data.pagination || 'No pagination data',
+          hasPagination: !!result.data.pagination
+        });
 
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
@@ -238,16 +390,27 @@ const HomeScreen = () => {
         });
 
         setCourseCards(transformedCourses);
-        console.log('✅ HomeScreen: Course data loaded successfully');
+        console.log('✅ HomeScreen: Course data loaded successfully - Total courses:', transformedCourses.length);
 
       } else {
         setCourseError(result.data?.message || 'Failed to fetch courses');
-        console.log('❌ HomeScreen: Failed to fetch courses:', result.data?.message);
+        console.log('❌ HomeScreen: Failed to fetch courses:', {
+          resultSuccess: result.success,
+          dataSuccess: result.data?.success,
+          errorMessage: result.data?.message,
+          status: result.status,
+          fullResult: JSON.stringify(result, null, 2)
+        });
         // Keep existing course data if API fails
       }
     } catch (error) {
       setCourseError(error.message || 'Network error occurred');
-      console.error('💥 HomeScreen: Error fetching courses:', error);
+      console.error('💥 HomeScreen: Error fetching courses:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       // Keep existing course data if error occurs
     } finally {
       // Clear timeout if it exists
@@ -262,13 +425,96 @@ const HomeScreen = () => {
   // Function to fetch popular courses from API
   const fetchPopularCourses = async () => {
     try {
+      console.log('🚀 [HomeScreen] fetchPopularCourses called - getPopularSubcourses API');
+      console.log('🚀 [HomeScreen] API Request Details:', {
+        api: 'courseAPI.getPopularSubcourses',
+        endpoint: '/api/course/get-popular-subcourses',
+        token: token ? `${token.substring(0, 10)}...` : 'Missing',
+        timestamp: new Date().toISOString()
+      });
+
+      // Debug API call parameters
+      console.log('🔍 [DEBUG] Popular Courses API Call Parameters:');
+      console.log('🔍 [DEBUG] - No pagination parameters sent (this API does not support pagination yet)');
+      console.log('🔍 [DEBUG] - This API returns all popular courses at once');
+
       setIsLoadingCourses(true);
       setCourseError(null);
 
+      console.log('🚀 CALLING getPopularSubcourses API NOW...');
       const result = await courseAPI.getPopularSubcourses(token);
+      console.log('✅ getPopularSubcourses API CALL COMPLETED');
+
+      console.log('📱 [HomeScreen] getPopularSubcourses API Response:', {
+        success: result.success,
+        status: result.status,
+        dataKeys: result.data ? Object.keys(result.data) : 'No data',
+        fullResponse: JSON.stringify(result, null, 2)
+      });
+
+      // DETAILED API RESPONSE DEBUG FOR POPULAR COURSES
+      console.log('🔥🔥🔥 POPULAR COURSES API RESPONSE DEBUG 🔥🔥🔥');
+      console.log('🔥 API Name: getPopularSubcourses');
+      console.log('🔥 Endpoint: /api/course/get-popular-subcourses');
+      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      console.log('🔥 Response Success:', result.success);
+      console.log('🔥 Response Status:', result.status);
+      console.log('🔥 Response Data:', result.data);
+      console.log('🔥 Response Data Success:', result.data?.success);
+      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+      console.log('🔥 Courses Array:', result.data?.data);
+      console.log('🔥 Courses Count:', result.data?.data?.length);
+      console.log('🔥 Pagination Info:', result.data?.pagination);
+      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      if (result.data?.pagination) {
+        console.log('🔥 Pagination Details:');
+        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
+        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
+        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔥 - limit:', result.data.pagination.limit);
+        console.log('🔥 - offset:', result.data.pagination.offset);
+      }
+      console.log('🔥🔥🔥 END POPULAR COURSES DEBUG 🔥🔥🔥');
+
+      // Debug pagination structure for Popular Courses
+      console.log('🔍 [DEBUG] Popular Courses API Response Structure:');
+      console.log('🔍 [DEBUG] result.success:', result.success);
+      console.log('🔍 [DEBUG] result.data:', result.data);
+      console.log('🔍 [DEBUG] result.data.success:', result.data?.success);
+      console.log('🔍 [DEBUG] result.data.data:', result.data?.data);
+      console.log('🔍 [DEBUG] result.data.pagination:', result.data?.pagination);
+      console.log('🔍 [DEBUG] result.data.data type:', typeof result.data?.data);
+      console.log('🔍 [DEBUG] result.data.data isArray:', Array.isArray(result.data?.data));
+      console.log('🔍 [DEBUG] result.data.data length:', result.data?.data?.length);
+      
+      if (result.data?.pagination) {
+        console.log('🔍 [DEBUG] Popular Courses Pagination Details:');
+        console.log('🔍 [DEBUG] - currentPage:', result.data.pagination.currentPage);
+        console.log('🔍 [DEBUG] - totalPages:', result.data.pagination.totalPages);
+        console.log('🔍 [DEBUG] - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔍 [DEBUG] - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔍 [DEBUG] - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔍 [DEBUG] - limit:', result.data.pagination.limit);
+        console.log('🔍 [DEBUG] - offset:', result.data.pagination.offset);
+      } else {
+        console.log('🔍 [DEBUG] No pagination data found in Popular Courses response');
+      }
 
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
+        console.log('📱 [HomeScreen] Popular Courses Data Details:', {
+          coursesCount: apiCourses.length,
+          firstCourse: apiCourses[0] ? {
+            id: apiCourses[0]._id,
+            title: apiCourses[0].subcourseName,
+            price: apiCourses[0].price,
+            lessons: apiCourses[0].totalLessons
+          } : 'No courses',
+          paginationInfo: result.data.pagination || 'No pagination data',
+          hasPagination: !!result.data.pagination
+        });
 
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
@@ -287,13 +533,27 @@ const HomeScreen = () => {
         });
 
         setCourseCards(transformedCourses);
+        console.log('✅ HomeScreen: Popular courses loaded successfully - Total courses:', transformedCourses.length);
 
       } else {
         setCourseError(result.data?.message || 'Failed to fetch popular courses');
+        console.log('❌ HomeScreen: Failed to fetch popular courses:', {
+          resultSuccess: result.success,
+          dataSuccess: result.data?.success,
+          errorMessage: result.data?.message,
+          status: result.status,
+          fullResult: JSON.stringify(result, null, 2)
+        });
         // Keep existing course data if API fails
       }
     } catch (error) {
       setCourseError(error.message || 'Network error occurred');
+      console.error('💥 HomeScreen: Error fetching popular courses:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       // Keep existing course data if error occurs
     } finally {
       setIsLoadingCourses(false);
@@ -303,13 +563,96 @@ const HomeScreen = () => {
   // Function to fetch newest courses from API
   const fetchNewestCourses = async () => {
     try {
+      console.log('🚀 [HomeScreen] fetchNewestCourses called - getNewestSubcourses API');
+      console.log('🚀 [HomeScreen] API Request Details:', {
+        api: 'courseAPI.getNewestSubcourses',
+        endpoint: '/api/course/get-newest-subcourses',
+        token: token ? `${token.substring(0, 10)}...` : 'Missing',
+        timestamp: new Date().toISOString()
+      });
+
+      // Debug API call parameters
+      console.log('🔍 [DEBUG] Newest Courses API Call Parameters:');
+      console.log('🔍 [DEBUG] - No pagination parameters sent (this API does not support pagination yet)');
+      console.log('🔍 [DEBUG] - This API returns all newest courses at once');
+
       setIsLoadingCourses(true);
       setCourseError(null);
 
+      console.log('🚀 CALLING getNewestSubcourses API NOW...');
       const result = await courseAPI.getNewestSubcourses(token);
+      console.log('✅ getNewestSubcourses API CALL COMPLETED');
+
+      console.log('📱 [HomeScreen] getNewestSubcourses API Response:', {
+        success: result.success,
+        status: result.status,
+        dataKeys: result.data ? Object.keys(result.data) : 'No data',
+        fullResponse: JSON.stringify(result, null, 2)
+      });
+
+      // DETAILED API RESPONSE DEBUG FOR NEWEST COURSES
+      console.log('🔥🔥🔥 NEWEST COURSES API RESPONSE DEBUG 🔥🔥🔥');
+      console.log('🔥 API Name: getNewestSubcourses');
+      console.log('🔥 Endpoint: /api/course/get-newest-subcourses');
+      console.log('🔥 Full API Response:', JSON.stringify(result, null, 2));
+      console.log('🔥 Response Success:', result.success);
+      console.log('🔥 Response Status:', result.status);
+      console.log('🔥 Response Data:', result.data);
+      console.log('🔥 Response Data Success:', result.data?.success);
+      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
+      console.log('🔥 Courses Array:', result.data?.data);
+      console.log('🔥 Courses Count:', result.data?.data?.length);
+      console.log('🔥 Pagination Info:', result.data?.pagination);
+      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      if (result.data?.pagination) {
+        console.log('🔥 Pagination Details:');
+        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
+        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
+        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔥 - limit:', result.data.pagination.limit);
+        console.log('🔥 - offset:', result.data.pagination.offset);
+      }
+      console.log('🔥🔥🔥 END NEWEST COURSES DEBUG 🔥🔥🔥');
+
+      // Debug pagination structure for Newest Courses
+      console.log('🔍 [DEBUG] Newest Courses API Response Structure:');
+      console.log('🔍 [DEBUG] result.success:', result.success);
+      console.log('🔍 [DEBUG] result.data:', result.data);
+      console.log('🔍 [DEBUG] result.data.success:', result.data?.success);
+      console.log('🔍 [DEBUG] result.data.data:', result.data?.data);
+      console.log('🔍 [DEBUG] result.data.pagination:', result.data?.pagination);
+      console.log('🔍 [DEBUG] result.data.data type:', typeof result.data?.data);
+      console.log('🔍 [DEBUG] result.data.data isArray:', Array.isArray(result.data?.data));
+      console.log('🔍 [DEBUG] result.data.data length:', result.data?.data?.length);
+      
+      if (result.data?.pagination) {
+        console.log('🔍 [DEBUG] Newest Courses Pagination Details:');
+        console.log('🔍 [DEBUG] - currentPage:', result.data.pagination.currentPage);
+        console.log('🔍 [DEBUG] - totalPages:', result.data.pagination.totalPages);
+        console.log('🔍 [DEBUG] - totalCourses:', result.data.pagination.totalCourses);
+        console.log('🔍 [DEBUG] - hasNextPage:', result.data.pagination.hasNextPage);
+        console.log('🔍 [DEBUG] - hasPrevPage:', result.data.pagination.hasPrevPage);
+        console.log('🔍 [DEBUG] - limit:', result.data.pagination.limit);
+        console.log('🔍 [DEBUG] - offset:', result.data.pagination.offset);
+      } else {
+        console.log('🔍 [DEBUG] No pagination data found in Newest Courses response');
+      }
 
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
+        console.log('📱 [HomeScreen] Newest Courses Data Details:', {
+          coursesCount: apiCourses.length,
+          firstCourse: apiCourses[0] ? {
+            id: apiCourses[0]._id,
+            title: apiCourses[0].subcourseName,
+            price: apiCourses[0].price,
+            lessons: apiCourses[0].totalLessons
+          } : 'No courses',
+          paginationInfo: result.data.pagination || 'No pagination data',
+          hasPagination: !!result.data.pagination
+        });
 
         // Transform API data to match existing UI structure
         const transformedCourses = apiCourses.map((course, index) => {
@@ -328,13 +671,27 @@ const HomeScreen = () => {
         });
 
         setCourseCards(transformedCourses);
+        console.log('✅ HomeScreen: Newest courses loaded successfully - Total courses:', transformedCourses.length);
 
       } else {
         setCourseError(result.data?.message || 'Failed to fetch newest courses');
+        console.log('❌ HomeScreen: Failed to fetch newest courses:', {
+          resultSuccess: result.success,
+          dataSuccess: result.data?.success,
+          errorMessage: result.data?.message,
+          status: result.status,
+          fullResult: JSON.stringify(result, null, 2)
+        });
         // Keep existing course data if API fails
       }
     } catch (error) {
       setCourseError(error.message || 'Network error occurred');
+      console.error('💥 HomeScreen: Error fetching newest courses:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       // Keep existing course data if error occurs
     } finally {
       setIsLoadingCourses(false);
@@ -457,12 +814,34 @@ const HomeScreen = () => {
       }
 
       lastFetchTimeRef.current = now;
-      console.log('❤️ HomeScreen: Fetching favorite courses...');
+      console.log('🚀 [HomeScreen] fetchUserFavoriteCourses called - getFavoriteCourses API');
+      console.log('🚀 [HomeScreen] API Request Details:', {
+        api: 'courseAPI.getFavoriteCourses',
+        endpoint: '/api/course/get-favorite-courses',
+        token: token ? `${token.substring(0, 10)}...` : 'Missing',
+        timestamp: new Date().toISOString()
+      });
 
       const result = await courseAPI.getFavoriteCourses(token);
 
+      console.log('📱 [HomeScreen] getFavoriteCourses API Response:', {
+        success: result.success,
+        status: result.status,
+        dataKeys: result.data ? Object.keys(result.data) : 'No data',
+        fullResponse: JSON.stringify(result, null, 2)
+      });
+
       if (result.success && result.data.success) {
         const apiCourses = result.data.data;
+        console.log('📱 [HomeScreen] Favorite Courses Data Details:', {
+          coursesCount: apiCourses.length,
+          firstCourse: apiCourses[0] ? {
+            id: apiCourses[0].id?._id || apiCourses[0].subcourseId || apiCourses[0]._id,
+            title: apiCourses[0].subcourseName || 'Unknown'
+          } : 'No courses',
+          paginationInfo: result.data.pagination || 'No pagination data',
+          hasPagination: !!result.data.pagination
+        });
         
         // Check if apiCourses is an array
         if (Array.isArray(apiCourses)) {
@@ -473,6 +852,8 @@ const HomeScreen = () => {
             const courseId = course.id?._id || course.subcourseId || course._id;
             return String(courseId);
           }).filter(id => id && id !== 'undefined'); // Filter out invalid IDs
+
+          console.log('📱 [HomeScreen] Favorite Course IDs:', favoriteCourseIds);
 
           const newFavoriteSet = new Set(favoriteCourseIds);
           setUserFavoriteCourses(newFavoriteSet);
@@ -500,7 +881,13 @@ const HomeScreen = () => {
         }
       } else {
         const errorMessage = result.data?.message || result.message || 'Failed to fetch favorite courses';
-        console.log('❌ HomeScreen: Failed to fetch favorite courses:', errorMessage);
+        console.log('❌ HomeScreen: Failed to fetch favorite courses:', {
+          resultSuccess: result.success,
+          dataSuccess: result.data?.success,
+          errorMessage: errorMessage,
+          status: result.status,
+          fullResult: JSON.stringify(result, null, 2)
+        });
         setUserFavoriteCourses(new Set()); // Set empty set on failure
       }
     } catch (error) {
@@ -512,19 +899,56 @@ const HomeScreen = () => {
   // Function to fetch user's profile data from API
   const fetchUserProfile = async () => {
     try {
+      console.log('🚀 [HomeScreen] fetchUserProfile called - getUserProfile API');
+      console.log('🚀 [HomeScreen] API Request Details:', {
+        api: 'profileAPI.getUserProfile',
+        endpoint: '/api/user/profile/get-profile',
+        token: token ? `${token.substring(0, 10)}...` : 'Missing',
+        timestamp: new Date().toISOString()
+      });
+
       const result = await profileAPI.getUserProfile(token);
+
+      console.log('📱 [HomeScreen] getUserProfile API Response:', {
+        success: result.success,
+        status: result.status,
+        dataKeys: result.data ? Object.keys(result.data) : 'No data',
+        fullResponse: JSON.stringify(result, null, 2)
+      });
 
       if (result.success && result.data.success) {
         const profileData = result.data.data;
-        console.log('HomeScreen: Profile data fetched:', profileData);
+        console.log('📱 [HomeScreen] Profile Data Details:', {
+          fullName: profileData.fullName,
+          mobileNumber: profileData.mobileNumber,
+          email: profileData.email,
+          address: profileData.address,
+          isEmailVerified: profileData.isEmailVerified,
+          hasProfileImage: !!profileData.profileImageUrl,
+          profileImageUrl: profileData.profileImageUrl ? 'Present' : 'Not present',
+          paginationInfo: result.data.pagination || 'No pagination data',
+          hasPagination: !!result.data.pagination
+        });
 
         // Update Redux store with fresh profile data
         dispatch(setProfileData(profileData));
+        console.log('✅ HomeScreen: Profile data updated successfully in Redux');
       } else {
-        console.log('HomeScreen: Failed to fetch profile:', result.data?.message);
+        console.log('❌ HomeScreen: Failed to fetch profile:', {
+          resultSuccess: result.success,
+          dataSuccess: result.data?.success,
+          errorMessage: result.data?.message,
+          status: result.status,
+          fullResult: JSON.stringify(result, null, 2)
+        });
       }
     } catch (error) {
-      console.error('HomeScreen: Error fetching profile:', error);
+      console.error('💥 HomeScreen: Error fetching profile:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
     }
   };
 

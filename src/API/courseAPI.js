@@ -4,12 +4,18 @@ import { getApiUrl, getApiHeaders, ENDPOINTS } from './config';
 export const courseAPI = {
   getAllSubcourses: async (token) => {
     try {
+      console.log('🔍 [API DEBUG] getAllSubcourses called');
+      console.log('🔍 [API DEBUG] - No pagination parameters (page, limit)');
+      console.log('🔍 [API DEBUG] - This API returns all courses at once');
 
       const url = getApiUrl(ENDPOINTS.GET_ALL_SUBCOURSES);
+      console.log('🔍 [API DEBUG] getAllSubcourses URL:', url);
+      
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
       };
+      console.log('🔍 [API DEBUG] getAllSubcourses headers:', headers);
 
 
       const response = await fetch(url, {
@@ -18,6 +24,17 @@ export const courseAPI = {
       });
 
       const responseData = await response.json();
+
+      // DETAILED API RESPONSE DEBUG FOR ALL COURSES
+      console.log('🔥🔥🔥 API LEVEL - ALL COURSES RESPONSE DEBUG 🔥🔥🔥');
+      console.log('🔥 API Name: getAllSubcourses');
+      console.log('🔥 Endpoint: /api/course/get-all-subcourses');
+     
+      if (responseData.pagination) {
+        console.log('🔥 Pagination Details:');
+       
+      }
+      console.log('🔥🔥🔥 END API LEVEL - ALL COURSES DEBUG 🔥🔥🔥');
 
       if (response.ok) {
         return { success: true, data: responseData, status: response.status };
@@ -48,13 +65,17 @@ export const courseAPI = {
         headers,
       });
 
-      console.log('🔥 courseAPI.getAllCourses: Response received');
-      console.log('🔥 courseAPI.getAllCourses: Response status:', response.status);
-      console.log('🔥 courseAPI.getAllCourses: Response ok:', response.ok);
-      console.log('🔥 courseAPI.getAllCourses: Response headers:', response.headers);
+      
 
       const responseData = await response.json();
      
+      // DETAILED API RESPONSE DEBUG FOR ALL COURSES
+      
+      if (responseData.pagination) {
+        console.log('🔥 Pagination Details:');
+     
+      }
+      console.log('🔥🔥🔥 END API LEVEL - ALL COURSES DEBUG 🔥🔥🔥');
 
       if (response.ok) {
         console.log('✅ courseAPI.getAllCourses: API call successful');
@@ -72,12 +93,18 @@ export const courseAPI = {
 
   getPopularSubcourses: async (token) => {
     try {
+      console.log('🔍 [API DEBUG] getPopularSubcourses called');
+      console.log('🔍 [API DEBUG] - No pagination parameters (page, limit)');
+      console.log('🔍 [API DEBUG] - This API returns all popular courses at once');
 
       const url = getApiUrl(ENDPOINTS.GET_POPULAR_SUBCOURSES);
+      console.log('🔍 [API DEBUG] getPopularSubcourses URL:', url);
+      
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
       };
+      console.log('🔍 [API DEBUG] getPopularSubcourses headers:', headers);
       
 
       const response = await fetch(url, {
@@ -90,6 +117,13 @@ export const courseAPI = {
       }
 
       const responseData = await response.json();
+
+      // DETAILED API RESPONSE DEBUG FOR POPULAR COURSES
+      
+      if (responseData.pagination) {
+        
+      }
+      console.log('🔥🔥🔥 END API LEVEL - POPULAR COURSES DEBUG 🔥🔥🔥');
       
       if (responseData.data && Array.isArray(responseData.data)) {
         responseData.data.forEach((course, index) => {
@@ -113,12 +147,18 @@ export const courseAPI = {
 
   getNewestSubcourses: async (token) => {
     try {
+      console.log('🔍 [API DEBUG] getNewestSubcourses called');
+      console.log('🔍 [API DEBUG] - No pagination parameters (page, limit)');
+      console.log('🔍 [API DEBUG] - This API returns all newest courses at once');
 
       const url = getApiUrl(ENDPOINTS.GET_NEWEST_SUBCOURSES);
+      console.log('🔍 [API DEBUG] getNewestSubcourses URL:', url);
+      
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,
       };
+      console.log('🔍 [API DEBUG] getNewestSubcourses headers:', headers);
       
 
       const response = await fetch(url, {
@@ -131,6 +171,15 @@ export const courseAPI = {
       }
 
       const responseData = await response.json();
+
+      // DETAILED API RESPONSE DEBUG FOR NEWEST COURSES
+     
+      console.log('🔥 Has Pagination:', !!responseData.pagination);
+      if (responseData.pagination) {
+        
+        console.log('🔥 - offset:', responseData.pagination.offset);
+      }
+      console.log('🔥🔥🔥 END API LEVEL - NEWEST COURSES DEBUG 🔥🔥🔥');
 
       if (responseData.success) {
         return { success: true, data: responseData, status: response.status };
@@ -187,6 +236,9 @@ export const courseAPI = {
       });
 
       const responseData = await response.json();
+
+      // DETAILED API RESPONSE DEBUG FOR COURSE DETAILS
+      
 
       if (response.ok) {
         return { success: true, data: responseData, status: response.status };
@@ -389,8 +441,7 @@ export const courseAPI = {
         headers: headers,
       });
 
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response received');
-      console.log('🔥 courseAPI.getPurchasedSubcourses: Response status:', response.status);
+     
       console.log('🔥 courseAPI.getPurchasedSubcourses: Response ok:', response.ok);
       console.log('🔥 courseAPI.getPurchasedSubcourses: Response headers:', response.headers);
 
@@ -676,6 +727,18 @@ export const courseAPI = {
 
       const responseData = await response.json();
     
+      // DETAILED API RESPONSE DEBUG FOR FAVORITE COURSES
+     
+      console.log('🔥 Response Message:', responseData.message);
+      console.log('🔥 Courses Data:', responseData.data);
+      console.log('🔥 Courses Count:', responseData.data?.length);
+      console.log('🔥 Has Pagination:', !!responseData.pagination);
+      if (responseData.pagination) {
+        
+        console.log('🔥 - limit:', responseData.pagination.limit);
+        console.log('🔥 - offset:', responseData.pagination.offset);
+      }
+      console.log('🔥🔥🔥 END API LEVEL - FAVORITE COURSES DEBUG 🔥🔥🔥');
 
       if (response.ok) {
         console.log('✅ courseAPI.getFavoriteCourses: API call successful');
