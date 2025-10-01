@@ -53,7 +53,7 @@ const EnrollScreen = ({ navigation, route }) => {
   // Direct Razorpay integration - no custom class needed
 
   // Get user data from Redux
-  const { token } = useAppSelector((state) => state.user);
+  const { token, mobileNumber, email, fullName } = useAppSelector((state) => state.user);
 
   // Get course ID from route params
   const courseId = route.params?.courseId;
@@ -673,11 +673,15 @@ const EnrollScreen = ({ navigation, route }) => {
 
   // Function to get user profile data for Razorpay prefill
   const getUserProfileData = () => {
+    // Use dynamic user data from Redux store with fallbacks
+    const userEmail = email && email.trim() !== '' ? email : 'example@gmail.com';
+    const userContact = mobileNumber && mobileNumber.trim() !== '' ? mobileNumber : '9876543210';
+    const userName = fullName && fullName.trim() !== '' ? fullName : 'Student Name';
     
     return {
-      email: 'student@learningsaint.com',
-      contact: '9876543210',
-      name: 'Student Name'
+      email: userEmail,
+      contact: userContact,
+      name: userName
     };
   };
 
