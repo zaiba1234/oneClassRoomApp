@@ -216,7 +216,7 @@ export const getFCMToken = async () => {
       // Show the actual token in console
       console.log('🔑 FCM Token Value:', token);
       console.log('📏 Token Length:', token.length);
-      console.log('👀 Token Preview:', token.substring(0, 50) + '...');
+      console.log('👀 Token Preview:', (token || '').substring(0, 50) + '...');
       
       await AsyncStorage.setItem(FCM_TOKEN_KEY, token);
       console.log('💾 Token stored in AsyncStorage');
@@ -343,7 +343,7 @@ export const displayFCMToken = async () => {
       console.log('🎯 FCM Token Details:');
       console.log('🔑 Full Token:', token);
       console.log('📏 Token Length:', token.length);
-      console.log('👀 Token Preview:', token.substring(0, 50) + '...');
+      console.log('👀 Token Preview:', (token || '').substring(0, 50) + '...');
       console.log('💾 Storage Key:', FCM_TOKEN_KEY);
       return token;
     } else {

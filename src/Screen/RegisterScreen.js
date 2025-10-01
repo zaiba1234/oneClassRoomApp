@@ -34,7 +34,7 @@ const RegisterScreen = ({ route }) => {
   const dispatch = useAppDispatch();
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState(route.params?.mobileNumber || '');
-  const [displayPhoneNumber, setDisplayPhoneNumber] = useState(route.params?.mobileNumber?.replace('+91', '') || '');
+  const [displayPhoneNumber, setDisplayPhoneNumber] = useState((route.params?.mobileNumber || '').replace('+91', '') || '');
   const [isLoading, setIsLoading] = useState(false);
   const customAlertRef = useRef(null);
 
@@ -50,7 +50,7 @@ const RegisterScreen = ({ route }) => {
   // Handle phone number input changes
   const handlePhoneNumberChange = (text) => {
     // Remove any non-digit characters
-    const digitsOnly = text.replace(/\D/g, '');
+    const digitsOnly = (text || '').replace(/\D/g, '');
     
     // Limit to 10 digits
     if (digitsOnly.length <= 10) {
@@ -61,7 +61,7 @@ const RegisterScreen = ({ route }) => {
   };
 
   const handleRegister = async () => {
-    if (!fullName.trim() || !displayPhoneNumber) {
+    if (!(fullName || '').trim() || !displayPhoneNumber) {
       customAlertRef.current?.show({
         title: 'Error',
         message: 'Please enter both full name and phone number',
@@ -86,21 +86,21 @@ const RegisterScreen = ({ route }) => {
     setIsLoading(true);
     
     try {
-      console.log('📝 [RegisterScreen] Starting 2Factor registration for:', { fullName: fullName.trim(), phoneNumber });
+      console.log('📝 [RegisterScreen] Starting 2Factor registration for:', { fullName: (fullName || '').trim(), phoneNumber });
       
       // Register user with 2Factor (includes OTP sending)
-      const registerResult = await authAPI.register(fullName.trim(), phoneNumber);
+      const registerResult = await authAPI.register((fullName || '').trim(), phoneNumber);
       console.log('📝 [RegisterScreen] 2Factor Register API Response:', JSON.stringify(registerResult, null, 2));
       
       if (registerResult.success) {
         console.log('✅ [RegisterScreen] 2Factor registration successful, OTP sent');
         // Store user data in Redux
-        dispatch(setProfileData({ fullName: fullName.trim(), mobileNumber: phoneNumber }));
+        dispatch(setProfileData({ fullName: (fullName || '').trim(), mobileNumber: phoneNumber }));
         
         // Registration successful, navigate to verification with sessionId
         navigation.navigate('Verify', { 
           mobileNumber: phoneNumber, 
-          fullName: fullName.trim(),
+          fullName: (fullName || '').trim(),
           sessionId: registerResult.data.sessionId, // 2Factor session ID
           verificationId: null, // Not used in 2Factor
           isFromRegister: true  // Flag to indicate this is from register flow

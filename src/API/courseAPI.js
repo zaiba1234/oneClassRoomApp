@@ -102,13 +102,14 @@ export const courseAPI = {
     }
   },
 
-  getPopularSubcourses: async (token) => {
+  getPopularSubcourses: async (token, options = {}) => {
     try {
+      const { page = 1, limit = 6 } = options;
       console.log('🔍 [API DEBUG] getPopularSubcourses called');
-      console.log('🔍 [API DEBUG] - No pagination parameters (page, limit)');
-      console.log('🔍 [API DEBUG] - This API returns all popular courses at once');
+      console.log('🔍 [API DEBUG] - Page:', page, 'Limit:', limit);
+      console.log('🔍 [API DEBUG] - Pagination enabled');
 
-      const url = getApiUrl(ENDPOINTS.GET_POPULAR_SUBCOURSES);
+      const url = getApiUrl(`${ENDPOINTS.GET_POPULAR_SUBCOURSES}?page=${page}&limit=${limit}`);
       console.log('🔍 [API DEBUG] getPopularSubcourses URL:', url);
       
       const headers = {
@@ -156,13 +157,14 @@ export const courseAPI = {
     }
   },
 
-  getNewestSubcourses: async (token) => {
+  getNewestSubcourses: async (token, options = {}) => {
     try {
+      const { page = 1, limit = 6 } = options;
       console.log('🔍 [API DEBUG] getNewestSubcourses called');
-      console.log('🔍 [API DEBUG] - No pagination parameters (page, limit)');
-      console.log('🔍 [API DEBUG] - This API returns all newest courses at once');
+      console.log('🔍 [API DEBUG] - Page:', page, 'Limit:', limit);
+      console.log('🔍 [API DEBUG] - Pagination enabled');
 
-      const url = getApiUrl(ENDPOINTS.GET_NEWEST_SUBCOURSES);
+      const url = getApiUrl(`${ENDPOINTS.GET_NEWEST_SUBCOURSES}?page=${page}&limit=${limit}`);
       console.log('🔍 [API DEBUG] getNewestSubcourses URL:', url);
       
       const headers = {

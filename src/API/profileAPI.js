@@ -183,7 +183,7 @@ export const profileAPI = {
       console.log('🔥 API Name: updateUserProfileJSON (Fallback)');
       console.log('🔥 Endpoint: /api/user/profile/update-profile');
       console.log('🔥 URL:', url);
-      console.log('🔥 Token:', token ? `${token.substring(0, 10)}...` : 'Missing');
+      console.log('🔥 Token:', token ? `${(token || '').substring(0, 10)}...` : 'Missing');
       if (__DEV__) {
         console.log('🔥 Profile Data Keys:', Object.keys(profileData));
       }

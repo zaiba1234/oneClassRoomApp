@@ -95,7 +95,7 @@ const LessonVideoScreen = ({ navigation, route }) => {
     try {
       const now = new Date();
       const lessonDate = new Date(lessonData.date);
-      const [startHour, startMinute] = lessonData.startTime.split(':');
+      const [startHour, startMinute] = (lessonData.startTime || '').split(':');
       
       // Set the lesson start time for today
       const lessonStartTime = new Date(lessonDate);
@@ -423,7 +423,7 @@ const LessonVideoScreen = ({ navigation, route }) => {
           <Text style={styles.headerTitle}>
             {(() => {
               const title = courseData.title || 'Lesson Title';
-              const words = title.split(' ');
+              const words = (title || '').split(' ');
               return words.slice(0, 3).join(' ');
             })()}
           </Text>

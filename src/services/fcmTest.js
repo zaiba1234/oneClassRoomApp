@@ -67,7 +67,7 @@ export const getFCMTokenInfo = async () => {
     return {
       firebaseReady: isFirebaseReady,
       hasStoredToken: !!storedToken,
-      tokenPreview: storedToken ? storedToken.substring(0, 30) + '...' : null
+      tokenPreview: storedToken ? (storedToken || '').substring(0, 30) + '...' : null
     };
   } catch (error) {
     return {

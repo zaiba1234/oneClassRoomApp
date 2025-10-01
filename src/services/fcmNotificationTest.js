@@ -32,7 +32,7 @@ export const testFCMNotifications = async () => {
       return false;
     }
     
-    console.log('🧪 [FCM Test] Token preview:', fcmToken.substring(0, 30) + '...');
+    console.log('🧪 [FCM Test] Token preview:', (fcmToken || '').substring(0, 30) + '...');
     
     // Test 3: Check stored token
     console.log('🧪 [FCM Test] 3. Checking stored token...');
@@ -116,7 +116,7 @@ export const getFCMStatus = async () => {
     return {
       firebaseReady: isFirebaseReady,
       hasFCMToken: !!fcmToken,
-      tokenPreview: fcmToken ? fcmToken.substring(0, 30) + '...' : null,
+      tokenPreview: fcmToken ? (fcmToken || '').substring(0, 30) + '...' : null,
       status: isFirebaseReady && fcmToken ? 'READY' : 'NOT_READY'
     };
   } catch (error) {

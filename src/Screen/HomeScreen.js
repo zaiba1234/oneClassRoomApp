@@ -229,9 +229,9 @@ useEffect(() => {
         });
 
         // Transform API data to match existing UI structure
-        const transformedFeaturedCourses = apiCourses.slice(0, 3).map((course, index) => {
+        const transformedFeaturedCourses = (apiCourses || []).slice(0, 3).map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/Circular.png');
-          const progress = parseInt(course.progress?.replace('%', '') || '0');
+          const progress = parseInt((course.progress || '').replace('%', '') || '0');
 
           return {
             id: course.subcourseId || index + 1,
@@ -356,7 +356,7 @@ useEffect(() => {
         const apiCourses = result.data.data;
         console.log('📱 [HomeScreen] Course Data Details:', {
           coursesCount: apiCourses.length,
-          firstCourse: apiCourses[0] ? {
+          firstCourse: (apiCourses && apiCourses[0]) ? {
             id: apiCourses[0]._id,
             title: apiCourses[0].subcourseName,
             price: apiCourses[0].price,
@@ -376,7 +376,7 @@ useEffect(() => {
         }
 
         // Transform API data to match existing UI structure
-        const transformedCourses = apiCourses.map((course, index) => {
+        const transformedCourses = (apiCourses || []).map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
 
           return {
@@ -430,26 +430,28 @@ useEffect(() => {
   };
 
   // Function to fetch popular courses from API
-  const fetchPopularCourses = async () => {
+  const fetchPopularCourses = async (page = 1, limit = 6) => {
     try {
       console.log('🚀 [HomeScreen] fetchPopularCourses called - getPopularSubcourses API');
       console.log('🚀 [HomeScreen] API Request Details:', {
         api: 'courseAPI.getPopularSubcourses',
         endpoint: '/api/course/get-popular-subcourses',
+        page: page,
+        limit: limit,
         token: token ? `${token.substring(0, 10)}...` : 'Missing',
         timestamp: new Date().toISOString()
       });
 
       // Debug API call parameters
       console.log('🔍 [DEBUG] Popular Courses API Call Parameters:');
-      console.log('🔍 [DEBUG] - No pagination parameters sent (this API does not support pagination yet)');
-      console.log('🔍 [DEBUG] - This API returns all popular courses at once');
+      console.log('🔍 [DEBUG] - Page:', page, 'Limit:', limit);
+      console.log('🔍 [DEBUG] - Pagination enabled');
 
       setIsLoadingCourses(true);
       setCourseError(null);
 
       console.log('🚀 CALLING getPopularSubcourses API NOW...');
-      const result = await courseAPI.getPopularSubcourses(token);
+      const result = await courseAPI.getPopularSubcourses(token, { page, limit });
       console.log('✅ getPopularSubcourses API CALL COMPLETED');
 
       console.log('📱 [HomeScreen] getPopularSubcourses API Response:', {
@@ -515,7 +517,7 @@ useEffect(() => {
         const apiCourses = result.data.data;
         console.log('📱 [HomeScreen] Popular Courses Data Details:', {
           coursesCount: apiCourses.length,
-          firstCourse: apiCourses[0] ? {
+          firstCourse: (apiCourses && apiCourses[0]) ? {
             id: apiCourses[0]._id,
             title: apiCourses[0].subcourseName,
             price: apiCourses[0].price,
@@ -526,7 +528,7 @@ useEffect(() => {
         });
 
         // Transform API data to match existing UI structure
-        const transformedCourses = apiCourses.map((course, index) => {
+        const transformedCourses = (apiCourses || []).map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
 
           return {
@@ -541,7 +543,21 @@ useEffect(() => {
           };
         });
 
-        setCourseCards(transformedCourses);
+        // Update pagination state
+        if (result.data.pagination) {
+          setCurrentPage(result.data.pagination.page || page);
+          setTotalPages(result.data.pagination.totalPages || 1);
+          setTotalCourses(result.data.pagination.total || apiCourses.length);
+          setHasNextPage(result.data.pagination.hasNextPage || false);
+          setHasPrevPage(result.data.pagination.hasPrevPage || false);
+        }
+
+        // If it's the first page, replace courses; otherwise append
+        if (page === 1) {
+          setCourseCards(transformedCourses);
+        } else {
+          setCourseCards(prevCourses => [...prevCourses, ...transformedCourses]);
+        }
         console.log('✅ HomeScreen: Popular courses loaded successfully - Total courses:', transformedCourses.length);
 
       } else {
@@ -570,26 +586,28 @@ useEffect(() => {
   };
 
   // Function to fetch newest courses from API
-  const fetchNewestCourses = async () => {
+  const fetchNewestCourses = async (page = 1, limit = 6) => {
     try {
       console.log('🚀 [HomeScreen] fetchNewestCourses called - getNewestSubcourses API');
       console.log('🚀 [HomeScreen] API Request Details:', {
         api: 'courseAPI.getNewestSubcourses',
         endpoint: '/api/course/get-newest-subcourses',
+        page: page,
+        limit: limit,
         token: token ? `${token.substring(0, 10)}...` : 'Missing',
         timestamp: new Date().toISOString()
       });
 
       // Debug API call parameters
       console.log('🔍 [DEBUG] Newest Courses API Call Parameters:');
-      console.log('🔍 [DEBUG] - No pagination parameters sent (this API does not support pagination yet)');
-      console.log('🔍 [DEBUG] - This API returns all newest courses at once');
+      console.log('🔍 [DEBUG] - Page:', page, 'Limit:', limit);
+      console.log('🔍 [DEBUG] - Pagination enabled');
 
       setIsLoadingCourses(true);
       setCourseError(null);
 
       console.log('🚀 CALLING getNewestSubcourses API NOW...');
-      const result = await courseAPI.getNewestSubcourses(token);
+      const result = await courseAPI.getNewestSubcourses(token, { page, limit });
       console.log('✅ getNewestSubcourses API CALL COMPLETED');
 
       console.log('📱 [HomeScreen] getNewestSubcourses API Response:', {
@@ -655,7 +673,7 @@ useEffect(() => {
         const apiCourses = result.data.data;
         console.log('📱 [HomeScreen] Newest Courses Data Details:', {
           coursesCount: apiCourses.length,
-          firstCourse: apiCourses[0] ? {
+          firstCourse: (apiCourses && apiCourses[0]) ? {
             id: apiCourses[0]._id,
             title: apiCourses[0].subcourseName,
             price: apiCourses[0].price,
@@ -666,7 +684,7 @@ useEffect(() => {
         });
 
         // Transform API data to match existing UI structure
-        const transformedCourses = apiCourses.map((course, index) => {
+        const transformedCourses = (apiCourses || []).map((course, index) => {
           const courseImage = course.thumbnailImageUrl ? { uri: course.thumbnailImageUrl } : require('../assests/images/HomeImage.png');
 
           return {
@@ -681,7 +699,21 @@ useEffect(() => {
           };
         });
 
-        setCourseCards(transformedCourses);
+        // Update pagination state
+        if (result.data.pagination) {
+          setCurrentPage(result.data.pagination.page || page);
+          setTotalPages(result.data.pagination.totalPages || 1);
+          setTotalCourses(result.data.pagination.total || apiCourses.length);
+          setHasNextPage(result.data.pagination.hasNextPage || false);
+          setHasPrevPage(result.data.pagination.hasPrevPage || false);
+        }
+
+        // If it's the first page, replace courses; otherwise append
+        if (page === 1) {
+          setCourseCards(transformedCourses);
+        } else {
+          setCourseCards(prevCourses => [...prevCourses, ...transformedCourses]);
+        }
         console.log('✅ HomeScreen: Newest courses loaded successfully - Total courses:', transformedCourses.length);
 
       } else {
@@ -846,7 +878,7 @@ useEffect(() => {
         const apiCourses = result.data.data;
         console.log('📱 [HomeScreen] Favorite Courses Data Details:', {
           coursesCount: apiCourses.length,
-          firstCourse: apiCourses[0] ? {
+          firstCourse: (apiCourses && apiCourses[0]) ? {
             id: apiCourses[0].id?._id || apiCourses[0].subcourseId || apiCourses[0]._id,
             title: apiCourses[0].subcourseName || 'Unknown'
           } : 'No courses',
@@ -858,7 +890,7 @@ useEffect(() => {
         if (Array.isArray(apiCourses)) {
           console.log('✅ HomeScreen: Found', apiCourses.length, 'favorite courses');
           
-          const favoriteCourseIds = apiCourses.map(course => {
+          const favoriteCourseIds = (apiCourses || []).map(course => {
             // Handle different possible ID structures from API
             const courseId = course.id?._id || course.subcourseId || course._id;
             return String(courseId);
@@ -869,21 +901,21 @@ useEffect(() => {
           const newFavoriteSet = new Set(favoriteCourseIds);
           setUserFavoriteCourses(newFavoriteSet);
 
-          // Update course cards with fresh favorite status
-          setCourseCards(prevCourses =>
-            prevCourses.map(course => ({
-              ...course,
-              isFavorite: newFavoriteSet.has(String(course.id))
-            }))
-          );
+        // Update course cards with fresh favorite status
+        setCourseCards(prevCourses =>
+          (prevCourses || []).map(course => ({
+            ...course,
+            isFavorite: newFavoriteSet.has(String(course.id))
+          }))
+        );
 
-          // Update featured courses with fresh favorite status
-          setFeaturedCourses(prevFeatured =>
-            prevFeatured.map(course => ({
-              ...course,
-              isFavorite: newFavoriteSet.has(String(course.id))
-            }))
-          );
+        // Update featured courses with fresh favorite status
+        setFeaturedCourses(prevFeatured =>
+          (prevFeatured || []).map(course => ({
+            ...course,
+            isFavorite: newFavoriteSet.has(String(course.id))
+          }))
+        );
 
           console.log('✅ HomeScreen: Favorite courses updated successfully');
         } else {
@@ -970,9 +1002,16 @@ useEffect(() => {
     try {
       setIsLoadingMore(true);
       const nextPage = currentPage + 1;
-      console.log('📄 [HomeScreen] Loading more courses - Page:', nextPage);
+      console.log('📄 [HomeScreen] Loading more courses - Page:', nextPage, 'Filter:', selectedFilter);
       
-      await fetchCourseData(nextPage, 5);
+      // Load more based on selected filter
+      if (selectedFilter === 'Popular') {
+        await fetchPopularCourses(nextPage, 6);
+      } else if (selectedFilter === 'Newest') {
+        await fetchNewestCourses(nextPage, 6);
+      } else {
+        await fetchCourseData(nextPage, 5);
+      }
     } catch (error) {
       console.error('💥 HomeScreen: Error loading more courses:', error);
     } finally {
@@ -995,8 +1034,8 @@ useEffect(() => {
       const searchTerm = keyword.toLowerCase().trim();
 
       // Filter courses based on search keyword
-      const filtered = courseCards.filter(course => {
-        const title = course.title.toLowerCase();
+      const filtered = (courseCards || []).filter(course => {
+        const title = (course.title || '').toLowerCase();
         return title.includes(searchTerm);
       });
 
@@ -1093,7 +1132,7 @@ useEffect(() => {
 
         // Update the course in the local state
         setCourseCards(prevCourses => {
-          const updatedCourses = prevCourses.map(course => {
+          const updatedCourses = (prevCourses || []).map(course => {
             // Convert both IDs to strings for comparison to handle type mismatches
             if (String(course.id) === String(courseId)) {
               return { ...course, isFavorite: newFavoriteStatus };
@@ -1105,7 +1144,7 @@ useEffect(() => {
 
         // Also update featured courses if this course is in there
         setFeaturedCourses(prevFeatured => {
-          const updatedFeatured = prevFeatured.map(course => {
+          const updatedFeatured = (prevFeatured || []).map(course => {
             if (String(course.id) === String(courseId)) {
               return { ...course, isFavorite: newFavoriteStatus };
             }
@@ -1646,7 +1685,7 @@ useEffect(() => {
                         title: bannerData.recentPurchasedSubcourse.subcourseName,
                         lessons: `${bannerData.recentPurchasedSubcourse.totalLessons} lessons`,
                         image: bannerData.recentPurchasedSubcourse.thumbnailImageUrl ? { uri: bannerData.recentPurchasedSubcourse.thumbnailImageUrl } : require('../assests/images/Circular.png'),
-                        progress: parseInt(bannerData.recentPurchasedSubcourse.progress?.replace('%', '') || '0'),
+                        progress: parseInt((bannerData.recentPurchasedSubcourse.progress || '').replace('%', '') || '0'),
                         buttonText: 'Continue Learning'
                       };
                       allItems.push(renderCarouselItem(purchasedCourse, itemIndex));
@@ -1686,7 +1725,7 @@ useEffect(() => {
 
                     // Add additional promo images if available
                     if (bannerData.promos && bannerData.promos.length > 1) {
-                      bannerData.promos.slice(1).forEach((promo, index) => {
+                      (bannerData.promos || []).slice(1).forEach((promo, index) => {
                         const promoItem = {
                           id: `promo-${promo._id}`,
                           image: { uri: promo.promo },
@@ -1748,25 +1787,32 @@ useEffect(() => {
               ]}
               onPress={() => {
                 setSelectedFilter(filter);
+                // Reset pagination when switching filters
+                setCurrentPage(1);
+                setTotalPages(1);
+                setTotalCourses(0);
+                setHasNextPage(false);
+                setHasPrevPage(false);
+                
                 if (filter === 'Popular' && token) {
                   // Refresh favorites first, then fetch popular courses
                   const refreshAndFetchPopular = async () => {
                     await fetchUserFavoriteCourses();
-                    await fetchPopularCourses();
+                    await fetchPopularCourses(1, 6);
                   };
                   refreshAndFetchPopular();
                 } else if (filter === 'All Course' && token) {
                   // Refresh favorites first, then fetch all courses
                   const refreshAndFetchAll = async () => {
                     await fetchUserFavoriteCourses();
-                    await fetchCourseData();
+                    await fetchCourseData(1, 5);
                   };
                   refreshAndFetchAll();
                 } else if (filter === 'Newest' && token) {
                   // Refresh favorites first, then fetch newest courses
                   const refreshAndFetchNewest = async () => {
                     await fetchUserFavoriteCourses();
-                    await fetchNewestCourses();
+                    await fetchNewestCourses(1, 6);
                   };
                   refreshAndFetchNewest();
                 }

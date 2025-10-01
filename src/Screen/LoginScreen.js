@@ -48,7 +48,7 @@ const LoginScreen = () => {
   // Handle phone number input changes
   const handlePhoneNumberChange = (text) => {
     // Remove any non-digit characters
-    const digitsOnly = text.replace(/\D/g, '');
+    const digitsOnly = (text || '').replace(/\D/g, '');
     
     // Limit to 10 digits
     if (digitsOnly.length <= 10) {

@@ -116,10 +116,10 @@ const CategoryScreen = () => {
                 />
                 <View style={styles.comingSoonContainer}>
                   <Text style={[styles.comingSoonText, { color: getComingSoonColor(index) }]}>
-                    {card.comingSoonText.split(' ')[0]}
+                    {(card.comingSoonText || '').split(' ')[0]}
                   </Text>
                   <Text style={[styles.comingSoonText, { color: getComingSoonColor(index) }]}>
-                    {card.comingSoonText.split(' ')[1]}
+                    {(card.comingSoonText || '').split(' ')[1]}
                   </Text>
                 </View>
                 {renderArrowButton(36)}

@@ -213,8 +213,8 @@ const EnrollScreen = ({ navigation, route }) => {
       } else {
         // Check if it's a "no subcourse found" error
         const errorMessage = result.data?.message || 'Failed to fetch course details';
-        if (errorMessage.toLowerCase().includes('not found') || 
-            errorMessage.toLowerCase().includes('no subcourse') ||
+        if ((errorMessage || '').toLowerCase().includes('not found') || 
+            (errorMessage || '').toLowerCase().includes('no subcourse') ||
             result.status === 404) {
           setCourseError('No subcourse added');
         } else {
@@ -439,7 +439,7 @@ const EnrollScreen = ({ navigation, route }) => {
       }
 
       // Extract price from courseData.price (format: "₹99.00")
-      const priceString = courseData.price.replace('₹', '').replace('.00', '');
+      const priceString = (courseData.price || '').replace('₹', '').replace('.00', '');
       const priceInRupees = parseFloat(priceString) || 1;
       const priceInPaise = Math.round(priceInRupees * 100);
 
@@ -610,7 +610,7 @@ const EnrollScreen = ({ navigation, route }) => {
           ]
         );
       } else if (error.message && error.message.startsWith('PAYMENT_ERROR:')) {
-        const errorMessage = error.message.replace('PAYMENT_ERROR: ', '');
+        const errorMessage = (error.message || '').replace('PAYMENT_ERROR: ', '');
         showCustomPaymentErrorAlert(
           'Payment Error',
           'We encountered an issue processing your payment. This might be due to invalid payment details or a temporary service issue.',
@@ -704,7 +704,7 @@ const EnrollScreen = ({ navigation, route }) => {
         throw new Error('Invalid course price. Please refresh and try again.');
       }
 
-      const priceString = courseData.price.replace('₹', '').replace('.00', '');
+      const priceString = (courseData.price || '').replace('₹', '').replace('.00', '');
       const priceInRupees = parseFloat(priceString);
 
       if (isNaN(priceInRupees) || priceInRupees <= 0) {
@@ -1025,7 +1025,7 @@ const EnrollScreen = ({ navigation, route }) => {
 
   const renderVideoPlayer = () => {
     // Check if intro video URL is available
-    if (!courseData.introVideoUrl || courseData.introVideoUrl.trim() === '') {
+    if (!courseData.introVideoUrl || (courseData.introVideoUrl || '').trim() === '') {
       return (
         <View style={[styles.videoContainer, isFullScreen && styles.fullScreenVideoContainer]}>
           <View style={styles.noVideoContainer}>
@@ -1205,7 +1205,7 @@ const EnrollScreen = ({ navigation, route }) => {
             : '0 mins';
 
           // Check if thumbnail is available, otherwise show placeholder
-          const hasThumbnail = lesson && lesson.thumbnailImageUrl && typeof lesson.thumbnailImageUrl === 'string' && lesson.thumbnailImageUrl.trim() !== '';
+          const hasThumbnail = lesson && lesson.thumbnailImageUrl && typeof lesson.thumbnailImageUrl === 'string' && (lesson.thumbnailImageUrl || '').trim() !== '';
           const thumbnailSource = hasThumbnail 
             ? { uri: lesson.thumbnailImageUrl }
             : null; // No fallback image
@@ -1342,7 +1342,7 @@ const EnrollScreen = ({ navigation, route }) => {
           <Text style={styles.headerTitle}>
             {(() => {
               const title = typeof courseData.title === 'string' ? courseData.title : 'Course Title';
-              const words = title.split(' ');
+              const words = (title || '').split(' ');
               return words.slice(0, 2).join(' ');
             })()}
           </Text>

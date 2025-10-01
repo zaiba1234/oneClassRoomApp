@@ -345,7 +345,7 @@ const CourseCertificateDownload = () => {
       const apiUrl = getApiUrl(`/api/user/certificate/download-main-course-certificate/${courseId}`);
       
       console.log('🌐 CourseCertificateDownload: Download API URL:', apiUrl);
-      console.log('🔑 CourseCertificateDownload: Using token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+      console.log('🔑 CourseCertificateDownload: Using token:', token ? `${(token || '').substring(0, 20)}...` : 'NO TOKEN');
       console.log('📋 CourseCertificateDownload: Course ID:', courseId);
       
       // Make direct API call with proper headers
@@ -391,7 +391,7 @@ const CourseCertificateDownload = () => {
             locationMessage = 'App Documents folder';
             
             // Ensure directory exists
-            const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+            const dirPath = (filePath || '').substring(0, (filePath || '').lastIndexOf('/'));
             const dirExists = await RNFS.exists(dirPath);
             if (!dirExists) {
               await RNFS.mkdir(dirPath);

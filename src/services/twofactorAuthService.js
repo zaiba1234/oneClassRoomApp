@@ -108,7 +108,7 @@ class TwoFactorAuthService {
       } catch (parseError) {
         console.error('❌ [2FACTOR AUTH] JSON Parse Error:', parseError);
         console.error('❌ [2FACTOR AUTH] Response was not JSON:', responseText);
-        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 100)}...`);
+        throw new Error(`Server returned non-JSON response: ${(responseText || '').substring(0, 100)}...`);
       }
       
       console.log('🔐 [2FACTOR AUTH] Login response:', result);

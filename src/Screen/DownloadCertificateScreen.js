@@ -474,7 +474,7 @@ const DownloadCertificateScreen = () => {
             locationMessage = 'App Documents folder';
             
             // Ensure directory exists
-            const dirPath = filePath.substring(0, filePath.lastIndexOf('/'));
+            const dirPath = (filePath || '').substring(0, (filePath || '').lastIndexOf('/'));
             const dirExists = await RNFS.exists(dirPath);
             if (!dirExists) {
               await RNFS.mkdir(dirPath);

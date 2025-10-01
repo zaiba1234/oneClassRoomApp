@@ -85,7 +85,7 @@ const FavouritesScreen = ({ navigation }) => {
       setError(null);
       
       console.log('🚀 CALLING getFavoriteCourses API NOW...');
-      console.log('🚀 API Parameters:', { page, limit: 10, token: token ? `${token.substring(0, 10)}...` : 'Missing' });
+      console.log('🚀 API Parameters:', { page, limit: 10, token: token ? `${(token || '').substring(0, 10)}...` : 'Missing' });
       
       const result = await courseAPI.getFavoriteCourses(token, page, 10);
       console.log('✅ getFavoriteCourses API CALL COMPLETED');

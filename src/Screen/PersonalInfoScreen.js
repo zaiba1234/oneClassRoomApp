@@ -191,7 +191,7 @@ const handleEmailVerification = async () => {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
-        email: userEmail.trim()
+        email: (userEmail || '').trim()
       })
     });
 
@@ -205,7 +205,7 @@ const handleEmailVerification = async () => {
     if (result.success) {
       console.log('✅ [PersonalInfoScreen] Email OTP sent successfully');
       navigation.push('Verify', {
-        email: userEmail.trim(),
+        email: (userEmail || '').trim(),
         isEmailVerification: true,
         token: token
       });
@@ -410,9 +410,9 @@ const handleSaveProfile = async () => {
         const imageUri = response.assets[0].uri;
         console.log('✅ [PersonalInfoScreen] Image captured successfully:', {
           uri: imageUri,
-          fileName: response.assets[0].fileName,
-          fileSize: response.assets[0].fileSize,
-          type: response.assets[0].type
+          fileName: response.assets[0]?.fileName || 'unknown',
+          fileSize: response.assets[0]?.fileSize || 0,
+          type: response.assets[0]?.type || 'unknown'
         });
         setProfileImage({ uri: imageUri });
       }
@@ -455,9 +455,9 @@ const handleSaveProfile = async () => {
         const imageUri = response.assets[0].uri;
         console.log('✅ [PersonalInfoScreen] Image selected successfully:', {
           uri: imageUri,
-          fileName: response.assets[0].fileName,
-          fileSize: response.assets[0].fileSize,
-          type: response.assets[0].type
+          fileName: response.assets[0]?.fileName || 'unknown',
+          fileSize: response.assets[0]?.fileSize || 0,
+          type: response.assets[0]?.type || 'unknown'
         });
         setProfileImage({ uri: imageUri });
       }

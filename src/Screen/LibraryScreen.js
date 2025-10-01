@@ -85,7 +85,7 @@ const LibraryScreen = ({ navigation }) => {
       setCourseError(null);
 
       console.log('🚀 CALLING getAllCourses API NOW...');
-      console.log('🚀 API Parameters:', { page, limit: 10, token: token ? `${token.substring(0, 10)}...` : 'Missing' });
+      console.log('🚀 API Parameters:', { page, limit: 10, token: token ? `${(token || '').substring(0, 10)}...` : 'Missing' });
       
       const result = await courseAPI.getAllCourses(token, page, 10);
       console.log('✅ getAllCourses API CALL COMPLETED');
