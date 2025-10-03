@@ -833,4 +833,75 @@ export const courseAPI = {
       }
     },
 
+  // Recorded Lesson APIs
+  createRecordedLessonOrder: async (token, subcourseId) => {
+    try {
+      const url = getApiUrl('/api/user/recordedLessons/purchase-recorded-lessons');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      console.log('🌐 courseAPI: Create recorded lesson order URL:', url);
+      console.log('📋 courseAPI: Create recorded lesson order headers:', headers);
+      console.log('📋 courseAPI: Subcourse ID:', subcourseId);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ subcourseId }),
+      });
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Create recorded lesson order response status:', response.status);
+      console.log('📡 courseAPI: Create recorded lesson order response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully created recorded lesson order');
+        return { success: true, data: responseData, orderId: responseData.data?.orderId };
+      } else {
+        console.log('❌ courseAPI: Failed to create recorded lesson order:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error creating recorded lesson order:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
+  verifyRecordedLessonPayment: async (token, paymentData) => {
+    try {
+      const url = getApiUrl('/api/user/recordedLessons/verify-lessons-payment');
+      const headers = {
+        ...getApiHeaders(),
+        'Authorization': `Bearer ${token}`,
+      };
+
+      console.log('🌐 courseAPI: Verify recorded lesson payment URL:', url);
+      console.log('📋 courseAPI: Verify recorded lesson payment headers:', headers);
+      console.log('📋 courseAPI: Payment data:', paymentData);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(paymentData),
+      });
+
+      const responseData = await response.json();
+      console.log('📡 courseAPI: Verify recorded lesson payment response status:', response.status);
+      console.log('📡 courseAPI: Verify recorded lesson payment response data:', responseData);
+
+      if (response.ok) {
+        console.log('✅ courseAPI: Successfully verified recorded lesson payment');
+        return { success: true, data: responseData };
+      } else {
+        console.log('❌ courseAPI: Failed to verify recorded lesson payment:', responseData.message);
+        return { success: false, data: responseData, status: response.status };
+      }
+    } catch (error) {
+      console.error('💥 courseAPI: Error verifying recorded lesson payment:', error);
+      return { success: false, data: { message: 'Network error occurred' }, status: 0 };
+    }
+  },
+
 };

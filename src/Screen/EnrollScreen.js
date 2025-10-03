@@ -14,6 +14,7 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -161,10 +162,18 @@ const EnrollScreen = ({ navigation, route }) => {
       const result = await courseAPI.getSubcourseById(token, courseId);
 
       console.log('📥 EnrollScreen: getSubcourseById API Response:', result);
+      console.log('📥 EnrollScreen: result.success:', result.success);
+      console.log('📥 EnrollScreen: result.data:', result.data);
+      console.log('📥 EnrollScreen: result.status:', result.status);
      
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
         console.log('📥 EnrollScreen: Course data from API:', apiCourse);
+        console.log('📥 EnrollScreen: apiCourse.isRecordedLessonPurchased:', apiCourse.isRecordedLessonPurchased);
+        console.log('📥 EnrollScreen: apiCourse.recordedlessonsLink:', apiCourse.recordedlessonsLink);
+        console.log('📥 EnrollScreen: apiCourse.recordedlessonsPrice:', apiCourse.recordedlessonsPrice);
+        console.log('📥 EnrollScreen: apiCourse._id:', apiCourse._id);
+        console.log('📥 EnrollScreen: apiCourse.subcourseName:', apiCourse.subcourseName);
         
         // Check if subcourse data exists
         if (!apiCourse || !apiCourse._id) {
@@ -193,6 +202,10 @@ const EnrollScreen = ({ navigation, route }) => {
           lessons: Array.isArray(apiCourse.lessons) ? apiCourse.lessons : [],
           paymentStatus: apiCourse.paymentStatus || false,
           isCompleted: Boolean(apiCourse.isCompleted), // Ensure boolean conversion
+          // Recorded lesson fields
+          isRecordedLessonPurchased: Boolean(apiCourse.isRecordedLessonPurchased),
+          recordedlessonsLink: apiCourse.recordedlessonsLink || '',
+          recordedlessonsPrice: apiCourse.recordedlessonsPrice || 0,
         };
 
         // Check each lesson for startTime
@@ -209,6 +222,11 @@ const EnrollScreen = ({ navigation, route }) => {
         }
 
         setCourseData(transformedCourse);
+        
+        console.log('✅ EnrollScreen: Course data transformed and set successfully');
+        console.log('✅ EnrollScreen: transformedCourse.isRecordedLessonPurchased:', transformedCourse.isRecordedLessonPurchased);
+        console.log('✅ EnrollScreen: transformedCourse.recordedlessonsLink:', transformedCourse.recordedlessonsLink);
+        console.log('✅ EnrollScreen: transformedCourse.recordedlessonsPrice:', transformedCourse.recordedlessonsPrice);
 
       } else {
         // Check if it's a "no subcourse found" error
@@ -679,6 +697,147 @@ const EnrollScreen = ({ navigation, route }) => {
       contact: '9876543210',
       name: 'Student Name'
     };
+  };
+
+  // Function to download recorded lesson video
+  const downloadRecordedLessonVideo = (videoUrl) => {
+    try {
+      console.log('📥 EnrollScreen: Starting video download...');
+      console.log('📥 EnrollScreen: Video URL:', videoUrl);
+      
+      // Use Linking to open the video URL
+      // This will allow the device to handle the video download/playback
+      Linking.openURL(videoUrl).then(() => {
+        console.log('✅ EnrollScreen: Video opened successfully');
+        Alert.alert('Success', 'Video is opening in your default video player. You can download it from there.');
+      }).catch((error) => {
+        console.log('❌ EnrollScreen: Error opening video:', error);
+        Alert.alert('Error', 'Could not open video. Please try again.');
+      });
+    } catch (error) {
+      console.log('❌ EnrollScreen: Error in downloadRecordedLessonVideo:', error);
+      Alert.alert('Error', 'Something went wrong while downloading the video.');
+    }
+  };
+
+  // Function to handle Watch Recorded Lesson button
+  const handleWatchRecordedLesson = async () => {
+    try {
+      console.log('🎬 EnrollScreen: handleWatchRecordedLesson called');
+      console.log('🎬 EnrollScreen: courseData.isRecordedLessonPurchased:', courseData.isRecordedLessonPurchased);
+      console.log('🎬 EnrollScreen: courseData.recordedlessonsLink:', courseData.recordedlessonsLink);
+      console.log('🎬 EnrollScreen: courseData._id:', courseData._id);
+      console.log('🎬 EnrollScreen: courseData.title:', courseData.title);
+      
+      // Check if recorded lesson is already purchased
+      if (courseData.isRecordedLessonPurchased) {
+        console.log('✅ EnrollScreen: Recorded lesson already purchased, downloading video');
+        // If purchased, download the video
+        if (courseData.recordedlessonsLink) {
+          // Download the recorded lesson video
+          downloadRecordedLessonVideo(courseData.recordedlessonsLink);
+        } else {
+          console.log('❌ EnrollScreen: Recorded lesson link not available');
+          Alert.alert('Error', 'Recorded lesson link not available');
+        }
+      } else {
+        console.log('💰 EnrollScreen: Recorded lesson not purchased, starting payment flow');
+        // If not purchased, start Razorpay payment for recorded lesson
+        await handleRecordedLessonPayment();
+      }
+    } catch (error) {
+      console.log('❌ EnrollScreen: Error in handleWatchRecordedLesson:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    }
+  };
+
+  // Function to handle recorded lesson payment
+  const handleRecordedLessonPayment = async () => {
+    try {
+      console.log('💰 EnrollScreen: handleRecordedLessonPayment started');
+      console.log('💰 EnrollScreen: token:', token);
+      console.log('💰 EnrollScreen: courseData._id:', courseData._id);
+      
+      setPaymentStatus('processing');
+      
+      // Create order for recorded lesson
+      console.log('📞 EnrollScreen: Calling createRecordedLessonOrder API...');
+      const orderData = await courseAPI.createRecordedLessonOrder(token, courseData._id);
+      
+      console.log('📥 EnrollScreen: createRecordedLessonOrder API Response:', orderData);
+      console.log('📥 EnrollScreen: orderData.success:', orderData?.success);
+      console.log('📥 EnrollScreen: orderData.data:', orderData?.data);
+      console.log('📥 EnrollScreen: orderData.orderId:', orderData?.orderId);
+      
+      if (!orderData || !orderData.orderId) {
+        console.log('❌ EnrollScreen: Failed to create payment order - no orderId');
+        throw new Error('Failed to create payment order');
+      }
+
+      console.log('✅ EnrollScreen: Order created successfully, opening Razorpay...');
+      // Open Razorpay payment interface
+      const paymentData = await handlePaymentWithRazorpay(orderData);
+      
+      console.log('📥 EnrollScreen: Razorpay payment response:', paymentData);
+      console.log('📥 EnrollScreen: paymentData.razorpay_payment_id:', paymentData?.razorpay_payment_id);
+      console.log('📥 EnrollScreen: paymentData.razorpay_signature:', paymentData?.razorpay_signature);
+      
+      if (paymentData && paymentData.razorpay_payment_id) {
+        console.log('✅ EnrollScreen: Payment successful, verifying payment...');
+        // Verify payment
+        const verifyData = {
+          razorpayOrderId: orderData.orderId,
+          razorpayPaymentId: paymentData.razorpay_payment_id,
+          razorpaySignature: paymentData.razorpay_signature,
+          subcourseId: courseData._id
+        };
+        
+        console.log('📞 EnrollScreen: Calling verifyRecordedLessonPayment API...');
+        console.log('📞 EnrollScreen: verifyData:', verifyData);
+        
+        const verifyResult = await courseAPI.verifyRecordedLessonPayment(token, verifyData);
+        
+        console.log('📥 EnrollScreen: verifyRecordedLessonPayment API Response:', verifyResult);
+        console.log('📥 EnrollScreen: verifyResult.success:', verifyResult?.success);
+        console.log('📥 EnrollScreen: verifyResult.data:', verifyResult?.data);
+        console.log('📥 EnrollScreen: verifyResult.message:', verifyResult?.message);
+        
+        if (verifyResult.success) {
+          console.log('✅ EnrollScreen: Payment verification successful!');
+          setPaymentStatus('success');
+          Alert.alert('Success', 'Recorded lesson purchased successfully!', [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('🔄 EnrollScreen: Refreshing course data...');
+                // Refresh course data to get updated purchase status
+                fetchCourseDetails();
+                // No navigation - just refresh data
+              }
+            }
+          ]);
+        } else {
+          console.log('❌ EnrollScreen: Payment verification failed');
+          throw new Error(verifyResult.message || 'Payment verification failed');
+        }
+      } else {
+        console.log('❌ EnrollScreen: Payment was cancelled or failed');
+        throw new Error('Payment was cancelled or failed');
+      }
+    } catch (error) {
+      console.log('❌ EnrollScreen: Error in handleRecordedLessonPayment:', error);
+      console.log('❌ EnrollScreen: Error message:', error.message);
+      console.log('❌ EnrollScreen: Error stack:', error.stack);
+      setPaymentStatus('failed');
+      
+      if (error.message === 'PAYMENT_CANCELLED') {
+        console.log('🚫 EnrollScreen: Payment was cancelled by user');
+        Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
+      } else {
+        console.log('💥 EnrollScreen: Payment failed with error:', error.message);
+        Alert.alert('Payment Failed', error.message || 'Something went wrong. Please try again.');
+      }
+    }
   };
 
   // Function to handle payment with direct Razorpay
@@ -1284,6 +1443,7 @@ const EnrollScreen = ({ navigation, route }) => {
           <View style={styles.downloadCertificateLeft}>
             <Text style={styles.downloadCertificateTitle}>Download Module Certificate </Text>
           </View>
+
           <View style={styles.downloadCertificateRight}>
             <TouchableOpacity
               style={styles.downloadButton}
@@ -1294,7 +1454,27 @@ const EnrollScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-        <Text style={styles.certificateText}>Certificate</Text>
+       
+
+        <TouchableOpacity
+          style={styles.downloadCertificateCard}
+          onPress={handleWatchRecordedLesson}
+        >
+          <View style={styles.downloadCertificateLeft}>
+            <Text style={styles.downloadCertificateTitle}>Watch Recorded Lesson</Text>
+          </View>
+
+          <View style={styles.downloadCertificateRight}>
+            <TouchableOpacity
+              style={styles.downloadButton}
+              onPress={handleDownloadCertificate}
+              onPressIn={(e) => e.stopPropagation()}
+            >
+              <Icon name="download-outline" size={24} color="#FF6B35" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+
       </View>
 
       {/* Popup Modal for incomplete course */}
