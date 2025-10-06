@@ -26,7 +26,7 @@ import BackButton from '../Component/BackButton';
 
 const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  const { token } = useAppSelector((state) => state.user);
+  const { token, email: reduxEmail } = useAppSelector((state) => state.user);
   
   // Local state for form fields - will be populated from API
   const [name, setName] = useState('');
@@ -45,6 +45,20 @@ const PersonalInfoScreen = ({ navigation }) => {
     console.log('🚀 [PersonalInfoScreen] Component mounted, fetching user profile');
     fetchUserProfile();
   }, []);
+
+  // Sync Redux email with local state
+  useEffect(() => {
+    console.log('🔄 [PersonalInfoScreen] Redux email changed:', {
+      reduxEmail,
+      userEmail,
+      areEqual: reduxEmail === userEmail
+    });
+    
+    if (reduxEmail && reduxEmail.trim() !== '' && reduxEmail !== userEmail) {
+      console.log('🔄 [PersonalInfoScreen] Syncing Redux email to local state:', reduxEmail);
+      setUserEmail(reduxEmail);
+    }
+  }, [reduxEmail]);
 
   // Listen for focus events to refresh profile data when returning from Verify page
   useEffect(() => {
@@ -358,7 +372,7 @@ const handleSaveProfile = async () => {
       console.log('✅ [PersonalInfoScreen] Profile updated successfully');
       
       // Update Redux store with the updated data
-      dispatch(setProfileData({
+      const updatedProfileData = {
         fullName: name,
         mobileNumber: phone,
         email: userEmail,
@@ -367,22 +381,29 @@ const handleSaveProfile = async () => {
         profileImageUrl: result.data.data?.profileImageUrl || (profileImage?.uri || ''),
         _id: result.data.data?._id || '',
         userId: result.data.data?.userId || ''
-      }));
+      };
+      
+      console.log('🔄 [PersonalInfoScreen] Dispatching updated profile data to Redux:', updatedProfileData);
+      dispatch(setProfileData(updatedProfileData));
+      
+      // Also update local state immediately to reflect changes
+      console.log('🔄 [PersonalInfoScreen] Updating local state with updated data');
+      setName(updatedProfileData.fullName);
+      setPhone(updatedProfileData.mobileNumber);
+      setUserAddress(updatedProfileData.address);
+      setUserEmail(updatedProfileData.email);
+      setIsEmailVerified(updatedProfileData.isEmailVerified);
 
       // Show success alert
       Alert.alert(
         'Success', 
-        'Profile updated successfully! Refreshing data...',
+        'Profile updated successfully!',
         [
           {
             text: 'OK',
             onPress: () => {
-              console.log('🔄 [PersonalInfoScreen] User confirmed success, refreshing profile data');
-              // Set refreshing state and refresh profile data after successful update
-              setIsRefreshingAfterUpdate(true);
-              fetchUserProfile().finally(() => {
-                setIsRefreshingAfterUpdate(false);
-              });
+              console.log('✅ [PersonalInfoScreen] User confirmed success, profile updated locally');
+              // No need to refresh since we already updated local state
             }
           }
         ]
@@ -650,7 +671,9 @@ const handleSaveProfile = async () => {
     hasProfileImage: !!profileImage?.uri,
     userEmail: userEmail || 'Empty',
     userAddress: userAddress || 'Empty',
-    name: name || 'Empty'
+    name: name || 'Empty',
+    reduxEmail: reduxEmail || 'Empty',
+    emailMatch: userEmail === reduxEmail
   });
 
   return (
@@ -755,8 +778,8 @@ const handleSaveProfile = async () => {
               keyboardType="email-address"
               editable={!isEmailVerified}
               selectTextOnFocus={!isEmailVerified}
-              placeholder={userEmail ? userEmail : "Enter your email"}
-              placeholderTextColor={userEmail ? "#333" : "#999"}
+              placeholder={userEmail && userEmail.trim() !== '' ? userEmail : "Enter your email"}
+              placeholderTextColor={userEmail && userEmail.trim() !== '' ? "#333" : "#999"}
             />
             <TouchableOpacity 
               style={[

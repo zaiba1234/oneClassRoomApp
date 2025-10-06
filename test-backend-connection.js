@@ -1,6 +1,6 @@
 // Test script to check backend connection
 const testBackendConnection = async () => {
-  const baseUrl = 'http://10.0.2.2:3000'; // Android emulator localhost
+  const baseUrl = 'https://main.learningsaint.com'; // Production URL
   
   console.log('🧪 Testing backend connection...');
   console.log('🌐 Base URL:', baseUrl);
