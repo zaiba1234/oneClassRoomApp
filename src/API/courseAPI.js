@@ -857,14 +857,14 @@ export const courseAPI = {
       console.log('📡 courseAPI: Create recorded lesson order response data:', responseData);
 
       if (response.ok) {
-        console.log('✅ courseAPI: Successfully created recorded lesson order');
+        console.log(' courseAPI: Successfully created recorded lesson order');
         return { success: true, data: responseData, orderId: responseData.data?.orderId };
       } else {
-        console.log('❌ courseAPI: Failed to create recorded lesson order:', responseData.message);
+        console.log(' courseAPI: Failed to create recorded lesson order:', responseData.message);
         return { success: false, data: responseData, status: response.status };
       }
     } catch (error) {
-      console.error('💥 courseAPI: Error creating recorded lesson order:', error);
+      console.error(' courseAPI: Error creating recorded lesson order:', error);
       return { success: false, data: { message: 'Network error occurred' }, status: 0 };
     }
   },

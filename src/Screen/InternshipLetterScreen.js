@@ -1099,22 +1099,24 @@ const styles = StyleSheet.create({
   },
   congratulationsImage: {
     width: getResponsiveSize(200),
-    height: getResponsiveSize(80),
-    marginBottom: getResponsiveSize(10),
+    height: getResponsiveSize(90),
+    // marginBottom: getResponsiveSize(10),
   },
   congratulationsSubtext: {
+    bottom:20,
+    // backgroundColor:'red',
     fontSize: getResponsiveSize(16),
     color: '#333',
     fontWeight: '400',
     textAlign: 'center',
-    marginBottom: getResponsiveSize(10),
+    // marginBottom: getResponsiveSize(10),
   },
   courseNameText: {
     fontSize: getResponsiveSize(20),
     color: '#FF8800',
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: getResponsiveSize(5),
+    bottom:20,
   },
 
   mainLoadingContainer: {
@@ -1148,12 +1150,11 @@ const styles = StyleSheet.create({
     // marginVertical: getResponsiveSize(10), // Added small margin to control gap
   },
   certificateImage: {
-    width: width - getResponsiveSize(40),
-    height: getResponsiveSize(450),
+    width: width - getResponsiveSize(20),
+    height: getResponsiveSize(300),
   },
   descriptionContainer: {
-    paddingHorizontal: getResponsiveSize(20),
-    // marginTop: getResponsiveSize(10), // Reduced from potential larger gap
+  bottom:25,
   },
   descriptionText: {
     fontSize: getResponsiveSize(16),

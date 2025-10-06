@@ -29,6 +29,7 @@ import RazorpayCheckout from 'react-native-razorpay';
 
 const StudentIcon = require('../assests/images/student.png');
 const StarIcon = require('../assests/images/star.png');
+const LinkIcon = require('../assests/images/link.png');
 // Get screen dimensions for responsive design
 const { width, height } = Dimensions.get('window');
 
@@ -45,6 +46,7 @@ const EnrollScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('lessons');
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [showRecordedLessonModal, setShowRecordedLessonModal] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const webViewRef = useRef(null);
   
@@ -300,8 +302,6 @@ const EnrollScreen = ({ navigation, route }) => {
         if (lessonDateString >= currentDate) {
           const [startHour, startMinute] = lesson.startTime.split(':').map(Number);
           const lessonStartSeconds = startHour * 3600 + startMinute * 60; // Convert to seconds
-
-        
 
           let timeDiff;
 
@@ -724,12 +724,20 @@ const EnrollScreen = ({ navigation, route }) => {
   const handleWatchRecordedLesson = async () => {
     try {
       console.log('🎬 EnrollScreen: handleWatchRecordedLesson called');
+      console.log('🎬 EnrollScreen: courseData.paymentStatus:', courseData.paymentStatus);
       console.log('🎬 EnrollScreen: courseData.isRecordedLessonPurchased:', courseData.isRecordedLessonPurchased);
       console.log('🎬 EnrollScreen: courseData.recordedlessonsLink:', courseData.recordedlessonsLink);
       console.log('🎬 EnrollScreen: courseData._id:', courseData._id);
       console.log('🎬 EnrollScreen: courseData.title:', courseData.title);
       
-      // Check if recorded lesson is already purchased
+      // Scenario 1: Check if paymentStatus is false - button should not be clickable
+      if (!courseData.paymentStatus) {
+        console.log('❌ EnrollScreen: Payment status is false, button should not be clickable');
+        setShowRecordedLessonModal(true);
+        return;
+      }
+      
+      // Scenario 2: paymentStatus is true, check if recorded lesson is already purchased
       if (courseData.isRecordedLessonPurchased) {
         console.log('✅ EnrollScreen: Recorded lesson already purchased, downloading video');
         // If purchased, download the video
@@ -1457,27 +1465,64 @@ const EnrollScreen = ({ navigation, route }) => {
        
 
         <TouchableOpacity
-          style={styles.downloadCertificateCard}
+          style={styles.recordedLessonCard}
           onPress={handleWatchRecordedLesson}
         >
-          <View style={styles.downloadCertificateLeft}>
-            <Text style={styles.downloadCertificateTitle}>Watch Recorded Lesson</Text>
+          <View style={styles.recordedLessonHeader}>
+            <Text style={styles.recordedLessonTitle}>Get Recorded Lessons</Text>
+            <Text style={styles.recordedLessonPrice}>
+              Price: <Text style={styles.priceValue}>₹{courseData.recordedlessonsPrice || 0}</Text>
+            </Text>
           </View>
 
-          <View style={styles.downloadCertificateRight}>
-            <TouchableOpacity
-              style={styles.downloadButton}
-              onPress={handleDownloadCertificate}
-              onPressIn={(e) => e.stopPropagation()}
-            >
-              <Icon name="download-outline" size={24} color="#FF6B35" />
-            </TouchableOpacity>
+          <View style={styles.recordedLessonButtonContainer}>
+            {!courseData.paymentStatus ? (
+              // Scenario 1: paymentStatus is false - button disabled
+              <View style={styles.recordedLessonButtonDisabled}>
+                <Text style={styles.recordedLessonButtonTextDisabled}>
+                  Get Link
+                </Text>
+                <Image 
+                  source={LinkIcon} 
+                  style={styles.linkIconDisabled}
+                />
+              </View>
+            ) : courseData.isRecordedLessonPurchased ? (
+              // Scenario 3: paymentStatus is true + isRecordedLessonPurchased is true - orange button
+              <LinearGradient
+                colors={['#F6B800', '#FF8800']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.recordedLessonButton}
+              >
+                <View style={styles.recordedLessonButtonTouchable}>
+                  <Text style={styles.recordedLessonButtonTextEnabled}>
+                    Get Link
+                  </Text>
+                  <Image 
+                    source={LinkIcon} 
+                    style={styles.linkIconEnabled}
+                  />
+                </View>
+              </LinearGradient>
+            ) : (
+              // Scenario 2: paymentStatus is true + isRecordedLessonPurchased is false - grey button for payment
+              <View style={styles.recordedLessonButtonDisabled}>
+                <Text style={styles.recordedLessonButtonTextDisabled}>
+                  Get Link
+                </Text>
+                <Image 
+                  source={LinkIcon} 
+                  style={styles.linkIconDisabled}
+                />
+              </View>
+            )}
           </View>
         </TouchableOpacity>
 
       </View>
 
-      {/* Popup Modal for incomplete course */}
+      {/* Popup Modal for incomplete course - Download Certificate */}
       <Modal
         visible={showDownloadModal}
         transparent={true}
@@ -1499,11 +1544,45 @@ const EnrollScreen = ({ navigation, route }) => {
             </View>
 
             <Text style={styles.modalMessage}>
-              First you have to complete Your course to download Cirtificate
+              First you have to enroll for complete the course to download Cirtificate
             </Text>
             <TouchableOpacity
               style={[styles.modalButton, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}
               onPress={() => setShowDownloadModal(false)}
+            >
+              <Text style={styles.modalButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Popup Modal for incomplete course - Recorded Lesson */}
+      <Modal
+        visible={showRecordedLessonModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowRecordedLessonModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Close Icon in top right corner */}
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowRecordedLessonModal(false)}
+            >
+              <Icon name="close" size={24} color="#FF8800" />
+            </TouchableOpacity>
+
+            <View style={styles.modalHeader}>
+              <Icon name="warning" size={60} color="#FFFFFF" style={{ marginRight: getVerticalSize(12) }} />
+            </View>
+
+            <Text style={styles.modalMessage}>
+              First you have to enroll in the course to access recorded lessons
+            </Text>
+            <TouchableOpacity
+              style={[styles.modalButton, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}
+              onPress={() => setShowRecordedLessonModal(false)}
             >
               <Text style={styles.modalButtonText}>Continue</Text>
             </TouchableOpacity>
@@ -1519,12 +1598,8 @@ const EnrollScreen = ({ navigation, route }) => {
       {!isFullScreen && (
         <View style={styles.header}>
           <BackButton onPress={() => navigation.navigate('Home', { screen: 'Home' })} />
-          <Text style={styles.headerTitle}>
-            {(() => {
-              const title = typeof courseData.title === 'string' ? courseData.title : 'Course Title';
-              const words = (title || '').split(' ');
-              return words.slice(0, 2).join(' ');
-            })()}
+          <Text style={styles.headerTitle} numberOfLines={2}>
+            {typeof courseData.title === 'string' ? courseData.title : 'Course Title'}
           </Text>
           {courseData.isCompleted && (
             <LinearGradient
@@ -1700,19 +1775,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: getVerticalSize(20),
     paddingTop: Platform.OS === 'ios' ? getVerticalSize(15) : getVerticalSize(25),
     paddingBottom: getVerticalSize(15),
-    marginTop: getVerticalSize(10),
+    marginTop: getVerticalSize(15),
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
   headerTitle: {
     flex: 1,
-    fontSize: getFontSize(18),
+    fontSize: getFontSize(16),
     fontWeight: 'bold',
     color: '#000000',
     textAlign: 'left',
     marginLeft: getVerticalSize(28),
     marginRight: getVerticalSize(10),
+    flexWrap: 'wrap',
   },
   placeholder: {
     width: getFontSize(40),
@@ -2336,6 +2412,103 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: getFontSize(16),
     fontWeight: 'bold',
+  },
+
+  // Recorded Lesson Styles
+  recordedLessonCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: getFontSize(12),
+    padding: getVerticalSize(20),
+    marginBottom: getVerticalSize(15),
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+    // Add active opacity for better touch feedback
+    activeOpacity: 0.8,
+  },
+  recordedLessonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: getVerticalSize(15),
+  },
+  recordedLessonTitle: {
+    fontSize: getFontSize(16),
+    fontWeight: '600',
+    color: '#000000',
+  },
+  recordedLessonPrice: {
+    fontSize: getFontSize(14),
+    color: '#666666',
+  },
+  recordedLessonButtonContainer: {
+    width: '100%',
+  },
+  priceValue: {
+    color: '#FF8800',
+    fontWeight: 'bold',
+  },
+  recordedLessonButton: {
+    borderRadius: getFontSize(8),
+    width: '100%',
+    paddingVertical: getVerticalSize(8),
+    paddingHorizontal: getVerticalSize(12),
+  },
+  
+  recordedLessonButtonTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordedLessonButtonEnabled: {
+    backgroundColor: '#FF8800', // Orange gradient will be applied via LinearGradient
+  },
+  recordedLessonButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: getVerticalSize(8),
+    paddingHorizontal: getVerticalSize(12),
+    borderRadius: getFontSize(8),
+    width: '100%',
+    justifyContent: 'center',
+  },
+  recordedLessonButtonText: {
+    fontSize: getFontSize(14),
+    fontWeight: '600',
+    marginRight: getVerticalSize(8),
+  },
+  recordedLessonButtonTextEnabled: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(14),
+    fontWeight: '600',
+    marginRight: getVerticalSize(6),
+  },
+  recordedLessonButtonTextDisabled: {
+    color: '#999999',
+    fontSize: getFontSize(14),
+    fontWeight: '600',
+    marginRight: getVerticalSize(6),
+  },
+  linkIcon: {
+    width: getFontSize(8),
+    height: getFontSize(8),
+    resizeMode: 'contain',
+  },
+  linkIconEnabled: {
+    width: getFontSize(10),
+    height: getFontSize(10),
+    tintColor: '#FFFFFF',
+  },
+  linkIconDisabled: {
+    width: getFontSize(10),
+    height: getFontSize(10),
+    tintColor: '#999999',
   },
 });
 

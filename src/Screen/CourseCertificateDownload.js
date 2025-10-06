@@ -658,16 +658,18 @@ const styles = StyleSheet.create({
     marginBottom: getResponsiveSize(10),
   },
   congratulationsSubtext: {
+    bottom:25,
     fontSize: getResponsiveSize(16),
     color: '#333',
     fontWeight: '500',
     textAlign: 'center',
   },
   subcourseNameText: {
+    bottom:25,
     fontSize: getResponsiveSize(20),
     fontWeight: 'bold',
     color: '#333',
-    marginTop: getResponsiveSize(10),
+   
     textAlign: 'center',
   },
   certificateContainer: {
@@ -675,13 +677,12 @@ const styles = StyleSheet.create({
     // marginVertical: getResponsiveSize(10), // Added small margin to control gap
   },
   certificateImage: {
-    width: width - getResponsiveSize(-10),
-    height: getResponsiveSize(450),
+    width: width - getResponsiveSize(20),
+    height: getResponsiveSize(300),
   },
   descriptionContainer: {
-    paddingHorizontal: getResponsiveSize(20),
-    // marginTop: getResponsiveSize(10), // Reduced from potential larger gap
-  },
+    bottom:25,
+    },
   descriptionText: {
     fontSize: getResponsiveSize(16),
     color: '#333',

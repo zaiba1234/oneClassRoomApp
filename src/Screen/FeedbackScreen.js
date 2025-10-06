@@ -28,7 +28,7 @@ const getResponsiveSize = (size) => {
 const FeedbackScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const [rating, setRating] = useState(1);
+  const [rating, setRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get subcourseId from route params
@@ -40,7 +40,12 @@ const FeedbackScreen = () => {
   // Debug logging
 
   const handleStarPress = (selectedRating) => {
-    setRating(selectedRating);
+    // If clicking the same star that's already selected, deselect it
+    if (rating === selectedRating) {
+      setRating(0);
+    } else {
+      setRating(selectedRating);
+    }
   };
 
   const handleContinue = async () => {
@@ -126,7 +131,7 @@ const FeedbackScreen = () => {
             <Icon
               name={star <= rating ? "star" : "star-outline"}
               size={getResponsiveSize(28)}
-              color={star <= rating ? "#FF8800" : "#FF8800"}
+              color={star <= rating ? "#FF8800" : "#CCCCCC"}
             />
           </TouchableOpacity>
         ))}
@@ -181,9 +186,9 @@ const FeedbackScreen = () => {
         {/* Continue Button */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity 
-            style={[styles.continueButton, isSubmitting && styles.continueButtonDisabled]}
+            style={[styles.continueButton, (isSubmitting || rating === 0) && styles.continueButtonDisabled]}
             onPress={handleContinue}
-            disabled={isSubmitting}
+            disabled={isSubmitting || rating === 0}
           >
             <Text style={styles.continueButtonText}>
               {isSubmitting ? 'Submitting...' : 'Continue'}

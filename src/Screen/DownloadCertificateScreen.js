@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import {
   View,
@@ -610,7 +609,7 @@ const DownloadCertificateScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <BackButton onPress={handleBackPress} />
-        <Text style={styles.headerTitle}>Download Certificate</Text>
+        <Text style={styles.headerTitle}>Download Certificates</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -631,7 +630,11 @@ const DownloadCertificateScreen = () => {
       >
         {/* Congratulations Section */}
         <View style={styles.congratulationsContainer}>
-          <Text style={styles.congratulationsText}>Congratulations</Text>
+          <Image 
+            source={require('../assests/images/conge.jpeg')} 
+            style={styles.congratulationsImage}
+            resizeMode="contain"
+          />
           <Text style={styles.congratulationsSubtext}>For Completing Course</Text>
           
           {/* Dynamic Subcourse Name */}
@@ -736,40 +739,38 @@ const styles = StyleSheet.create({
   },
   congratulationsContainer: {
     alignItems: 'center',
-    // paddingTop: getResponsiveSize(40),
-    // paddingBottom: getResponsiveSize(10), // Reduced from 30 to 10
+  //  marginBottom:20,// Reduced from 30 to 10
   },
-  congratulationsText: {
-    fontSize: getResponsiveSize(36),
-    fontWeight: 'bold',
-    color: '#2285FA',
-    fontStyle: 'italic',
-    // marginBottom: getResponsiveSize(8),
-    textAlign: 'center',
+  congratulationsImage: {
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(80),
+   
   },
   congratulationsSubtext: {
     fontSize: getResponsiveSize(16),
     color: '#333',
     fontWeight: '500',
-    textAlign: 'center',
+    marginTop: getResponsiveSize(-10),
+    // textAlign: 'center',
   },
   subcourseNameText: {
     fontSize: getResponsiveSize(20),
     fontWeight: 'bold',
     color: '#333',
-    marginTop: getResponsiveSize(10),
-    textAlign: 'center',
+    
   },
   certificateContainer: {
     alignItems: 'center',
-    // marginVertical: getResponsiveSize(10), // Added small margin to control gap
+    marginVertical: getResponsiveSize(-20), // Added small margin to control gap
   },
   certificateImage: {
-    width: width - getResponsiveSize(-10),
-    height: getResponsiveSize(450),
+    overflow: 'hidden',
+    borderRadius: getResponsiveSize(20),
+    width: width - getResponsiveSize(10),
+    height: getResponsiveSize(300),
   },
   descriptionContainer: {
-    paddingHorizontal: getResponsiveSize(20),
+    paddingHorizontal: getResponsiveSize(10),
     // marginTop: getResponsiveSize(10), // Reduced from potential larger gap
   },
   descriptionText: {

@@ -38,6 +38,7 @@ const PersonalInfoScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isRefreshingAfterUpdate, setIsRefreshingAfterUpdate] = useState(false);
 
   // Fetch user profile data on component mount
   useEffect(() => {
@@ -50,6 +51,23 @@ const PersonalInfoScreen = ({ navigation }) => {
     const unsubscribe = navigation.addListener('focus', () => {
       console.log('🔄 [PersonalInfoScreen] Screen focused, refreshing profile data');
       fetchUserProfile();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Listen for email verification completion
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('state', (e) => {
+      console.log('🔄 [PersonalInfoScreen] Navigation state changed:', e.data.state);
+      // Check if we're coming back from Verify screen
+      if (e.data.state && e.data.state.routes) {
+        const currentRoute = e.data.state.routes[e.data.state.index];
+        if (currentRoute.name === 'PersonalInfo') {
+          console.log('🔄 [PersonalInfoScreen] Back to PersonalInfo screen, refreshing profile');
+          fetchUserProfile();
+        }
+      }
     });
 
     return unsubscribe;
@@ -76,6 +94,13 @@ const PersonalInfoScreen = ({ navigation }) => {
 
 const fetchUserProfile = async (isRefresh = false) => {
   console.log('🚀 [PersonalInfoScreen] Fetching user profile from API');
+  console.log('🔑 [PersonalInfoScreen] Token being used:', {
+    token: token,
+    tokenType: typeof token,
+    tokenLength: token ? token.length : 'N/A',
+    tokenExists: !!token,
+    tokenFirst10: token ? token.substring(0, 10) + '...' : 'N/A'
+  });
 
   if (!token) {
     console.log('❌ [PersonalInfoScreen] No token available');
@@ -92,12 +117,25 @@ const fetchUserProfile = async (isRefresh = false) => {
     }
     
     // Call the API to get profile data
+    console.log('📞 [PersonalInfoScreen] Calling profileAPI.getUserProfile with token:', token);
     const result = await profileAPI.getUserProfile(token);
     
-    console.log('📱 [PersonalInfoScreen] API Response:', {
+    console.log('📱 [PersonalInfoScreen] getUserProfile API Response:', {
       success: result.success,
       status: result.status,
-      hasData: !!result.data?.data
+      hasData: !!result.data?.data,
+      fullResponse: JSON.stringify(result, null, 2)
+    });
+    
+    console.log('📱 [PersonalInfoScreen] getUserProfile Raw Response:', result);
+    console.log('📱 [PersonalInfoScreen] Complete API Response Structure:', {
+      'result': result,
+      'result.success': result.success,
+      'result.status': result.status,
+      'result.data': result.data,
+      'result.data.success': result.data?.success,
+      'result.data.data': result.data?.data,
+      'result.data.message': result.data?.message
     });
 
     if (result.success && result.data?.success && result.data?.data) {
@@ -111,8 +149,27 @@ const fetchUserProfile = async (isRefresh = false) => {
         isEmailVerified: profileData.isEmailVerified,
         hasProfileImage: !!profileData.profileImageUrl
       });
+      
+      console.log('🔍 [PersonalInfoScreen] Complete profileData object:', profileData);
+      console.log('🔍 [PersonalInfoScreen] All profileData keys:', Object.keys(profileData));
+      console.log('🔍 [PersonalInfoScreen] profileData.email details:', {
+        'profileData.email': profileData.email,
+        'typeof profileData.email': typeof profileData.email,
+        'profileData.email === ""': profileData.email === '',
+        'profileData.email === null': profileData.email === null,
+        'profileData.email === undefined': profileData.email === undefined,
+        'profileData.email length': profileData.email ? profileData.email.length : 'N/A',
+        'profileData.email truthy': !!profileData.email
+      });
 
       // Populate all form fields directly from API data
+      console.log('🔄 [PersonalInfoScreen] Setting form fields from API data:');
+      console.log('🔄 [PersonalInfoScreen] Setting name:', profileData.fullName || '');
+      console.log('🔄 [PersonalInfoScreen] Setting phone:', profileData.mobileNumber || '');
+      console.log('🔄 [PersonalInfoScreen] Setting address:', profileData.address || '');
+      console.log('🔄 [PersonalInfoScreen] Setting email:', profileData.email || '');
+      console.log('🔄 [PersonalInfoScreen] Setting isEmailVerified:', profileData.isEmailVerified || false);
+      
       setName(profileData.fullName || '');
       setPhone(profileData.mobileNumber || '');
       setUserAddress(profileData.address || '');
@@ -127,7 +184,7 @@ const fetchUserProfile = async (isRefresh = false) => {
       }
 
       // Update Redux store with the complete profile data
-      dispatch(setProfileData({
+      const reduxData = {
         fullName: profileData.fullName || '',
         mobileNumber: profileData.mobileNumber || '',
         email: profileData.email || '',
@@ -136,7 +193,19 @@ const fetchUserProfile = async (isRefresh = false) => {
         profileImageUrl: profileData.profileImageUrl || '',
         _id: profileData._id || '',
         userId: profileData.userId || ''
-      }));
+      };
+      
+      console.log('🔄 [PersonalInfoScreen] Dispatching to Redux:', {
+        email: reduxData.email,
+        'email === ""': reduxData.email === '',
+        'email length': reduxData.email ? reduxData.email.length : 'N/A'
+      });
+      
+      console.log('🔄 [PersonalInfoScreen] Complete Redux data being dispatched:', reduxData);
+      
+      dispatch(setProfileData(reduxData));
+      
+      console.log('✅ [PersonalInfoScreen] Redux dispatch completed');
 
       console.log('✅ [PersonalInfoScreen] All form fields populated from API data');
     } else {
@@ -159,6 +228,13 @@ const fetchUserProfile = async (isRefresh = false) => {
 
 const handleEmailVerification = async () => {
   console.log('📧 [PersonalInfoScreen] Starting email verification');
+  console.log('🔑 [PersonalInfoScreen] Token for email verification:', {
+    token: token,
+    tokenType: typeof token,
+    tokenLength: token ? token.length : 'N/A',
+    tokenExists: !!token,
+    tokenFirst10: token ? token.substring(0, 10) + '...' : 'N/A'
+  });
 
   if (isEmailVerified) {
     Alert.alert('Already Verified', 'Your email is already verified');
@@ -195,19 +271,33 @@ const handleEmailVerification = async () => {
       })
     });
 
+    console.log('📧 [PersonalInfoScreen] send-emailotp API Response Status:', response.status);
+    console.log('📧 [PersonalInfoScreen] send-emailotp API Response Headers:', response.headers);
+
     if (!response.ok) {
       const errorText = await response.text();
+      console.log('❌ [PersonalInfoScreen] send-emailotp API Error Response:', errorText);
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const result = await response.json();
+    console.log('📧 [PersonalInfoScreen] send-emailotp API Response:', {
+      success: result.success,
+      message: result.message,
+      fullResponse: JSON.stringify(result, null, 2)
+    });
 
     if (result.success) {
       console.log('✅ [PersonalInfoScreen] Email OTP sent successfully');
       navigation.push('Verify', {
         email: (userEmail || '').trim(),
         isEmailVerification: true,
-        token: token
+        token: token,
+        onVerificationComplete: () => {
+          console.log('🔄 [PersonalInfoScreen] Email verification completed, refreshing profile');
+          // Refresh profile data after email verification
+          fetchUserProfile();
+        }
       });
     } else {
       Alert.alert('Error', result.message || 'Failed to send OTP');
@@ -222,6 +312,13 @@ const handleEmailVerification = async () => {
 
 const handleSaveProfile = async () => {
   console.log('💾 [PersonalInfoScreen] Saving profile data');
+  console.log('🔑 [PersonalInfoScreen] Token for save profile:', {
+    token: token,
+    tokenType: typeof token,
+    tokenLength: token ? token.length : 'N/A',
+    tokenExists: !!token,
+    tokenFirst10: token ? token.substring(0, 10) + '...' : 'N/A'
+  });
 
   if (!token) {
     Alert.alert('Error', 'Please login to save profile');
@@ -243,13 +340,19 @@ const handleSaveProfile = async () => {
       hasProfileImage: !!profileData.profileImageUrl?.uri
     });
     
+    console.log('💾 [PersonalInfoScreen] Complete profileData for update:', profileData);
+    console.log('📞 [PersonalInfoScreen] Calling profileAPI.updateUserProfile with token:', token);
+    
     const result = await profileAPI.updateUserProfile(token, profileData);
     
-    console.log('📱 [PersonalInfoScreen] Update response:', {
+    console.log('📱 [PersonalInfoScreen] updateUserProfile API Response:', {
       success: result.success,
       status: result.status,
-      hasData: !!result.data?.data
+      hasData: !!result.data?.data,
+      fullResponse: JSON.stringify(result, null, 2)
     });
+    
+    console.log('📱 [PersonalInfoScreen] updateUserProfile Raw Response:', result);
 
     if (result.success && result.data?.success) {
       console.log('✅ [PersonalInfoScreen] Profile updated successfully');
@@ -266,7 +369,24 @@ const handleSaveProfile = async () => {
         userId: result.data.data?.userId || ''
       }));
 
-      Alert.alert('Success', 'Profile updated successfully');
+      // Show success alert
+      Alert.alert(
+        'Success', 
+        'Profile updated successfully! Refreshing data...',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              console.log('🔄 [PersonalInfoScreen] User confirmed success, refreshing profile data');
+              // Set refreshing state and refresh profile data after successful update
+              setIsRefreshingAfterUpdate(true);
+              fetchUserProfile().finally(() => {
+                setIsRefreshingAfterUpdate(false);
+              });
+            }
+          }
+        ]
+      );
     } else {
       console.log('❌ [PersonalInfoScreen] Profile update failed:', result.data?.message);
       Alert.alert('Error', result.data?.message || 'Failed to update profile');
@@ -498,6 +618,31 @@ const handleSaveProfile = async () => {
     );
   }
 
+  // Show refreshing indicator after update
+  if (isRefreshingAfterUpdate) {
+    console.log('⏳ [PersonalInfoScreen] Refreshing after update');
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={styles.header}>
+        <BackButton onPress={() => {
+          console.log('🔙 [PersonalInfoScreen] Back button pressed from refreshing state');
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('Home');
+          }
+        }} />
+          <Text style={styles.headerTitle}>Personal Info</Text>
+         
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Refreshing data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   console.log('🎨 [PersonalInfoScreen] Rendering component with data:', {
     isLoading,
     isLoadingProfile,
@@ -610,8 +755,8 @@ const handleSaveProfile = async () => {
               keyboardType="email-address"
               editable={!isEmailVerified}
               selectTextOnFocus={!isEmailVerified}
-              placeholder="Enter your email"
-              placeholderTextColor="#999"
+              placeholder={userEmail ? userEmail : "Enter your email"}
+              placeholderTextColor={userEmail ? "#333" : "#999"}
             />
             <TouchableOpacity 
               style={[
