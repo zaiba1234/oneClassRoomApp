@@ -3,10 +3,12 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Linking, Platform } from 'react-native';
 import store from './src/Redux/store';
 
 // Suppress Firebase warnings
 import './src/utils/suppressWarnings';
+import messaging from '@react-native-firebase/messaging';
 import { 
   initializeFirebaseMessaging, 
   sendFCMTokenToBackend,
@@ -21,6 +23,8 @@ import notificationTester from './src/services/notificationTester';
 import globalNotificationService from './src/services/globalNotificationService';  
 import CustomAlertManager from './src/Component/CustomAlertManager';
 import notificationAlertService from './src/services/notificationAlertService';
+import { setNavigationRef } from './src/utils/tokenErrorHandler';
+import { navigateWithDeepLink, parseDeepLink } from './src/utils/deepLinking';
 import SplashScreen from './src/Screen/SplashScreen';
 import OnBoardScreen from './src/Screen/OnBoardScreen';
 import LoginScreen from './src/Screen/LoginScreen';
@@ -118,6 +122,49 @@ const AppContent = ({ alertManagerRef }) => {
       console.error('💥 App: Error setting up message listener:', error);
     }
 
+    // Handle notification opened app (when app is in background and notification is tapped)
+    try {
+      messaging().onNotificationOpenedApp(async (remoteMessage) => {
+        console.log('🔔 [App] Notification opened app from background:', remoteMessage);
+        
+        try {
+          // Enrich notification data with lessonId for lesson_live notifications
+          const notificationService = require('./src/services/notificationService').default;
+          const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(remoteMessage);
+          
+          // Extract data for checking
+          const fcmData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
+          const notificationType = fcmData.type || fcmData.notificationType || 'general';
+          
+          // Generate deep link from enriched notification
+          const { generateDeepLinkFromNotification, navigateWithDeepLink } = require('./src/utils/deepLinking');
+          let deepLink = generateDeepLinkFromNotification(enrichedNotification);
+          console.log('🔗 [App] Generated deep link from background notification:', deepLink);
+          
+          // If deep link is still pointing to notification screen for lesson_live, override it
+          if (notificationType === 'lesson_live' && deepLink.includes('notification')) {
+            const lessonId = fcmData.lessonId || enrichedNotification.lessonId || fcmData.lesson_id;
+            if (lessonId) {
+              console.log('🔗 [App] Overriding deep link with lessonId:', lessonId);
+              deepLink = `learningsaint://lesson/live/${lessonId}`;
+              console.log('🔗 [App] Corrected deep link:', deepLink);
+            }
+          }
+          
+          // Navigate after a short delay to ensure navigation is ready
+          setTimeout(() => {
+            if (navigationRef.current && navigationRef.current.isReady()) {
+              navigateWithDeepLink(navigationRef.current, deepLink);
+            }
+          }, 1000);
+        } catch (error) {
+          console.error('❌ [App] Error handling notification opened app:', error);
+        }
+      });
+    } catch (error) {
+      console.error('❌ [App] Error setting up notification opened app handler:', error);
+    }
+
     // Initialize Notifications (Firebase only)
     initNotifications();
     
@@ -166,6 +213,8 @@ const AppContent = ({ alertManagerRef }) => {
     
     // Set global navigation reference for notification handlers
     global.navigationRef = navigationRef;
+    // Set navigation ref for token error handler
+    setNavigationRef(navigationRef);
     
     // Add notification testing functions
     global.testNotifications = () => notificationTester.runCompleteTest();
@@ -243,8 +292,110 @@ const AppContent = ({ alertManagerRef }) => {
     handleUserLogin();
   }, [token, fcmService]);
 
+  // Deep linking configuration
+  const linking = {
+    prefixes: ['learningsaint://', 'https://learningsaint.com', 'https://*.learningsaint.com'],
+    config: {
+      screens: {
+        Splash: 'splash',
+        OnBoard: 'onboard',
+        Login: 'login',
+        Verify: 'verify',
+        Register: 'register',
+        Home: 'home',
+        Notification: 'notification/:notificationId?',
+        LessonVideo: 'lesson/:lessonId',
+        Enroll: 'enroll/:courseId',
+        SubCourse: 'course/:courseId',
+        Internship: 'internship/:tab?',
+        Profile: 'profile',
+        // Add other screens as needed
+      },
+    },
+  };
+
+  // Handle deep links when app is opened from notification
+  useEffect(() => {
+    // Handle initial URL (when app is opened from notification)
+    const getInitialURL = async () => {
+      try {
+        // Check for pending deep link from Firebase notification
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const pendingDeepLink = await AsyncStorage.getItem('pending_deep_link');
+        
+        if (pendingDeepLink) {
+          console.log('🔗 [App] Pending deep link found:', pendingDeepLink);
+          await AsyncStorage.removeItem('pending_deep_link');
+          
+          // Also check for enriched notification data
+          const pendingNotificationData = await AsyncStorage.getItem('pending_notification_data');
+          if (pendingNotificationData) {
+            console.log('🔗 [App] Pending notification data found, using enriched deep link');
+            await AsyncStorage.removeItem('pending_notification_data');
+            // Re-generate deep link from enriched data to ensure lessonId is included
+            try {
+              const { generateDeepLinkFromNotification } = require('./src/utils/deepLinking');
+              const enrichedData = JSON.parse(pendingNotificationData);
+              const enrichedDeepLink = generateDeepLinkFromNotification(enrichedData);
+              console.log('🔗 [App] Enriched deep link:', enrichedDeepLink);
+              
+              setTimeout(() => {
+                if (navigationRef.current) {
+                  navigateWithDeepLink(navigationRef.current, enrichedDeepLink);
+                }
+              }, 2000); // Wait for navigation to be ready
+              return;
+            } catch (enrichError) {
+              console.error('❌ [App] Error generating enriched deep link, using original:', enrichError);
+            }
+          }
+          
+          setTimeout(() => {
+            if (navigationRef.current) {
+              navigateWithDeepLink(navigationRef.current, pendingDeepLink);
+            }
+          }, 2000); // Wait for navigation to be ready
+          return;
+        }
+        
+        // Check for URL from deep link
+        const url = await Linking.getInitialURL();
+        if (url) {
+          console.log('🔗 [App] Initial URL:', url);
+          setTimeout(() => {
+            if (navigationRef.current) {
+              navigateWithDeepLink(navigationRef.current, url);
+            }
+          }, 2000); // Wait for navigation to be ready
+        }
+      } catch (error) {
+        console.error('❌ [App] Error getting initial URL:', error);
+      }
+    };
+
+    // Handle URL when app is already running
+    const handleURL = (event) => {
+      console.log('🔗 [App] URL received:', event.url);
+      if (navigationRef.current) {
+        navigateWithDeepLink(navigationRef.current, event.url);
+      }
+    };
+
+    // Listen for deep links
+    const subscription = Linking.addEventListener('url', handleURL);
+
+    // Check initial URL after navigation is ready
+    setTimeout(() => {
+      getInitialURL();
+    }, 1500);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="OnBoard" component={OnBoardScreen} />

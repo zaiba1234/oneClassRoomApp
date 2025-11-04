@@ -8,6 +8,7 @@ import store from '../Redux/store';
 import { getApiUrl } from '../API/config';
 import { getFCMTokenService } from '../services/fcmTokenService';
 import notificationService from '../services/notificationService';
+import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
 // FIREBASE AUTH - COMMENTED OUT FOR 2FACTOR INTEGRATION
 // import { setCustomAlertRef } from '../services/firebaseAuthService';
 
@@ -399,6 +400,12 @@ console.log('🔔 [handleResendOTP] Response:', response);
             console.log('👤 [VerificationScreen] Fetching user profile...');
             const profileResult = await profileAPI.getUserProfile(token);
             console.log('👤 [VerificationScreen] Profile API Response:', JSON.stringify(profileResult, null, 2));
+
+            // Check if it's a token error (handled by profileAPI, but check here too)
+            if (profileResult.isTokenError) {
+              console.log('🔐 [VerificationScreen] Token error in profile fetch - already handled');
+              return; // Exit early - navigation handled by tokenErrorHandler
+            }
 
             if (profileResult.success && profileResult.data.success) {
               const userData = profileResult.data.data;

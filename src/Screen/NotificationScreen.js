@@ -21,6 +21,7 @@ import BackButton from '../Component/BackButton';
 
 // Import local assets
 const ArrowIcon = require('../assests/images/Arrow.png');
+const LearningSaintLogo = require('../assests/images/Learningsaintlogo.png');
 
 // Get screen dimensions for responsive design
 const { width, height } = Dimensions.get('window');
@@ -118,8 +119,9 @@ const NotificationScreen = ({ navigation }) => {
       // Handle different notification types
       switch (data?.type) {
         case 'live_lesson':
+        case 'lesson_live': // Backend sends this type
           if (data.lessonId) {
-            navigation.navigate('LessonVideo', { lessonId: data.lessonId });
+            navigation.navigate('LessonVideo', { lessonId: data.lessonId, isLive: true });
           }
           break;
         case 'buy_course':
@@ -129,6 +131,9 @@ const NotificationScreen = ({ navigation }) => {
           break;
         case 'request_internship_letter':
         case 'upload_internship_letter':
+        case 'internship_letter_uploaded':
+        case 'internship_letter_payment':
+        case 'internship_letter_payment_completed':
           navigation.navigate('Internship');
           break;
         default:
@@ -138,10 +143,79 @@ const NotificationScreen = ({ navigation }) => {
     }
   };
 
+  // Handle Continue button for live lesson and internship notifications
+  const handleContinueButton = async (notification) => {
+    try {
+      console.log('🔔 NotificationScreen: Continue button pressed for notification:', notification);
+      
+      const { data } = notification;
+      const notificationType = data?.type || notification.type;
+      
+      // Check if it's a live lesson notification
+      if (notificationType === 'lesson_live' || notificationType === 'live_lesson') {
+        let lessonId = data?.lessonId;
+        
+        // If lessonId is not in data, try to enrich the notification
+        if (!lessonId) {
+          console.log('🔔 NotificationScreen: lessonId not found, enriching notification...');
+          const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(notification);
+          const enrichedData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
+          lessonId = enrichedData.lessonId || enrichedNotification.lessonId || data?.lessonId;
+        }
+        
+        if (lessonId) {
+          console.log('🔔 NotificationScreen: Navigating to LessonVideo with lessonId:', lessonId);
+          navigation.navigate('LessonVideo', { lessonId: lessonId, isLive: true });
+        } else {
+          console.error('❌ NotificationScreen: lessonId not found for live lesson notification');
+          Alert.alert('Error', 'Unable to find lesson information. Please try again.');
+        }
+      }
+      // Check if it's an internship notification
+      else if (
+        notificationType === 'request_internship_letter' || 
+        notificationType === 'upload_internship_letter' ||
+        notificationType === 'internship_letter_uploaded' ||
+        notificationType === 'internship_letter_payment' ||
+        notificationType === 'internship_letter_payment_completed'
+      ) {
+        console.log('🔔 NotificationScreen: Navigating to Internship screen for notification type:', notificationType);
+        navigation.navigate('Internship');
+      }
+    } catch (error) {
+      console.error('❌ NotificationScreen: Error handling continue button:', error);
+      Alert.alert('Error', 'Failed to open. Please try again.');
+    }
+  };
+
+  // Check if notification is a live lesson
+  const isLiveLessonNotification = (notification) => {
+    const notificationType = notification?.data?.type || notification?.type;
+    return notificationType === 'lesson_live' || notificationType === 'live_lesson';
+  };
+
+  // Check if notification is an internship-related notification
+  const isInternshipNotification = (notification) => {
+    const notificationType = notification?.data?.type || notification?.type;
+    return (
+      notificationType === 'request_internship_letter' || 
+      notificationType === 'upload_internship_letter' ||
+      notificationType === 'internship_letter_uploaded' ||
+      notificationType === 'internship_letter_payment' ||
+      notificationType === 'internship_letter_payment_completed'
+    );
+  };
+
+  // Check if notification should show Continue button
+  const shouldShowContinueButton = (notification) => {
+    return isLiveLessonNotification(notification) || isInternshipNotification(notification);
+  };
+
   // Get icon configuration based on notification type
   const getIconConfig = (type) => {
     switch (type) {
       case 'live_lesson':
+      case 'lesson_live': // Backend sends this type
         return {
           leftColor: '#4A90E2',
           rightColor: '#FFB6C1',
@@ -154,12 +228,15 @@ const NotificationScreen = ({ navigation }) => {
           outlineColor: '#50C878',
         };
       case 'request_internship_letter':
+      case 'internship_letter_payment':
         return {
           leftColor: '#FFD93D',
           rightColor: '#50C878',
           outlineColor: '#FFD93D',
         };
       case 'upload_internship_letter':
+      case 'internship_letter_uploaded':
+      case 'internship_letter_payment_completed':
         return {
           leftColor: '#50C878',
           rightColor: '#FFD93D',
@@ -228,43 +305,79 @@ const NotificationScreen = ({ navigation }) => {
   }, [token]);
 
   const renderNotificationItem = (item) => {
-    const iconConfig = getIconConfig(item.data?.type);
+    const notificationType = item.data?.type || item.type;
+    const iconConfig = getIconConfig(notificationType);
     const timeAgo = formatNotificationTime(item.createdAt || item.timestamp);
+    const isLiveLesson = isLiveLessonNotification(item);
+    const isInternship = isInternshipNotification(item);
+    const showContinueButton = shouldShowContinueButton(item);
+    
+    // Debug logging for internship notifications
+    if (notificationType && notificationType.includes('internship')) {
+      console.log('🔔 NotificationScreen: Internship notification detected:', {
+        type: notificationType,
+        isInternship: isInternship,
+        showContinueButton: showContinueButton,
+        hasData: !!item.data,
+        dataType: item.data?.type
+      });
+    }
     
     return (
-      <TouchableOpacity 
-        key={item._id || item.id} 
+      <View
+        key={item._id || item.id}
         style={[
-          styles.notificationCard, 
-          !item.isRead && styles.unreadCard
+          styles.notificationCard,
+          !item.isRead && styles.unreadCard,
+          isLiveLesson && styles.liveLessonCard,
+          isInternship && styles.internshipCard
         ]}
-        onPress={() => handleNotificationTap(item)}
       >
-        <View style={styles.notificationContent}>
+        <TouchableOpacity
+          style={styles.notificationContent}
+          onPress={() => handleNotificationTap(item)}
+          activeOpacity={0.7}
+        >
           <View style={styles.iconContainer}>
-            <NotificationIcon
-              leftColor={iconConfig.leftColor}
-              rightColor={iconConfig.rightColor}
-              outlineColor={iconConfig.outlineColor}
-              size={getFontSize(48)}
-            />
+            <View style={styles.logoCircle}>
+              <Image 
+                source={LearningSaintLogo} 
+                style={styles.logoInCircle}
+                resizeMode="contain"
+              />
+            </View>
           </View>
           <View style={styles.textContainer}>
-            <Text style={[styles.title, !item.isRead && styles.unreadText]}>
-              {item.title}
-            </Text>
-            <Text style={styles.subtitle}>
+            <View style={styles.titleRow}>
+              <Text style={[styles.title, !item.isRead && styles.unreadText]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              {!item.isRead && !showContinueButton && (
+                <View style={styles.unreadDot} />
+              )}
+            </View>
+            <Text style={styles.subtitle} numberOfLines={2}>
               {item.body}
             </Text>
             <Text style={styles.timeText}>
               {timeAgo}
             </Text>
           </View>
-          {!item.isRead && (
-            <View style={styles.unreadDot} />
-          )}
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        
+        {/* Continue button for live lesson and internship notifications */}
+        {showContinueButton && (
+          <View style={styles.continueButtonContainer}>
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={() => handleContinueButton(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.continueButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -382,20 +495,20 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: getVerticalSize(16),
-    paddingTop: getVerticalSize(16),
+    paddingTop: getVerticalSize(20),
     paddingBottom: getVerticalSize(32),
   },
   notificationCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: getFontSize(12),
-    marginBottom: getVerticalSize(12),
-    padding: getVerticalSize(16),
+    marginBottom: getVerticalSize(10),
+    padding: getVerticalSize(10),
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
@@ -404,26 +517,59 @@ const styles = StyleSheet.create({
   },
   notificationContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   iconContainer: {
     marginRight: getVerticalSize(12),
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  logoCircle: {
+    width: getFontSize(44),
+    height: getFontSize(44),
+    borderRadius: getFontSize(22),
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E9ECEF',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  logoInCircle: {
+    width: getFontSize(32),
+    height: getFontSize(32),
   },
   textContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
-  title: {
-    fontSize: getFontSize(16),
-    fontWeight: 'bold',
-    color: '#000000',
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: getVerticalSize(4),
   },
+  title: {
+    fontSize: getFontSize(15),
+    fontWeight: '700',
+    color: '#1A1A1A',
+    flex: 1,
+    lineHeight: getFontSize(20),
+  },
   subtitle: {
-    fontSize: getFontSize(14),
-    color: '#666666',
+    fontSize: getFontSize(13),
+    color: '#4A4A4A',
+    lineHeight: getFontSize(18),
+    marginTop: getVerticalSize(2),
+    marginBottom: getVerticalSize(2),
   },
   countdownText: {
     color: '#FF4444',
@@ -446,15 +592,16 @@ const styles = StyleSheet.create({
   },
   unreadCard: {
     backgroundColor: '#F8F9FF',
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     borderLeftColor: '#FF6B35',
   },
   unreadText: {
     fontWeight: 'bold',
   },
   timeText: {
-    fontSize: getFontSize(12),
-    color: '#999999',
+    fontSize: getFontSize(11),
+    color: '#8E8E93',
+    fontWeight: '500',
     marginTop: getVerticalSize(2),
   },
   unreadDot: {
@@ -463,6 +610,46 @@ const styles = StyleSheet.create({
     borderRadius: getFontSize(4),
     backgroundColor: '#FF6B35',
     marginLeft: getVerticalSize(8),
+  },
+  liveLessonCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#4A90E2',
+    backgroundColor: '#F8FBFF',
+  },
+  internshipCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFD93D',
+    backgroundColor: '#FFFEF8',
+  },
+  continueButtonContainer: {
+    marginTop: getVerticalSize(6),
+    paddingTop: getVerticalSize(6),
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
+    alignItems: 'flex-end',
+  },
+  continueButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: getVerticalSize(14),
+    paddingVertical: getVerticalSize(6),
+    borderRadius: getFontSize(14),
+    minWidth: getFontSize(70),
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF6B35',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(11),
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   loadingContainer: {
     flex: 1,

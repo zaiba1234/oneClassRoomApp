@@ -56,5 +56,25 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<!-- Deep linking URL schemes -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.learningsaint</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>learningsaint</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Universal links -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:learningsaint.com</string>
+		<string>applinks:*.learningsaint.com</string>
+	</array>
 </dict>
 </plist>

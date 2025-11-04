@@ -28,6 +28,7 @@ import { setProfileData } from '../Redux/userSlice';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import { useFocusEffect } from '@react-navigation/native';
 import NotificationBadge from '../Component/NotificationBadge';
+import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
 
 const { width, height } = Dimensions.get('window');
 
@@ -773,9 +774,16 @@ useEffect(() => {
 
       console.log('🏠 HomeScreen: Banner response status:', response.status);
 
+      const result = await response.json();
+
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: result })) {
+        console.log('🔐 [HomeScreen] Token error detected in fetchBannerData');
+        await handleTokenError(result, true);
+        return; // Exit early - navigation handled by tokenErrorHandler
+      }
+
       if (response.ok) {
-        const result = await response.json();
-        
         if (__DEV__) {
           console.log('🏠 HomeScreen: Raw API response success:', result.success);
         }

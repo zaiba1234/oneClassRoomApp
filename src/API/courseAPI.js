@@ -1,5 +1,6 @@
 
 import { getApiUrl, getApiHeaders, ENDPOINTS } from './config';
+import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
 
 export const courseAPI = {
   getAllSubcourses: async (token, options = {}) => {
@@ -24,6 +25,18 @@ export const courseAPI = {
       });
 
       const responseData = await response.json();
+
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [courseAPI] Token error detected in getAllSubcourses');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
 
       // DETAILED API RESPONSE DEBUG FOR ALL COURSES
       console.log('🔥🔥🔥 API LEVEL - ALL COURSES RESPONSE DEBUG 🔥🔥🔥');
@@ -80,6 +93,18 @@ export const courseAPI = {
 
       const responseData = await response.json();
      
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [courseAPI] Token error detected in getAllCourses');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
+     
       // DETAILED API RESPONSE DEBUG FOR ALL COURSES
       
       if (responseData.pagination) {
@@ -129,6 +154,18 @@ export const courseAPI = {
       }
 
       const responseData = await response.json();
+
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [courseAPI] Token error detected in getPopularSubcourses');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
 
       // DETAILED API RESPONSE DEBUG FOR POPULAR COURSES
       
@@ -184,6 +221,18 @@ export const courseAPI = {
       }
 
       const responseData = await response.json();
+
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [courseAPI] Token error detected in getNewestSubcourses');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
 
       // DETAILED API RESPONSE DEBUG FOR NEWEST COURSES
      

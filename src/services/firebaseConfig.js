@@ -254,8 +254,8 @@ export const initializeFirebaseMessaging = async () => {
 // Message listener (using modern API)
 export const onMessageReceived = (callback) => {
   try {
-    const messagingInstance = getMessaging(firebaseApp);
-    return messagingInstance.onMessage((remoteMessage) => {
+    // Use messaging() directly instead of getMessaging for React Native Firebase
+    return messaging().onMessage((remoteMessage) => {
       console.log('📨 Message received');
       if (callback) callback(remoteMessage);
     });
@@ -268,8 +268,8 @@ export const onMessageReceived = (callback) => {
 // Token refresh (using modern API)
 export const onTokenRefresh = (callback) => {
   try {
-    const messagingInstance = getMessaging(firebaseApp);
-    return messagingInstance.onTokenRefresh((token) => {
+    // Use messaging() directly instead of getMessaging for React Native Firebase
+    return messaging().onTokenRefresh((token) => {
       console.log('🔄 Token refreshed');
       AsyncStorage.setItem(FCM_TOKEN_KEY, token);
       if (callback) callback(token);
@@ -286,9 +286,12 @@ export const onBackgroundMessage = async (remoteMessage) => {
 };
 
 // Set background handler (using modern API)
+// Note: Background handler should be set in index.js at top level
+// This is just a placeholder - actual handler is in index.js
 try {
-  const messagingInstance = getMessaging(firebaseApp);
-  messagingInstance.setBackgroundMessageHandler(onBackgroundMessage);
+  // Don't set background handler here - it's set in index.js
+  // messaging().setBackgroundMessageHandler is already called in index.js
+  console.log('ℹ️ Background handler is set in index.js');
 } catch (error) {
   console.log('❌ Background handler error:', error.message);
 }

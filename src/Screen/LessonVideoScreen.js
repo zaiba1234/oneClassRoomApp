@@ -44,8 +44,9 @@ const LessonVideoScreen = ({ navigation, route }) => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const webViewRef = useRef(null);
 
-  // Get lesson ID from route params
+  // Get lesson ID and subcourseId from route params
   const lessonId = route.params?.lessonId;
+  const subcourseId = route.params?.subcourseId;
   
   // Get user data from Redux
   const { token } = useAppSelector((state) => state.user);
@@ -62,6 +63,7 @@ const LessonVideoScreen = ({ navigation, route }) => {
     startTime: '',
     endTime: '',
     LiveStatus: false,
+    subcourseId: null, // Store subcourseId from API response
   });
 
   const [isLoadingLesson, setIsLoadingLesson] = useState(true);
@@ -285,12 +287,27 @@ const LessonVideoScreen = ({ navigation, route }) => {
         console.log('⚠️ LessonVideoScreen: No class link available for live lesson');
       }
     } else {
-      // Recorded lesson - open recorded video link
-      if (lessonData.recordedVideoLink) {
-        console.log('🔗 LessonVideoScreen: Opening recorded video link:', lessonData.recordedVideoLink);
-        Linking.openURL(lessonData.recordedVideoLink);
+      // Recorded lesson - navigate to EnrollScreen with Downloads tab
+      // Use subcourseId from route params, lessonData, or fallback
+      const courseIdToNavigate = subcourseId || lessonData.subcourseId || route.params?.courseId;
+      
+      if (courseIdToNavigate) {
+        console.log('📱 LessonVideoScreen: Navigating to EnrollScreen with Downloads tab');
+        console.log('📚 LessonVideoScreen: Course ID:', courseIdToNavigate);
+        // Navigate to EnrollScreen and switch to Downloads tab
+        navigation.navigate('Enroll', { 
+          courseId: courseIdToNavigate,
+          activeTab: 'downloads' // Switch to Downloads tab
+        });
       } else {
-        console.log('⚠️ LessonVideoScreen: No recorded video link available');
+        console.log('⚠️ LessonVideoScreen: No subcourseId available, cannot navigate to EnrollScreen');
+        // Fallback: open recorded video link if available
+        if (lessonData.recordedVideoLink) {
+          console.log('🔗 LessonVideoScreen: Opening recorded video link as fallback');
+          Linking.openURL(lessonData.recordedVideoLink);
+        } else {
+          console.log('⚠️ LessonVideoScreen: No recorded video link available');
+        }
       }
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,9 @@ import { useAppSelector, useAppDispatch } from '../Redux/hooks';
 import { logout, clearUserFromStorage } from '../Redux/userSlice';
 import { useNavigation } from '@react-navigation/native';
 import { getApiUrl } from '../API/config';
+import notificationService from '../services/notificationService';
+import { getStoredFCMToken } from '../services/firebaseConfig';
+import { setSkipSessionExpiredAlert } from '../utils/tokenErrorHandler';
 
 
 const ProfileScreen = ({ navigation }) => {
@@ -44,6 +47,9 @@ const ProfileScreen = ({ navigation }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
   const [overlayVisible, setOverlayVisible] = useState(false);
+  
+  // Use ref to track checkbox state for immediate access (avoids async state update issue)
+  const privacyPolicyAcceptedRef = useRef(false);
 
   // Custom alert state
   const [customAlert, setCustomAlert] = useState({
@@ -203,6 +209,9 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = () => {
+    // Set flag BEFORE showing alert to ensure it's set before any async operations
+    setSkipSessionExpiredAlert(true);
+    
     showCustomAlert(
       'Logout',
       'Are you sure you want to logout?',
@@ -210,18 +219,64 @@ const ProfileScreen = ({ navigation }) => {
       [
         {
           text: 'Cancel',
-          onPress: hideCustomAlert,
+          onPress: () => {
+            // Reset flag if user cancels
+            setSkipSessionExpiredAlert(false);
+            hideCustomAlert();
+          },
           style: 'secondary',
         },
         {
           text: 'Logout',
-          onPress: async () => {
-            hideCustomAlert();
-            // Clear from storage first, then logout
-            await dispatch(clearUserFromStorage());
-            dispatch(logout());
-            nav.navigate('Login');
-          },
+              onPress: async () => {
+                hideCustomAlert();
+                try {
+                  console.log('🔔 ProfileScreen: Starting logout process...');
+                  
+                  // Flag is already set above
+                  
+                  // Get FCM token before logout
+                  const fcmToken = await getStoredFCMToken();
+                  
+                  console.log('🔔 ProfileScreen: FCM Token status:', {
+                    hasToken: !!token,
+                    hasFcmToken: !!fcmToken,
+                    fcmTokenPreview: fcmToken ? `${fcmToken.substring(0, 20)}...` : 'null',
+                  });
+                  
+                  // Remove FCM token from backend before logout
+                  // Pass token and fcmToken directly to ensure they're available
+                  console.log('🔔 ProfileScreen: Removing FCM token from backend...');
+                  await notificationService.cleanup(token, fcmToken);
+                  console.log('✅ ProfileScreen: FCM token removal completed');
+                  
+                  // Clear from storage, then logout
+                  console.log('🔔 ProfileScreen: Clearing user data from storage...');
+                  await dispatch(clearUserFromStorage());
+                  dispatch(logout());
+                  console.log('✅ ProfileScreen: Logout completed');
+                  
+                  nav.navigate('Login');
+                  
+                  // Reset flag AFTER navigation with delay to handle any delayed API responses
+                  setTimeout(() => {
+                    setSkipSessionExpiredAlert(false);
+                    console.log('🔔 ProfileScreen: Flag reset after logout');
+                  }, 2000); // 2 second delay to ensure all async operations complete
+                } catch (error) {
+                  console.error('❌ ProfileScreen: Error during logout:', error);
+                  // Continue with logout even if FCM token removal fails
+                  await dispatch(clearUserFromStorage());
+                  dispatch(logout());
+                  nav.navigate('Login');
+                  
+                  // Reset flag AFTER navigation with delay even on error
+                  setTimeout(() => {
+                    setSkipSessionExpiredAlert(false);
+                    console.log('🔔 ProfileScreen: Flag reset after logout (error case)');
+                  }, 2000);
+                }
+              },
           style: 'danger',
         },
       ]
@@ -229,7 +284,10 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const handleDeleteAccount = () => {
-    setPrivacyPolicyAccepted(false); // Reset checkbox state
+    // Reset checkbox state and ref
+    setPrivacyPolicyAccepted(false);
+    privacyPolicyAcceptedRef.current = false;
+    
     showCustomAlert(
       'Delete Account',
       'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.',
@@ -237,13 +295,21 @@ const ProfileScreen = ({ navigation }) => {
       [
         {
           text: 'Cancel',
-          onPress: hideCustomAlert,
+          onPress: () => {
+            // Reset checkbox when canceling
+            setPrivacyPolicyAccepted(false);
+            privacyPolicyAcceptedRef.current = false;
+            hideCustomAlert();
+          },
           style: 'secondary',
         },
         {
           text: 'Delete ',
           onPress: () => {
-            if (privacyPolicyAccepted) {
+            // Check both state and ref to handle async state updates
+            const isAccepted = privacyPolicyAccepted || privacyPolicyAcceptedRef.current;
+            
+            if (isAccepted) {
               hideCustomAlert();
               // Show second confirmation
               showCustomAlert(
@@ -435,6 +501,12 @@ const ProfileScreen = ({ navigation }) => {
         }),
       });
 
+      // Check for token errors but don't show popup (handled by skipSessionExpiredAlert flag)
+      if (response.status === 401) {
+        console.log('⚠️ ProfileScreen: Token expired during profile ensure (expected during delete)');
+        return false;
+      }
+      
       if (response.ok) {
         console.log('✅ User profile ensured/created successfully');
         return true;
@@ -450,12 +522,23 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   const deleteAccountAPI = async () => {
+    // Prevent duplicate calls - if already deleting, return early
+    if (isDeleting) {
+      console.log('⚠️ ProfileScreen: Account deletion already in progress, ignoring duplicate call');
+      return;
+    }
+    
+    // Set flag at the VERY START before any async operations
+    setSkipSessionExpiredAlert(true);
+    
     try {
       setIsDeleting(true);
       console.log('🗑️ Starting account deletion process...');
       console.log('🔑 Token being used:', token ? 'Token exists' : 'No token');
       console.log('👤 User ID from Redux:', _id);
       console.log('👤 User ID (userId) from Redux:', userId);
+
+      // Flag is already set above
 
       // First ensure user profile exists
       console.log('🔧 Ensuring user profile exists before deletion...');
@@ -483,6 +566,29 @@ const ProfileScreen = ({ navigation }) => {
       console.log('📥 Response ok:', response.ok);
       console.log('📥 Response headers:', response.headers);
 
+      // Check for token errors but don't show popup (handled by skipSessionExpiredAlert flag)
+      if (response.status === 401) {
+        console.log('⚠️ ProfileScreen: Token expired during account deletion (expected)');
+        setSkipSessionExpiredAlert(false);
+        showCustomAlert(
+          'Delete Failed',
+          'Your session has expired. Please login again and try deleting your account.',
+          'error',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                hideCustomAlert();
+                nav.navigate('Login');
+              },
+              style: 'primary',
+            },
+          ]
+        );
+        setIsDeleting(false);
+        return;
+      }
+
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Account deleted successfully - Full response:', JSON.stringify(result, null, 2));
@@ -496,10 +602,52 @@ const ProfileScreen = ({ navigation }) => {
               text: 'OK',
               onPress: async () => {
                 hideCustomAlert();
-                // Clear user data and navigate to login
-                await dispatch(clearUserFromStorage());
-                dispatch(logout());
-                nav.navigate('Login');
+                try {
+                  console.log('🔔 ProfileScreen: Starting cleanup after account deletion...');
+                  
+                  // Flag is already set at the start of deleteAccountAPI
+                  
+                  // Get FCM token before logout
+                  const fcmToken = await getStoredFCMToken();
+                  
+                  console.log('🔔 ProfileScreen: FCM Token status:', {
+                    hasToken: !!token,
+                    hasFcmToken: !!fcmToken,
+                    fcmTokenPreview: fcmToken ? `${fcmToken.substring(0, 20)}...` : 'null',
+                  });
+                  
+                  // Remove FCM token from backend before logout
+                  // Pass token and fcmToken directly to ensure they're available
+                  console.log('🔔 ProfileScreen: Removing FCM token from backend...');
+                  await notificationService.cleanup(token, fcmToken);
+                  console.log('✅ ProfileScreen: FCM token removal completed');
+                  
+                  // Clear user data and navigate to login
+                  console.log('🔔 ProfileScreen: Clearing user data from storage...');
+                  await dispatch(clearUserFromStorage());
+                  dispatch(logout());
+                  console.log('✅ ProfileScreen: Account deletion cleanup completed');
+                  
+                  nav.navigate('Login');
+                  
+                  // Reset flag AFTER navigation with delay to handle any delayed API responses
+                  setTimeout(() => {
+                    setSkipSessionExpiredAlert(false);
+                    console.log('🔔 ProfileScreen: Flag reset after account deletion');
+                  }, 2000); // 2 second delay to ensure all async operations complete
+                } catch (error) {
+                  console.error('❌ ProfileScreen: Error during account deletion cleanup:', error);
+                  // Continue with logout even if FCM token removal fails
+                  await dispatch(clearUserFromStorage());
+                  dispatch(logout());
+                  nav.navigate('Login');
+                  
+                  // Reset flag AFTER navigation with delay even on error
+                  setTimeout(() => {
+                    setSkipSessionExpiredAlert(false);
+                    console.log('🔔 ProfileScreen: Flag reset after account deletion (error case)');
+                  }, 2000);
+                }
               },
               style: 'primary',
             },
@@ -511,6 +659,9 @@ const ProfileScreen = ({ navigation }) => {
         console.error('❌ Error message:', errorData.message);
         console.error('❌ Error success flag:', errorData.success);
         console.error('❌ Error data field:', errorData.data);
+        
+        // Reset flag on error
+        setSkipSessionExpiredAlert(false);
 
         showCustomAlert(
           'Delete Failed',
@@ -529,6 +680,9 @@ const ProfileScreen = ({ navigation }) => {
       console.error('💥 Delete account error - Full error object:', error);
       console.error('💥 Error message:', error.message);
       console.error('💥 Error stack:', error.stack);
+      
+      // Reset flag on error
+      setSkipSessionExpiredAlert(false);
       console.error('💥 Error name:', error.name);
     
       showCustomAlert(
@@ -650,7 +804,11 @@ const ProfileScreen = ({ navigation }) => {
               <View style={styles.checkbox}>
                 <TouchableOpacity
                   style={styles.checkboxTop}
-                  onPress={() => setPrivacyPolicyAccepted(!privacyPolicyAccepted)}
+                  onPress={() => {
+                    const newValue = !privacyPolicyAccepted;
+                    setPrivacyPolicyAccepted(newValue);
+                    privacyPolicyAcceptedRef.current = newValue; // Update ref immediately
+                  }}
                   activeOpacity={0.8}
                 >
                   <View style={[

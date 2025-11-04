@@ -4,9 +4,9 @@ const API_CONFIG = {
   
   // Base URL configuration for different platforms
   BASE_URL: Platform.select({
-    android: 'https://main.learningsaint.com', 
-    ios: 'https://main.learningsaint.com', 
-    default: 'https://main.learningsaint.com', 
+    android: 'http://192.168.29.119:3000', 
+    ios: 'http://192.168.29.119:3000', 
+    default: 'http://192.168.29.119:3000', 
   }),
 
   // Razorpay configuration
@@ -57,7 +57,7 @@ export const getApiUrl = (endpoint) => {
   if (!API_CONFIG.BASE_URL) {
     console.error('❌ API Config: BASE_URL is undefined! Platform:', Platform.OS);
     // Fallback to a default URL if BASE_URL is somehow undefined
-    const fallbackUrl = `https://main.learningsaint.com${endpoint}`;
+    const fallbackUrl = `http://192.168.29.119:3000${endpoint}`;
     return fallbackUrl;
   }
   

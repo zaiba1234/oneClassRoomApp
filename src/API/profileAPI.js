@@ -1,5 +1,6 @@
 import { apiService } from './apiService';
 import { getApiUrl, getApiHeaders } from './config';
+import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
 
 export const profileAPI = {
   // Get user profile with authentication token
@@ -25,6 +26,18 @@ export const profileAPI = {
       clearTimeout(timeoutId);
       
       const responseData = await response.json();
+      
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [profileAPI] Token error detected in getUserProfile');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
       
       return {
         success: response.ok,
@@ -136,6 +149,18 @@ export const profileAPI = {
       
       
       const responseData = await response.json();
+      
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [profileAPI] Token error detected in updateUserProfile');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
       
       return {
         success: response.ok,

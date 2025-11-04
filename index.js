@@ -23,8 +23,49 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
     // Handle the background notification
     await notificationService.handleBackgroundNotification(remoteMessage);
     console.log('✅ Background notification processed successfully');
+    
+    // Note: Deep linking will be handled when user taps the notification
+    // The notification tap will trigger navigation via deep link
   } catch (error) {
     console.error('❌ Background notification processing failed:', error);
+  }
+});
+
+// Handle notification that opened the app (when app was closed)
+messaging().getInitialNotification().then(async (remoteMessage) => {
+  if (remoteMessage) {
+    console.log('🔗 [index.js] App opened from notification:', JSON.stringify(remoteMessage, null, 2));
+    
+    try {
+      // Enrich notification data with lessonId for lesson_live notifications
+      // Note: This is async, so we need to wait for it
+      const notificationService = require('./src/services/notificationService').default;
+      await notificationService.initialize(); // Ensure service is initialized
+      const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(remoteMessage);
+      
+      // Generate deep link from enriched notification
+      const { generateDeepLinkFromNotification } = require('./src/utils/deepLinking');
+      const deepLink = generateDeepLinkFromNotification(enrichedNotification);
+      console.log('🔗 [index.js] Generated deep link from initial notification:', deepLink);
+      
+      // Store in AsyncStorage for App.js to pick up
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.setItem('pending_deep_link', deepLink);
+      
+      // Also store the enriched notification data for App.js to use
+      await AsyncStorage.setItem('pending_notification_data', JSON.stringify(enrichedNotification));
+    } catch (err) {
+      console.error('❌ [index.js] Error processing initial notification:', err);
+      // Fallback: store basic deep link
+      try {
+        const { generateDeepLinkFromNotification } = require('./src/utils/deepLinking');
+        const deepLink = generateDeepLinkFromNotification(remoteMessage);
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        await AsyncStorage.setItem('pending_deep_link', deepLink);
+      } catch (fallbackErr) {
+        console.error('❌ [index.js] Error storing pending deep link (fallback):', fallbackErr);
+      }
+    }
   }
 });
 

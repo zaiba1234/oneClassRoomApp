@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -43,7 +44,29 @@ const getFontSize = (size) => size * scale;
 const getVerticalSize = (size) => size * verticalScale;
 
 const EnrollScreen = ({ navigation, route }) => {
-  const [activeTab, setActiveTab] = useState('lessons');
+  // Get activeTab from route params if provided, otherwise default to 'lessons'
+  const initialTab = route.params?.activeTab || 'lessons';
+  const [activeTab, setActiveTab] = useState(initialTab);
+  
+  // Update activeTab when route params change (including when screen is focused)
+  useEffect(() => {
+    if (route.params?.activeTab) {
+      console.log('📑 EnrollScreen: Setting activeTab from route params:', route.params.activeTab);
+      setActiveTab(route.params.activeTab);
+    }
+  }, [route.params?.activeTab]);
+  
+  // Also update tab when screen is focused (in case navigation happens to existing screen)
+  useFocusEffect(
+    React.useCallback(() => {
+      // Check for activeTab in route params when screen is focused
+      const tabFromParams = route.params?.activeTab;
+      if (tabFromParams && (tabFromParams === 'lessons' || tabFromParams === 'downloads')) {
+        console.log('📑 EnrollScreen: Screen focused, setting activeTab to:', tabFromParams);
+        setActiveTab(tabFromParams);
+      }
+    }, [route.params?.activeTab])
+  );
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showRecordedLessonModal, setShowRecordedLessonModal] = useState(false);
@@ -113,6 +136,14 @@ const EnrollScreen = ({ navigation, route }) => {
     } else {
     }
   }, [courseId, token]);
+  
+  // Ensure activeTab is set from route params on mount and when courseId changes
+  useEffect(() => {
+    if (route.params?.activeTab && (route.params.activeTab === 'lessons' || route.params.activeTab === 'downloads')) {
+      console.log('📑 EnrollScreen: Setting activeTab on mount/courseId change:', route.params.activeTab);
+      setActiveTab(route.params.activeTab);
+    }
+  }, [courseId, route.params?.activeTab]);
 
   // Handle completed flag when coming back from FeedbackScreen
   useEffect(() => {
@@ -1397,7 +1428,10 @@ const EnrollScreen = ({ navigation, route }) => {
                 }
 
                 if (courseData.paymentStatus) {
-                  navigation.navigate('LessonVideo', { lessonId: lesson.lessonId });
+                  navigation.navigate('LessonVideo', { 
+                    lessonId: lesson.lessonId,
+                    subcourseId: courseId // Pass courseId (which is actually subcourseId) for navigation back
+                  });
                 }
               }}
               disabled={isLessonLocked}

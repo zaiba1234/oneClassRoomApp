@@ -1,4 +1,16 @@
 import { getApiUrl, getApiHeaders } from './config';
+import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
+
+// Endpoints that should not trigger session expired popup (logout/delete flows)
+const EXCLUDED_ENDPOINTS = [
+  '/api/notification/remove-fcm-token',
+  '/api/user/profile/delete-profile',
+];
+
+// Check if endpoint should skip session expired alert
+const shouldSkipSessionExpiredAlert = (endpoint) => {
+  return EXCLUDED_ENDPOINTS.some(excluded => endpoint.includes(excluded));
+};
 
 // Common API service functions
 export const apiService = {
@@ -17,6 +29,19 @@ export const apiService = {
       });
       
       const responseData = await response.json();
+      
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [apiService] Token error detected in POST request');
+        const skipAlert = shouldSkipSessionExpiredAlert(endpoint);
+        await handleTokenError(responseData, !skipAlert); // Don't show alert if endpoint is excluded
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
       
       return {
         success: response.ok,
@@ -42,6 +67,20 @@ export const apiService = {
       });
       
       const responseData = await response.json();
+      
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [apiService] Token error detected in GET request');
+        const skipAlert = shouldSkipSessionExpiredAlert(endpoint);
+        await handleTokenError(responseData, !skipAlert); // Don't show alert if endpoint is excluded
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
+      
       return {
         success: response.ok,
         data: responseData,
@@ -67,6 +106,20 @@ export const apiService = {
       });
       
       const responseData = await response.json();
+      
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [apiService] Token error detected in PUT request');
+        const skipAlert = shouldSkipSessionExpiredAlert(endpoint);
+        await handleTokenError(responseData, !skipAlert); // Don't show alert if endpoint is excluded
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
+      
       return {
         success: response.ok,
         data: responseData,
@@ -91,6 +144,20 @@ export const apiService = {
       });
       
       const responseData = await response.json();
+      
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [apiService] Token error detected in DELETE request');
+        const skipAlert = shouldSkipSessionExpiredAlert(endpoint);
+        await handleTokenError(responseData, !skipAlert); // Don't show alert if endpoint is excluded
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
+      
       return {
         success: response.ok,
         data: responseData,

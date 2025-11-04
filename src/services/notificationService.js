@@ -97,15 +97,27 @@ class NotificationService {
       
       const { notification, data } = remoteMessage;
       
-      // Store notification for later processing
-      await this.storeNotification({
+      // Store notification for later processing - include full data structure for deep linking
+      const storedNotification = {
         title: notification?.title || 'New Notification',
         body: notification?.body || 'You have a new notification',
         data: data || {},
         timestamp: new Date().toISOString(),
         isRead: false,
-        type: data?.type || 'general'
-      });
+        type: data?.type || 'general',
+        // Store notificationId for future reference
+        id: remoteMessage.messageId || remoteMessage.messageId || Date.now().toString(),
+        // Store full remoteMessage for deep linking
+        remoteMessage: remoteMessage
+      };
+      
+      // If this is a lesson_live notification, ensure lessonId is stored
+      // Note: FCM payload might not have lessonId, but we'll try to get it from API when tapped
+      if (data?.type === 'lesson_live' && data?.lessonId) {
+        storedNotification.data.lessonId = data.lessonId;
+      }
+      
+      await this.storeNotification(storedNotification);
       
       // Firebase handles system tray display automatically for background notifications
       console.log('📨 NotificationService: Background notification stored and will be visible in system tray');
@@ -125,15 +137,26 @@ class NotificationService {
       
       const { notification, data } = remoteMessage;
       
-      // Store notification first
-      await this.storeNotification({
+      // Store notification first - include full data structure for deep linking
+      const storedNotification = {
         title: notification?.title || 'New Notification',
         body: notification?.body || 'You have a new notification',
         data: data || {},
         timestamp: new Date().toISOString(),
         isRead: false,
-        type: data?.type || 'general'
-      });
+        type: data?.type || 'general',
+        // Store notificationId for future reference
+        id: remoteMessage.messageId || remoteMessage.messageId || Date.now().toString(),
+        // Store full remoteMessage for deep linking
+        remoteMessage: remoteMessage
+      };
+      
+      // If this is a lesson_live notification, ensure lessonId is stored
+      if (data?.type === 'lesson_live' && data?.lessonId) {
+        storedNotification.data.lessonId = data.lessonId;
+      }
+      
+      await this.storeNotification(storedNotification);
       
       // For all notifications in foreground, show in-app notification
       // Note: Firebase doesn't have a direct method to show system notifications in foreground
@@ -143,7 +166,9 @@ class NotificationService {
         title: notification?.title || 'New Notification',
         body: notification?.body || 'You have a new notification',
         data: data || {},
-        type: data?.type || 'general'
+        type: data?.type || 'general',
+        // CRITICAL: Pass full remoteMessage for deep linking to work
+        remoteMessage: remoteMessage
       });
       
       // Log special handling for global notifications
@@ -271,27 +296,287 @@ class NotificationService {
     }
   }
 
-  // Handle notification tap
-  handleNotificationTap(notification) {
+  // Enrich notification data with lessonId for lesson_live notifications
+  // This is used by all notification handlers (foreground, background, cold start)
+  async enrichNotificationDataWithLessonId(notificationData) {
     try {
+      // Extract data from notification
+      const fcmData = notificationData?.data || notificationData?.notification?.data || notificationData?.data || {};
+      const notificationType = fcmData.type || fcmData.notificationType || 'general';
       
-      // Navigate to notification screen
-      this.navigateToNotificationScreen();
+      // Only process lesson_live notifications
+      if (notificationType !== 'lesson_live') {
+        return notificationData;
+      }
+      
+      // If lessonId already exists, return as is
+      if (fcmData.lessonId || fcmData.lesson_id) {
+        console.log('✅ NotificationService: lessonId already present in notification data');
+        return notificationData;
+      }
+      
+      console.log('🔔 NotificationService: lesson_live detected without lessonId, fetching from stored notifications...');
+      
+      // Try to get lessonId from stored notifications
+      const storedNotifications = await this.getStoredNotifications();
+      const notificationId = fcmData.notificationId || fcmData.notification_id;
+      
+      // Also check if notification was stored with remoteMessage that has data
+      let foundLessonId = null;
+      
+      if (notificationId) {
+        // Find stored notification by ID
+        const storedNotification = storedNotifications.find(n => {
+          // Check by notificationId in data
+          if (n.data?.notificationId === notificationId) return true;
+          // Check by stored id
+          if (n.id === notificationId || n._id === notificationId) return true;
+          // Check by messageId in remoteMessage
+          if (n.remoteMessage?.messageId === notificationId) return true;
+          return false;
+        });
+        
+        if (storedNotification) {
+          // Try to get lessonId from stored notification's data
+          if (storedNotification.data?.lessonId) {
+            foundLessonId = storedNotification.data.lessonId;
+            console.log('✅ NotificationService: Found lessonId in stored notification data:', foundLessonId);
+          }
+          // Also check remoteMessage data
+          else if (storedNotification.remoteMessage?.data?.lessonId) {
+            foundLessonId = storedNotification.remoteMessage.data.lessonId;
+            console.log('✅ NotificationService: Found lessonId in stored notification remoteMessage:', foundLessonId);
+          }
+        }
+        
+        // If still no lessonId, try to get from API
+        if (!foundLessonId) {
+          try {
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            const userToken = await AsyncStorage.getItem('user_token');
+            
+              if (userToken) {
+                console.log('🔔 NotificationService: Fetching notification from API with notificationId:', notificationId);
+                const notifications = await this.getNotifications(userToken, 1, 50);
+                
+                if (notifications && notifications.notifications) {
+                  console.log('🔔 NotificationService: Found', notifications.notifications.length, 'notifications from API');
+                  
+                  // Try to find by exact _id match first
+                  let apiNotification = notifications.notifications.find(n => 
+                    n._id && n._id.toString() === notificationId.toString()
+                  );
+                  
+                  // If not found, try by id field
+                  if (!apiNotification) {
+                    apiNotification = notifications.notifications.find(n => 
+                      n.id && n.id.toString() === notificationId.toString()
+                    );
+                  }
+                  
+                  // If still not found, try to find latest lesson_live notification
+                  if (!apiNotification) {
+                    console.log('🔔 NotificationService: Exact match not found, looking for latest lesson_live notification');
+                    apiNotification = notifications.notifications
+                      .filter(n => n.type === 'lesson_live' || n.data?.type === 'lesson_live')
+                      .sort((a, b) => new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp))[0];
+                  }
+                  
+                  if (apiNotification) {
+                    console.log('🔔 NotificationService: Found API notification:', {
+                      id: apiNotification._id || apiNotification.id,
+                      type: apiNotification.type || apiNotification.data?.type,
+                      hasData: !!apiNotification.data,
+                      dataKeys: apiNotification.data ? Object.keys(apiNotification.data) : []
+                    });
+                    
+                    if (apiNotification.data?.lessonId) {
+                      foundLessonId = apiNotification.data.lessonId.toString();
+                      console.log('✅ NotificationService: Found lessonId in API notification:', foundLessonId);
+                    } else {
+                      console.log('⚠️ NotificationService: API notification found but no lessonId in data');
+                    }
+                  } else {
+                    console.log('⚠️ NotificationService: No matching notification found in API response');
+                  }
+                } else {
+                  console.log('⚠️ NotificationService: No notifications returned from API');
+                }
+              } else {
+                console.log('⚠️ NotificationService: No user token available for API call');
+              }
+          } catch (apiError) {
+            console.error('❌ NotificationService: Error fetching notification from API:', apiError);
+          }
+        }
+        
+        // If we found lessonId, add it to notification data
+        if (foundLessonId) {
+          console.log('✅ NotificationService: Enriching notification data with lessonId:', foundLessonId);
+          
+          // Create a new object with enriched data
+          // Ensure lessonId is available at multiple levels for compatibility
+          const enrichedData = {
+            ...notificationData,
+            // Add lessonId at top level for easy access
+            lessonId: foundLessonId,
+            // Update data object
+            data: {
+              ...(notificationData.data || {}),
+              ...fcmData,
+              lessonId: foundLessonId,
+              lesson_id: foundLessonId
+            }
+          };
+          
+          // Also update notification.data if it exists (Firebase structure)
+          if (enrichedData.notification && enrichedData.notification.data) {
+            enrichedData.notification.data = {
+              ...enrichedData.notification.data,
+              ...fcmData,
+              lessonId: foundLessonId,
+              lesson_id: foundLessonId
+            };
+          }
+          
+          // Also ensure data is directly accessible if notificationData.data exists
+          if (notificationData.data) {
+            enrichedData.data = {
+              ...notificationData.data,
+              ...fcmData,
+              lessonId: foundLessonId,
+              lesson_id: foundLessonId
+            };
+          }
+          
+          console.log('✅ NotificationService: Enriched notification data:', JSON.stringify({
+            hasData: !!enrichedData.data,
+            hasNotificationData: !!enrichedData.notification?.data,
+            lessonIdInData: enrichedData.data?.lessonId,
+            lessonIdInNotificationData: enrichedData.notification?.data?.lessonId,
+            type: enrichedData.data?.type || enrichedData.notification?.data?.type
+          }, null, 2));
+          
+          return enrichedData;
+        }
+      }
+      
+      return notificationData;
+    } catch (error) {
+      console.error('❌ NotificationService: Error enriching notification data:', error);
+      return notificationData;
+    }
+  }
+
+  // Handle notification tap
+  async handleNotificationTap(notification) {
+    try {
+      console.log('🔔 NotificationService: Handling notification tap:', JSON.stringify(notification, null, 2));
+      
+      // Use deep linking for navigation
+      const { generateDeepLinkFromNotification, navigateWithDeepLink } = require('../utils/deepLinking');
+      
+      // Handle different notification structures
+      // notification might be:
+      // 1. { title, body, data, type, remoteMessage } - from showInAppNotification
+      // 2. remoteMessage directly - from Firebase
+      // 3. { notification, data } - Firebase remoteMessage structure
+      
+      let notificationData = notification;
+      
+      // If it has remoteMessage, use that (from showInAppNotification)
+      if (notification.remoteMessage) {
+        notificationData = notification.remoteMessage;
+      }
+      // If it has notification property, it's a Firebase remoteMessage
+      else if (notification.notification && notification.data) {
+        notificationData = notification;
+      }
+      // Otherwise use as is
+      
+      console.log('🔔 NotificationService: Using notification data:', JSON.stringify(notificationData, null, 2));
+      
+      // Enrich notification data with lessonId for lesson_live notifications
+      notificationData = await this.enrichNotificationDataWithLessonId(notificationData);
+      
+      // Extract data after enrichment
+      const fcmData = notificationData?.data || notificationData?.notification?.data || notificationData?.data || {};
+      const notificationType = fcmData.type || fcmData.notificationType || 'general';
+      
+      // Log the enriched data for debugging
+      console.log('🔔 NotificationService: After enrichment -', {
+        type: notificationType,
+        lessonId: fcmData.lessonId || notificationData.lessonId,
+        hasData: !!notificationData.data,
+        hasNotificationData: !!notificationData.notification?.data,
+        dataKeys: Object.keys(fcmData)
+      });
+      
+      // Generate deep link from enriched notification
+      const deepLink = generateDeepLinkFromNotification(notificationData);
+      console.log('🔗 NotificationService: Generated deep link:', deepLink);
+      
+      // If deep link is still pointing to notification screen for lesson_live, try direct navigation
+      if (notificationType === 'lesson_live' && deepLink.includes('notification')) {
+        const lessonId = fcmData.lessonId || notificationData.lessonId || fcmData.lesson_id;
+        if (lessonId) {
+          console.log('🔗 NotificationService: Overriding deep link with lessonId:', lessonId);
+          const correctDeepLink = `${require('../utils/deepLinking').URL_SCHEME}://lesson/live/${lessonId}`;
+          console.log('🔗 NotificationService: Corrected deep link:', correctDeepLink);
+          
+          if (global.navigationRef && global.navigationRef.current) {
+            setTimeout(() => {
+              if (global.navigationRef && global.navigationRef.current) {
+                navigateWithDeepLink(global.navigationRef.current, correctDeepLink);
+              }
+            }, 300);
+          }
+          return;
+        } else if (fcmData.subcourseId) {
+          console.log('⚠️ NotificationService: No lessonId found for lesson_live, using subcourseId to navigate to Enroll screen');
+          const enrollDeepLink = `${require('../utils/deepLinking').URL_SCHEME}://enroll/${fcmData.subcourseId}`;
+          
+          if (global.navigationRef && global.navigationRef.current) {
+            setTimeout(() => {
+              if (global.navigationRef && global.navigationRef.current) {
+                navigateWithDeepLink(global.navigationRef.current, enrollDeepLink);
+              }
+            }, 300);
+          }
+          return;
+        }
+      }
+      
+      if (global.navigationRef && global.navigationRef.current) {
+        // Wait a bit to ensure navigation is ready
+        setTimeout(() => {
+          if (global.navigationRef && global.navigationRef.current) {
+            navigateWithDeepLink(global.navigationRef.current, deepLink);
+          }
+        }, 300);
+      } else {
+        console.warn('⚠️ NotificationService: Navigation ref not available');
+        // Retry after a delay
+        setTimeout(() => {
+          if (global.navigationRef && global.navigationRef.current) {
+            navigateWithDeepLink(global.navigationRef.current, deepLink);
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error('❌ NotificationService: Notification tap handling failed:', error);
+      // Fallback navigation
+      if (global.navigationRef && global.navigationRef.current) {
+        global.navigationRef.current.navigate('Notification');
+      }
     }
   }
 
   // Navigate to notification screen
   navigateToNotificationScreen() {
     try {
-      
-      // Import navigation service or use global navigation
-      // For now, we'll use a simple approach
-      // You might need to adjust this based on your navigation setup
       if (global.navigationRef && global.navigationRef.current) {
         global.navigationRef.current.navigate('Notification');
-      } else {
       }
     } catch (error) {
       console.error('❌ NotificationService: Navigation failed:', error);
@@ -399,6 +684,12 @@ class NotificationService {
       
       const result = await response.json();
       console.log('🔔 NotificationService: Remove FCM token response:', result);
+      
+      // Check for token errors but don't show popup (handled by skipSessionExpiredAlert flag)
+      if (response.status === 401) {
+        console.log('⚠️ NotificationService: Token expired during FCM token removal (expected during logout)');
+        return false;
+      }
       
       if (response.ok && result.success) {
         console.log('✅ NotificationService: FCM token removed successfully');
@@ -534,24 +825,36 @@ class NotificationService {
 
 
   // Cleanup on logout
-  async cleanup() {
+  async cleanup(userToken = null, fcmToken = null) {
     try {
       console.log('🔔 NotificationService: Starting cleanup...');
       
-      // Remove FCM token from backend
-      const userToken = await AsyncStorage.getItem('user_token');
-      const fcmToken = await getStoredFCMToken();
+      // Get token and FCM token if not provided
+      const tokenToUse = userToken || await AsyncStorage.getItem('user_token');
+      const fcmTokenToUse = fcmToken || await getStoredFCMToken();
       
-      if (userToken && fcmToken) {
+      console.log('🔔 NotificationService: Cleanup parameters:', {
+        userTokenProvided: !!userToken,
+        fcmTokenProvided: !!fcmToken,
+        tokenFound: !!tokenToUse,
+        fcmTokenFound: !!fcmTokenToUse,
+        fcmTokenPreview: fcmTokenToUse ? `${fcmTokenToUse.substring(0, 20)}...` : 'null',
+      });
+      
+      // Remove FCM token from backend
+      if (tokenToUse && fcmTokenToUse) {
         console.log('🔔 NotificationService: Removing FCM token during cleanup...');
-        const removed = await this.removeFCMTokenFromBackend(fcmToken, userToken);
+        const removed = await this.removeFCMTokenFromBackend(fcmTokenToUse, tokenToUse);
         if (removed) {
           console.log('✅ NotificationService: FCM token removed during cleanup');
         } else {
           console.log('⚠️ NotificationService: Failed to remove FCM token during cleanup');
         }
       } else {
-        console.log('ℹ️ NotificationService: No FCM token or user token to remove during cleanup');
+        console.log('ℹ️ NotificationService: No FCM token or user token to remove during cleanup', {
+          hasToken: !!tokenToUse,
+          hasFcmToken: !!fcmTokenToUse,
+        });
       }
       
       // Clear local notifications
