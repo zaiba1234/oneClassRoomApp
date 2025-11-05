@@ -31,7 +31,6 @@ const SubCourseScreen = ({ navigation, route }) => {
   const [isLoadingSubcourses, setIsLoadingSubcourses] = useState(true);
   const [subcourseError, setSubcourseError] = useState(null);
   const [courseData, setCourseData] = useState(null);
-  const [showCompletionPopup, setShowCompletionPopup] = useState(false); // Add state for completion popup
   const [isRefreshing, setIsRefreshing] = useState(false); // Add refresh state
 
   // State for favorite toggling (same as HomeScreen)
@@ -46,12 +45,6 @@ const SubCourseScreen = ({ navigation, route }) => {
     }
   }, [token, courseId]);
 
-  // Show completion popup when course is completed
-  useEffect(() => {
-    if (courseData?.isCourseCompleted) {
-      setShowCompletionPopup(true);
-    }
-  }, [courseData?.isCourseCompleted]);
 
   // Function to fetch subcourse data from API
   const fetchSubcourseData = async (isRefresh = false) => {
@@ -304,49 +297,6 @@ const SubCourseScreen = ({ navigation, route }) => {
         </View>
       </ScrollView>
 
-      {/* Course Completion Popup */}
-      <Modal
-        visible={showCompletionPopup}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowCompletionPopup(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.completionModal}>
-            {/* Close Button positioned at top-right corner */}
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => setShowCompletionPopup(false)}
-            >
-              <Icon name="close" size={24} color="#FF8800" />
-            </TouchableOpacity>
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.modalButton}
-                onPress={() => {
-                  setShowCompletionPopup(false);
-                  // Navigate to internship letter screen with course ID (not subcourse ID)
-                  navigation.navigate('Internship', { courseId: courseId });
-                }}
-              >
-                <Text style={styles.modalButtonText}>Get Internship Letter</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.modalButton}
-                onPress={() => {
-                  setShowCompletionPopup(false);
-                  // Navigate to course certificate download screen
-                  navigation.navigate('CourseCertificate', { courseId: courseId });
-                }}
-              >
-                <Text style={styles.modalButtonText}>Get Course Certificate</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -531,64 +481,6 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     color: '#666',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end', // Position at bottom
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)', // Only overlay background, no shadow
-  },
-  completionModal: {
-    backgroundColor: '#2C2C2E', // Dark theme background - NO SHADOW
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24, // Increased padding for better button spacing
-    width: '100%', // Full width
-    alignItems: 'center',
-    // NO SHADOW PROPERTIES - COMPLETELY CLEAN
-  },
-  closeButton: {
-    position: 'absolute',
-    top: -15,
-    right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2C2C2E',
-    borderWidth: 2,
-    borderColor: '#FF8800',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-  },
-  modalButtons: {
-    flexDirection: 'column', // Changed from 'row' to 'column' for vertical stacking
-    justifyContent: 'space-between',
-    width: '100%',
-    gap: 16, // Increased gap between buttons
-  },
-  modalButton: {
-    backgroundColor: '#FFFFFF', // White buttons - NO SHADOW
-    paddingHorizontal: 16, // Increased horizontal padding
-    paddingVertical: 14, // Increased vertical padding
-    borderRadius: 10, 
-    width: '100%', // Ensure full width
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50, // Increased minimum height
-    // NO SHADOW PROPERTIES - COMPLETELY CLEAN
-  },
-  modalButtonText: {
-    color: '#FF8800', // Orange text
-    fontSize: 16,
-    fontWeight: '600',
     textAlign: 'center',
   },
   placeholder: {

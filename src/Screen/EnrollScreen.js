@@ -70,6 +70,7 @@ const EnrollScreen = ({ navigation, route }) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showRecordedLessonModal, setShowRecordedLessonModal] = useState(false);
+  const [showInternshipModal, setShowInternshipModal] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const webViewRef = useRef(null);
   
@@ -1005,6 +1006,26 @@ const EnrollScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleGetInternshipLetter = () => {
+    try {
+      // Check payment status first
+      if (!courseData.paymentStatus) {
+        setShowInternshipModal(true);
+        return;
+      }
+      
+      // Use courseData._id if available, otherwise fall back to route params courseId
+      const internshipCourseId = courseData._id || courseId;
+      if (internshipCourseId) {
+        navigation.navigate('Internship', { courseId: internshipCourseId });
+      } else {
+        console.log('⚠️ EnrollScreen: No courseId available for internship letter navigation');
+      }
+    } catch (error) {
+      console.log('❌ EnrollScreen: Error navigating to internship letter:', error);
+    }
+  };
+
   const onMessage = (event) => {
     const data = JSON.parse(event.nativeEvent.data);
     if (data.event === 'fullscreen') {
@@ -1511,6 +1532,25 @@ const EnrollScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.downloadCertificateCard}
+          onPress={handleGetInternshipLetter}
+        >
+          <View style={styles.downloadCertificateLeft}>
+            <Text style={styles.downloadCertificateTitle}>Get Internship Letter</Text>
+          </View>
+
+          <View style={styles.downloadCertificateRight}>
+            <TouchableOpacity
+              style={styles.downloadButton}
+              onPress={handleGetInternshipLetter}
+              onPressIn={(e) => e.stopPropagation()}
+            >
+              <Icon name="document-text-outline" size={24} color="#FF6B35" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
        
 
         <TouchableOpacity
@@ -1632,6 +1672,40 @@ const EnrollScreen = ({ navigation, route }) => {
             <TouchableOpacity
               style={[styles.modalButton, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}
               onPress={() => setShowRecordedLessonModal(false)}
+            >
+              <Text style={styles.modalButtonText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Popup Modal for incomplete course - Internship Letter */}
+      <Modal
+        visible={showInternshipModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowInternshipModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Close Icon in top right corner */}
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowInternshipModal(false)}
+            >
+              <Icon name="close" size={24} color="#FF8800" />
+            </TouchableOpacity>
+
+            <View style={styles.modalHeader}>
+              <Icon name="warning" size={60} color="#FFFFFF" style={{ marginRight: getVerticalSize(12) }} />
+            </View>
+
+            <Text style={styles.modalMessage}>
+              First you have to enroll in the course
+            </Text>
+            <TouchableOpacity
+              style={[styles.modalButton, { width: '100%', alignItems: 'center', justifyContent: 'center' }]}
+              onPress={() => setShowInternshipModal(false)}
             >
               <Text style={styles.modalButtonText}>Continue</Text>
             </TouchableOpacity>

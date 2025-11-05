@@ -72,14 +72,14 @@ const InternshipLetterScreen = () => {
   
   // Direct Razorpay integration - no custom class needed
 
-  // Get courseId from route params (with logging for debugging)
-  const courseId = route.params?.courseId;
+  // Get subcourseId from route params (URL parameter is subcourseId, not courseId)
+  const subcourseId = route.params?.courseId || route.params?.subcourseId;
 
-  // Debug: Log courseId changes
+  // Debug: Log subcourseId changes
   useEffect(() => {
-    console.log('🔍 InternshipLetterScreen: courseId from route params:', courseId);
+    console.log('🔍 InternshipLetterScreen: subcourseId from route params:', subcourseId);
     console.log('🔍 InternshipLetterScreen: Full route params:', JSON.stringify(route.params, null, 2));
-  }, [route.params?.courseId]);
+  }, [route.params?.courseId, route.params?.subcourseId]);
 
   // Get user data from Redux store at component level
   const userState = useAppSelector((state) => state.user);
@@ -129,14 +129,11 @@ const InternshipLetterScreen = () => {
     setCustomAlert(prev => ({ ...prev, visible: false }));
   }, []);
 
-  // Fetch course details when component mounts or courseId changes
+  // Fetch course details when component mounts or subcourseId changes
   useEffect(() => {
-    console.log('🔍 InternshipLetterScreen: useEffect triggered - courseId:', courseId, 'token:', !!token);
-    if (courseId && token) {
+    console.log('🔍 InternshipLetterScreen: useEffect triggered - subcourseId:', subcourseId, 'token:', !!token);
+    if (subcourseId && token) {
       fetchCourseDetails();
-      
-      // Check internship status to get current enrollment and upload status
-      checkInternshipStatus();
       
       // Check if we have uploadStatus from navigation params
       if (route.params?.uploadStatus) {
@@ -151,73 +148,106 @@ const InternshipLetterScreen = () => {
         setRequestData(mockData);
       }
     } else {
-      console.log('⚠️ InternshipLetterScreen: Missing courseId or token - courseId:', courseId, 'token:', !!token);
-      // If courseId is missing, set loading to false to show error
-      if (!courseId) {
+      console.log('⚠️ InternshipLetterScreen: Missing subcourseId or token - subcourseId:', subcourseId, 'token:', !!token);
+      // If subcourseId is missing, set loading to false to show error
+      if (!subcourseId) {
         setIsLoadingCourse(false);
       }
     }
-  }, [courseId, token, route.params?.uploadStatus]);
+  }, [subcourseId, token, route.params?.uploadStatus]);
 
   // Auto-refresh when screen comes into focus (especially when navigating from notifications)
   useFocusEffect(
     useCallback(() => {
       console.log('🔍 InternshipLetterScreen: Screen focused');
-      console.log('🔍 InternshipLetterScreen: courseId from closure:', courseId);
+      console.log('🔍 InternshipLetterScreen: subcourseId from closure:', subcourseId);
       console.log('🔍 InternshipLetterScreen: route.params?.courseId:', route.params?.courseId);
+      console.log('🔍 InternshipLetterScreen: route.params?.subcourseId:', route.params?.subcourseId);
       console.log('🔍 InternshipLetterScreen: token exists:', !!token);
       
-      // Get courseId from route params (might have changed when navigating from notification)
-      const currentCourseId = route.params?.courseId || courseId;
+      // Get subcourseId from route params (might have changed when navigating from notification)
+      const currentSubcourseId = route.params?.courseId || route.params?.subcourseId || subcourseId;
       
-      console.log('🔍 InternshipLetterScreen: Using currentCourseId:', currentCourseId);
+      console.log('🔍 InternshipLetterScreen: Using currentSubcourseId:', currentSubcourseId);
       
-      if (currentCourseId && token) {
+      if (currentSubcourseId && token) {
         console.log('🔄 InternshipLetterScreen: Auto-refreshing course details on focus');
         // Small delay to ensure navigation is complete
         setTimeout(() => {
-          // Update courseId reference if needed
-          if (route.params?.courseId && route.params.courseId !== courseId) {
-            console.log('🔄 InternshipLetterScreen: courseId changed, fetching with new courseId:', route.params.courseId);
-            // Force re-fetch by calling the API directly with the new courseId
-            const fetchWithNewCourseId = async () => {
+          // Update subcourseId reference if needed
+          const routeSubcourseId = route.params?.courseId || route.params?.subcourseId;
+          if (routeSubcourseId && routeSubcourseId !== subcourseId) {
+            console.log('🔄 InternshipLetterScreen: subcourseId changed, fetching with new subcourseId:', routeSubcourseId);
+            // Force re-fetch by calling the API directly with the new subcourseId
+            const fetchWithNewSubcourseId = async () => {
               try {
                 setIsLoadingCourse(true);
-                const result = await courseAPI.getCourseCertificateDesc(token, route.params.courseId);
+                console.log('🔍 InternshipLetterScreen: fetchWithNewSubcourseId called with subcourseId:', routeSubcourseId);
+                
+                const result = await courseAPI.getCourseCertificateDesc(token, routeSubcourseId);
+                
+                console.log('📥 InternshipLetterScreen: fetchWithNewSubcourseId API Response:', JSON.stringify(result, null, 2));
+                console.log('📥 InternshipLetterScreen: fetchWithNewSubcourseId result.success:', result.success);
+                console.log('📥 InternshipLetterScreen: fetchWithNewSubcourseId result.data:', result.data);
+                console.log('📥 InternshipLetterScreen: fetchWithNewSubcourseId result.status:', result.status);
                 
                 if (result.success && result.data.success) {
                   const courseDetails = result.data.data;
+                  console.log('📥 InternshipLetterScreen: fetchWithNewSubcourseId courseDetails:', JSON.stringify(courseDetails, null, 2));
+                  
                   if (courseDetails) {
                     const courseWithPrice = {
-                      courseName: courseDetails.courseName,
+                      _id: courseDetails._id, // Store _id from API response (this is the subcourseId)
+                      courseName: courseDetails.subcourseName,
                       description: courseDetails.certificateDescription,
-                      price: courseDetails.price ? `₹${courseDetails.price}.00` : '₹99.00',
-                      uploadStatus: courseDetails.uploadStatus
+                      price: courseDetails.internshipLetterPrice ? `₹${courseDetails.internshipLetterPrice}.00` : '₹99.00',
+                      internshipPaymentStatus: courseDetails.internshipPaymentStatus,
+                      internshipUploadStatus: courseDetails.internshipUploadStatus
                     };
+                    console.log('✅ InternshipLetterScreen: fetchWithNewSubcourseId formatted data:', JSON.stringify(courseWithPrice, null, 2));
                     setCourseData(courseWithPrice);
+                    
+                    // Update requestData based on new API response
+                    if (courseDetails.internshipPaymentStatus) {
+                      setRequestData({
+                        internshipLetter: {
+                          paymentStatus: true,
+                          uploadStatus: courseDetails.internshipUploadStatus,
+                          _id: 'api-response-id'
+                        }
+                      });
+                    }
+                  } else {
+                    console.log('⚠️ InternshipLetterScreen: fetchWithNewSubcourseId courseDetails is null');
+                    setCourseData(null);
                   }
+                } else {
+                  console.log('❌ InternshipLetterScreen: fetchWithNewSubcourseId API failed');
+                  console.log('❌ InternshipLetterScreen: fetchWithNewSubcourseId result.data?.message:', result.data?.message);
+                  setCourseData(null);
                 }
               } catch (error) {
-                console.error('❌ InternshipLetterScreen: Error fetching course details:', error);
+                console.log('💥 InternshipLetterScreen: fetchWithNewSubcourseId Error:', error);
+                console.log('💥 InternshipLetterScreen: fetchWithNewSubcourseId Error message:', error.message);
+                console.log('💥 InternshipLetterScreen: fetchWithNewSubcourseId Error stack:', error.stack);
+                setCourseData(null);
               } finally {
                 setIsLoadingCourse(false);
               }
             };
-            fetchWithNewCourseId();
-            checkInternshipStatus();
+            fetchWithNewSubcourseId();
           } else {
             fetchCourseDetails();
-            checkInternshipStatus();
           }
         }, 300);
       } else {
-        console.log('⚠️ InternshipLetterScreen: Cannot refresh - missing courseId or token');
-        console.log('⚠️ InternshipLetterScreen: currentCourseId:', currentCourseId, 'token:', !!token);
-        if (!currentCourseId) {
+        console.log('⚠️ InternshipLetterScreen: Cannot refresh - missing subcourseId or token');
+        console.log('⚠️ InternshipLetterScreen: currentSubcourseId:', currentSubcourseId, 'token:', !!token);
+        if (!currentSubcourseId) {
           setIsLoadingCourse(false);
         }
       }
-    }, [route.params?.courseId, token, courseId])
+    }, [route.params?.courseId, route.params?.subcourseId, token, subcourseId])
   );
 
   // Separate useEffect to handle navigation params changes
@@ -251,44 +281,63 @@ const InternshipLetterScreen = () => {
     try {
       setIsLoadingCourse(true);
       
-      const result = await courseAPI.getCourseCertificateDesc(token, courseId);
+      console.log('🔍 InternshipLetterScreen: fetchCourseDetails called');
+      console.log('🔍 InternshipLetterScreen: subcourseId:', subcourseId);
+      console.log('🔍 InternshipLetterScreen: token exists:', !!token);
+      
+      const result = await courseAPI.getCourseCertificateDesc(token, subcourseId);
+      
+      console.log('📥 InternshipLetterScreen: API Response:', JSON.stringify(result, null, 2));
+      console.log('📥 InternshipLetterScreen: result.success:', result.success);
+      console.log('📥 InternshipLetterScreen: result.data:', result.data);
+      console.log('📥 InternshipLetterScreen: result.status:', result.status);
+      console.log('📥 InternshipLetterScreen: result.data?.success:', result.data?.success);
+      console.log('📥 InternshipLetterScreen: result.data?.data:', result.data?.data);
       
       if (result.success && result.data.success) {
         const courseDetails = result.data.data;
         
+        console.log('📥 InternshipLetterScreen: courseDetails:', JSON.stringify(courseDetails, null, 2));
+        
         if (courseDetails) {
-          // Format the course data with proper price formatting
+          // Format the course data with new API response structure
           const courseWithPrice = {
-            courseName: courseDetails.courseName,
+            _id: courseDetails._id, // Store _id from API response (this is the subcourseId)
+            courseName: courseDetails.subcourseName,
             description: courseDetails.certificateDescription,
-            price: courseDetails.price ? `₹${courseDetails.price}.00` : '₹99.00',
-            uploadStatus: courseDetails.uploadStatus
+            price: courseDetails.internshipLetterPrice ? `₹${courseDetails.internshipLetterPrice}.00` : '₹99.00',
+            internshipPaymentStatus: courseDetails.internshipPaymentStatus,
+            internshipUploadStatus: courseDetails.internshipUploadStatus
           };
           
+          console.log('✅ InternshipLetterScreen: Formatted course data:', JSON.stringify(courseWithPrice, null, 2));
           setCourseData(courseWithPrice);
+          
+          // Update requestData based on new API response
+          if (courseDetails.internshipPaymentStatus) {
+            setRequestData({
+              internshipLetter: {
+                paymentStatus: true,
+                uploadStatus: courseDetails.internshipUploadStatus,
+                _id: 'api-response-id'
+              }
+            });
+          }
+        } else {
+          console.log('⚠️ InternshipLetterScreen: courseDetails is null or undefined');
+          setCourseData(null);
         }
       } else {
-        showCustomAlert(
-          'Failed to Load Course Details',
-          result.data?.message || 'Unable to load course information. Please try again.',
-          'error',
-          [
-            { text: 'Retry', onPress: () => { hideCustomAlert(); fetchCourseDetails(); } },
-            { text: 'Cancel', onPress: hideCustomAlert }
-          ]
-        );
+        console.log('❌ InternshipLetterScreen: API call failed or returned error');
+        console.log('❌ InternshipLetterScreen: result.data?.message:', result.data?.message);
+        console.log('❌ InternshipLetterScreen: result.status:', result.status);
+        setCourseData(null);
       }
     } catch (error) {
-      // Suppress console errors to prevent red error warnings
-      showCustomAlert(
-        'Network Error',
-        'Unable to load course details. Please check your internet connection and try again.',
-        'error',
-        [
-          { text: 'Retry', onPress: () => { hideCustomAlert(); fetchCourseDetails(); } },
-          { text: 'Cancel', onPress: hideCustomAlert }
-        ]
-      );
+      console.log('💥 InternshipLetterScreen: Error in fetchCourseDetails:', error);
+      console.log('💥 InternshipLetterScreen: Error message:', error.message);
+      console.log('💥 InternshipLetterScreen: Error stack:', error.stack);
+      setCourseData(null);
     } finally {
       setIsLoadingCourse(false);
     }
@@ -311,8 +360,6 @@ const InternshipLetterScreen = () => {
     setIsPageRefreshing(true);
     try {
       await fetchCourseDetails();
-      // Also check internship status on refresh
-      await checkInternshipStatus();
       setTimeout(() => setIsPageRefreshing(false), 1000);
     } catch (error) {
       // Suppress console errors to prevent red error warnings
@@ -324,8 +371,8 @@ const InternshipLetterScreen = () => {
   // Function to check internship status before proceeding with payment
   const checkInternshipStatus = async () => {
     try {
-      // Build the check status API URL with courseId as query parameter
-      const checkStatusUrl = getApiUrl(`/api/user/internshipLetter/check-internshipStatus/${courseId}`);
+      // Build the check status API URL with subcourseId as query parameter
+      const checkStatusUrl = getApiUrl(`/api/user/internshipLetter/check-internshipStatus/${subcourseId}`);
       
       const response = await fetch(checkStatusUrl, {
         method: 'GET',
@@ -354,12 +401,6 @@ const InternshipLetterScreen = () => {
           return { isEnrolled: false };
         }
       } else {
-        showCustomAlert(
-          'Status Check Failed',
-          result.message || 'Failed to check internship status. Please try again.',
-          'error',
-          [{ text: 'OK', onPress: hideCustomAlert }]
-        );
         return { isEnrolled: false, error: true };
       }
     } catch (error) {
@@ -379,23 +420,36 @@ const InternshipLetterScreen = () => {
     try {
       setIsRequesting(true);
       
-      // First, check internship status
-      const statusCheck = await checkInternshipStatus();
-      
-      if (statusCheck.error) {
+      // Check if already paid from courseData
+      if (courseData?.internshipPaymentStatus === true) {
+        setIsRequesting(false);
         return;
       }
       
-      if (statusCheck.isEnrolled) {
+      // Check if courseData is loaded and has _id
+      if (!courseData || !courseData._id) {
+        showCustomAlert(
+          'Loading Error',
+          'Course details are still loading. Please wait and try again.',
+          'error',
+          [{ text: 'OK', onPress: hideCustomAlert }]
+        );
+        setIsRequesting(false);
         return;
       }
       
-      // If not enrolled, proceed with Razorpay payment
+      // Proceed with Razorpay payment
       const apiUrl = getApiUrl('/api/user/internshipLetter/request-InternshipLetter');
       
+      // Use _id from courseData (which comes from API response) as subcourseId
+      const subcourseIdToSend = courseData._id;
+      
       const requestBody = {
-        courseId: courseId
+        subcourseId: subcourseIdToSend // API expects subcourseId parameter name
       };
+      
+      console.log('🔍 InternshipLetterScreen: Request body for request-InternshipLetter:', JSON.stringify(requestBody, null, 2));
+      console.log('🔍 InternshipLetterScreen: Using subcourseId from courseData._id:', subcourseIdToSend);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -687,7 +741,7 @@ const InternshipLetterScreen = () => {
         razorpayOrderId: orderId,
         razorpayPaymentId: paymentData.razorpay_payment_id || paymentData.razorpayPaymentId,
         razorpaySignature: paymentData.razorpay_signature || paymentData.razorpaySignature,
-        courseId: courseId // Use courseId instead of subcourseId
+        courseId: subcourseId // Passing subcourseId as courseId (API expects courseId parameter name)
       };
       
       const verificationResponse = await fetch(verificationUrl, {
@@ -703,10 +757,8 @@ const InternshipLetterScreen = () => {
         const verificationResult = await verificationResponse.json();
         
         if (verificationResult.success) {
-          // Update requestData with the latest information from verification response
-          if (verificationResult.data) {
-            setRequestData(verificationResult.data);
-          }
+          // Refresh course data to get updated internshipPaymentStatus and internshipUploadStatus
+          await fetchCourseDetails();
           
           showCustomAlert(
             'Success! 🎉',
@@ -721,7 +773,7 @@ const InternshipLetterScreen = () => {
                 const uploadStatus = verificationResult.data?.uploadStatus || 'upload';
                 
                 navigation.navigate('Internship', { 
-                  courseId: courseId,
+                  courseId: subcourseId, // Passing subcourseId as courseId for navigation
                   uploadStatus: uploadStatus
                 });
               }
@@ -787,7 +839,7 @@ const InternshipLetterScreen = () => {
         true
       );
       
-      const fileName = `internship_letter_${courseId}.pdf`;
+      const fileName = `internship_letter_${subcourseId}.pdf`;
       
       // Use RNFS.downloadFile for direct download - this is more reliable
       try {
@@ -978,9 +1030,11 @@ const InternshipLetterScreen = () => {
 
       {/* Status Message and Download Button */}
       <View style={styles.downloadButtonContainer}>
-        {/* Status Message - Show when isEnrolled=true and uploadStatus=upload */}
+        {/* Status Message - Show when internshipPaymentStatus=true and internshipUploadStatus=upload */}
         {(() => {
-          const shouldShowMessage = requestData?.internshipLetter?.paymentStatus && requestData?.internshipLetter?.uploadStatus === 'upload';
+          const internshipPaymentStatus = courseData?.internshipPaymentStatus;
+          const internshipUploadStatus = courseData?.internshipUploadStatus;
+          const shouldShowMessage = internshipPaymentStatus === true && internshipUploadStatus === 'upload';
           
           return shouldShowMessage ? (
             <View style={styles.statusMessageContainer}>
@@ -992,11 +1046,11 @@ const InternshipLetterScreen = () => {
         })()}
         
         {(() => {
-          const uploadStatus = requestData?.internshipLetter?.uploadStatus;
-          const paymentStatus = requestData?.internshipLetter?.paymentStatus;
+          const internshipPaymentStatus = courseData?.internshipPaymentStatus;
+          const internshipUploadStatus = courseData?.internshipUploadStatus;
           
           // If payment is successful and letter is uploaded, show enabled download button
-          if (paymentStatus && uploadStatus === 'uploaded') {
+          if (internshipPaymentStatus === true && internshipUploadStatus === 'uploaded') {
             return (
               <TouchableOpacity 
                 style={styles.downloadButton}
@@ -1019,7 +1073,7 @@ const InternshipLetterScreen = () => {
           }
           
           // If payment is successful but letter is still being processed (upload status)
-          if (paymentStatus && uploadStatus === 'upload') {
+          if (internshipPaymentStatus === true && internshipUploadStatus === 'upload') {
             return (
               <TouchableOpacity 
                 style={[styles.downloadButton, styles.downloadButtonDisabled]}
@@ -1039,7 +1093,7 @@ const InternshipLetterScreen = () => {
             );
           }
           
-          // Default: Show payment button
+          // Default: Show payment button (when internshipPaymentStatus is false)
           return (
             <TouchableOpacity 
               style={[styles.downloadButton, (isRequesting || isLoadingCourse || !courseData) && styles.downloadButtonDisabled]}

@@ -851,7 +851,7 @@ export const courseAPI = {
     // Get course certificate description and details
     getCourseCertificateDesc: async (token, courseId) => {
       try {
-        const url = getApiUrl(`/api/user/course/get-CoursecertificateDesc/${courseId}`);
+        const url = getApiUrl(`/api/user/course/get-certificateDesc/${courseId}`);
         const headers = {
           ...getApiHeaders(),
           'Authorization': `Bearer ${token}`,
