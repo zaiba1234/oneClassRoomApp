@@ -513,8 +513,25 @@ class NotificationService {
       });
       
       // Generate deep link from enriched notification
-      const deepLink = generateDeepLinkFromNotification(notificationData);
+      let deepLink = generateDeepLinkFromNotification(notificationData);
       console.log('🔗 NotificationService: Generated deep link:', deepLink);
+      
+      // For internship notifications, always navigate to notification screen
+      const internshipNotificationTypes = [
+        'request_internship_letter',
+        'upload_internship_letter',
+        'internship_letter_uploaded',
+        'internship_letter_payment',
+        'internship_letter_payment_completed',
+        'internship',
+        'internshipNotification'
+      ];
+      
+      if (internshipNotificationTypes.includes(notificationType)) {
+        console.log('🔗 NotificationService: Internship notification detected, navigating to notification screen');
+        deepLink = `${require('../utils/deepLinking').URL_SCHEME}://notification`;
+        console.log('🔗 NotificationService: Updated deep link for internship notification:', deepLink);
+      }
       
       // If deep link is still pointing to notification screen for lesson_live, try direct navigation
       if (notificationType === 'lesson_live' && deepLink.includes('notification')) {

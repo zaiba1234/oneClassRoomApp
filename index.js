@@ -45,8 +45,27 @@ messaging().getInitialNotification().then(async (remoteMessage) => {
       
       // Generate deep link from enriched notification
       const { generateDeepLinkFromNotification } = require('./src/utils/deepLinking');
-      const deepLink = generateDeepLinkFromNotification(enrichedNotification);
+      let deepLink = generateDeepLinkFromNotification(enrichedNotification);
       console.log('🔗 [index.js] Generated deep link from initial notification:', deepLink);
+      
+      // For internship notifications, always navigate to notification screen
+      const fcmData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
+      const notificationType = fcmData.type || fcmData.notificationType || 'general';
+      const internshipNotificationTypes = [
+        'request_internship_letter',
+        'upload_internship_letter',
+        'internship_letter_uploaded',
+        'internship_letter_payment',
+        'internship_letter_payment_completed',
+        'internship',
+        'internshipNotification'
+      ];
+      
+      if (internshipNotificationTypes.includes(notificationType)) {
+        console.log('🔗 [index.js] Internship notification detected, navigating to notification screen');
+        deepLink = `learningsaint://notification`;
+        console.log('🔗 [index.js] Updated deep link for internship notification:', deepLink);
+      }
       
       // Store in AsyncStorage for App.js to pick up
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;

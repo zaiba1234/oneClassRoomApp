@@ -118,11 +118,15 @@ export const generateDeepLinkFromNotification = (notificationData) => {
       case 'requestInternshipLetter':
       case 'upload_internship_letter':
       case 'uploadInternshipLetter':
+      case 'internship_letter_uploaded':
+      case 'internship_letter_payment':
+      case 'internship_letter_payment_completed':
       case 'internship':
       case 'internshipNotification':
       case 'internship_notification':
-        console.log('🔗 [DeepLinking] Internship detected');
-        return `${URL_SCHEME}://internship`;
+        // For internship notifications, navigate to notification screen instead of internship screen
+        console.log('🔗 [DeepLinking] Internship notification detected - navigating to notification screen');
+        return `${URL_SCHEME}://notification`;
         
       case 'notification':
       case 'general':

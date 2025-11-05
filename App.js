@@ -141,8 +141,24 @@ const AppContent = ({ alertManagerRef }) => {
           let deepLink = generateDeepLinkFromNotification(enrichedNotification);
           console.log('🔗 [App] Generated deep link from background notification:', deepLink);
           
+          // For internship notifications, always navigate to notification screen
+          const internshipNotificationTypes = [
+            'request_internship_letter',
+            'upload_internship_letter',
+            'internship_letter_uploaded',
+            'internship_letter_payment',
+            'internship_letter_payment_completed',
+            'internship',
+            'internshipNotification'
+          ];
+          
+          if (internshipNotificationTypes.includes(notificationType)) {
+            console.log('🔗 [App] Internship notification detected, navigating to notification screen');
+            deepLink = `learningsaint://notification`;
+            console.log('🔗 [App] Updated deep link for internship notification:', deepLink);
+          }
           // If deep link is still pointing to notification screen for lesson_live, override it
-          if (notificationType === 'lesson_live' && deepLink.includes('notification')) {
+          else if (notificationType === 'lesson_live' && deepLink.includes('notification')) {
             const lessonId = fcmData.lessonId || enrichedNotification.lessonId || fcmData.lesson_id;
             if (lessonId) {
               console.log('🔗 [App] Overriding deep link with lessonId:', lessonId);
