@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import RNFS from 'react-native-fs';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import BackButton from '../Component/BackButton';
@@ -72,8 +72,14 @@ const InternshipLetterScreen = () => {
   
   // Direct Razorpay integration - no custom class needed
 
-  // Get courseId from route params
+  // Get courseId from route params (with logging for debugging)
   const courseId = route.params?.courseId;
+
+  // Debug: Log courseId changes
+  useEffect(() => {
+    console.log('🔍 InternshipLetterScreen: courseId from route params:', courseId);
+    console.log('🔍 InternshipLetterScreen: Full route params:', JSON.stringify(route.params, null, 2));
+  }, [route.params?.courseId]);
 
   // Get user data from Redux store at component level
   const userState = useAppSelector((state) => state.user);
@@ -123,8 +129,9 @@ const InternshipLetterScreen = () => {
     setCustomAlert(prev => ({ ...prev, visible: false }));
   }, []);
 
-  // Fetch course details when component mounts
+  // Fetch course details when component mounts or courseId changes
   useEffect(() => {
+    console.log('🔍 InternshipLetterScreen: useEffect triggered - courseId:', courseId, 'token:', !!token);
     if (courseId && token) {
       fetchCourseDetails();
       
@@ -143,8 +150,75 @@ const InternshipLetterScreen = () => {
         };
         setRequestData(mockData);
       }
+    } else {
+      console.log('⚠️ InternshipLetterScreen: Missing courseId or token - courseId:', courseId, 'token:', !!token);
+      // If courseId is missing, set loading to false to show error
+      if (!courseId) {
+        setIsLoadingCourse(false);
+      }
     }
-  }, [courseId, token, route.params]);
+  }, [courseId, token, route.params?.uploadStatus]);
+
+  // Auto-refresh when screen comes into focus (especially when navigating from notifications)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔍 InternshipLetterScreen: Screen focused');
+      console.log('🔍 InternshipLetterScreen: courseId from closure:', courseId);
+      console.log('🔍 InternshipLetterScreen: route.params?.courseId:', route.params?.courseId);
+      console.log('🔍 InternshipLetterScreen: token exists:', !!token);
+      
+      // Get courseId from route params (might have changed when navigating from notification)
+      const currentCourseId = route.params?.courseId || courseId;
+      
+      console.log('🔍 InternshipLetterScreen: Using currentCourseId:', currentCourseId);
+      
+      if (currentCourseId && token) {
+        console.log('🔄 InternshipLetterScreen: Auto-refreshing course details on focus');
+        // Small delay to ensure navigation is complete
+        setTimeout(() => {
+          // Update courseId reference if needed
+          if (route.params?.courseId && route.params.courseId !== courseId) {
+            console.log('🔄 InternshipLetterScreen: courseId changed, fetching with new courseId:', route.params.courseId);
+            // Force re-fetch by calling the API directly with the new courseId
+            const fetchWithNewCourseId = async () => {
+              try {
+                setIsLoadingCourse(true);
+                const result = await courseAPI.getCourseCertificateDesc(token, route.params.courseId);
+                
+                if (result.success && result.data.success) {
+                  const courseDetails = result.data.data;
+                  if (courseDetails) {
+                    const courseWithPrice = {
+                      courseName: courseDetails.courseName,
+                      description: courseDetails.certificateDescription,
+                      price: courseDetails.price ? `₹${courseDetails.price}.00` : '₹99.00',
+                      uploadStatus: courseDetails.uploadStatus
+                    };
+                    setCourseData(courseWithPrice);
+                  }
+                }
+              } catch (error) {
+                console.error('❌ InternshipLetterScreen: Error fetching course details:', error);
+              } finally {
+                setIsLoadingCourse(false);
+              }
+            };
+            fetchWithNewCourseId();
+            checkInternshipStatus();
+          } else {
+            fetchCourseDetails();
+            checkInternshipStatus();
+          }
+        }, 300);
+      } else {
+        console.log('⚠️ InternshipLetterScreen: Cannot refresh - missing courseId or token');
+        console.log('⚠️ InternshipLetterScreen: currentCourseId:', currentCourseId, 'token:', !!token);
+        if (!currentCourseId) {
+          setIsLoadingCourse(false);
+        }
+      }
+    }, [route.params?.courseId, token, courseId])
+  );
 
   // Separate useEffect to handle navigation params changes
   useEffect(() => {

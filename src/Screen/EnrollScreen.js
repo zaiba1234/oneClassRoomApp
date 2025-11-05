@@ -777,7 +777,22 @@ const EnrollScreen = ({ navigation, route }) => {
           downloadRecordedLessonVideo(courseData.recordedlessonsLink);
         } else {
           console.log('❌ EnrollScreen: Recorded lesson link not available');
-          Alert.alert('Error', 'Recorded lesson link not available');
+          Alert.alert(
+            'Link Not Available',
+            'Recorded lesson link is not available at the moment. Please try refreshing the page or contact support if the issue persists.',
+            [
+              {
+                text: 'Close',
+                style: 'cancel'
+              },
+              {
+                text: 'Refresh',
+                onPress: () => {
+                  onRefresh();
+                }
+              }
+            ]
+          );
         }
       } else {
         console.log('💰 EnrollScreen: Recorded lesson not purchased, starting payment flow');

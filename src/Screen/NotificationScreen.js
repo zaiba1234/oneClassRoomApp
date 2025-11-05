@@ -111,22 +111,66 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   // Handle notification tap
-  const handleNotificationTap = (notification) => {
+  const handleNotificationTap = async (notification) => {
     try {
+      console.log('🔔 NotificationScreen: Notification tapped:', notification);
       
-      const { data } = notification;
+      // Mark notification as read
+      if (notification._id && token) {
+        try {
+          await notificationService.markAsRead(token, notification._id);
+          // Update local state
+          setNotifications(prev => prev.map(notif => 
+            notif._id === notification._id ? { ...notif, isRead: true } : notif
+          ));
+          // Update unread count
+          if (!notification.isRead) {
+            setUnreadCount(prev => Math.max(0, prev - 1));
+          }
+        } catch (error) {
+          console.error('💥 NotificationScreen: Error marking notification as read:', error);
+        }
+      }
+      
+      // Extract notification data - handle different notification structures
+      // Notification from API has structure: { _id, title, body, data: { type, ... }, ... }
+      // We need to extract type from notification.data
+      const notificationData = notification.data || {};
+      const notificationType = notificationData?.type || notification.type || null;
+      
+      console.log('🔔 NotificationScreen: Full notification object:', JSON.stringify(notification, null, 2));
+      console.log('🔔 NotificationScreen: Notification type:', notificationType);
+      console.log('🔔 NotificationScreen: Notification data:', notificationData);
+      
+      // If no type found, don't navigate - stay on notification screen
+      if (!notificationType) {
+        console.log('⚠️ NotificationScreen: No notification type found, staying on notification screen');
+        return;
+      }
       
       // Handle different notification types
-      switch (data?.type) {
+      switch (notificationType) {
         case 'live_lesson':
         case 'lesson_live': // Backend sends this type
-          if (data.lessonId) {
-            navigation.navigate('LessonVideo', { lessonId: data.lessonId, isLive: true });
+          const lessonId = notificationData.lessonId || notificationData.lesson_id;
+          if (lessonId) {
+            console.log('🔔 NotificationScreen: Navigating to LessonVideo with lessonId:', lessonId);
+            navigation.navigate('LessonVideo', { lessonId: lessonId, isLive: true });
+          } else {
+            console.log('⚠️ NotificationScreen: lessonId not found for live lesson');
+            // Stay on notification screen if lessonId not found
           }
           break;
         case 'buy_course':
-          if (data.subcourseId) {
-            navigation.navigate('Enroll', { courseId: data.subcourseId });
+        case 'course':
+        case 'courseNotification':
+          const subcourseId = notificationData.subcourseId || notificationData.subcourse_id || notificationData.courseId || notificationData.course_id;
+          if (subcourseId) {
+            console.log('🔔 NotificationScreen: Navigating to Enroll with courseId:', subcourseId);
+            navigation.navigate('Enroll', { courseId: subcourseId });
+          } else {
+            console.log('⚠️ NotificationScreen: subcourseId not found for course notification');
+            // Stay on notification screen if subcourseId not found
           }
           break;
         case 'request_internship_letter':
@@ -134,12 +178,25 @@ const NotificationScreen = ({ navigation }) => {
         case 'internship_letter_uploaded':
         case 'internship_letter_payment':
         case 'internship_letter_payment_completed':
-          navigation.navigate('Internship');
+        case 'internship':
+        case 'internshipNotification':
+          // Extract courseId from notification data
+          const internshipCourseId = notificationData.courseId || notificationData.course_id || notificationData.subcourseId || notificationData.subcourse_id;
+          if (internshipCourseId) {
+            console.log('🔔 NotificationScreen: Navigating to Internship screen with courseId:', internshipCourseId);
+            navigation.navigate('Internship', { courseId: internshipCourseId });
+          } else {
+            console.log('⚠️ NotificationScreen: courseId not found for internship notification, navigating without courseId');
+            navigation.navigate('Internship');
+          }
           break;
         default:
+          console.log('🔔 NotificationScreen: Unknown notification type, staying on notification screen');
+          // Stay on notification screen for unknown types
       }
     } catch (error) {
       console.error('💥 NotificationScreen: Error handling notification tap:', error);
+      // On error, stay on notification screen instead of navigating away
     }
   };
 
@@ -179,8 +236,16 @@ const NotificationScreen = ({ navigation }) => {
         notificationType === 'internship_letter_payment' ||
         notificationType === 'internship_letter_payment_completed'
       ) {
-        console.log('🔔 NotificationScreen: Navigating to Internship screen for notification type:', notificationType);
-        navigation.navigate('Internship');
+        // Extract courseId from notification data
+        const { data } = notification;
+        const internshipCourseId = data?.courseId || data?.course_id || data?.subcourseId || data?.subcourse_id;
+        if (internshipCourseId) {
+          console.log('🔔 NotificationScreen: Navigating to Internship screen with courseId:', internshipCourseId);
+          navigation.navigate('Internship', { courseId: internshipCourseId });
+        } else {
+          console.log('⚠️ NotificationScreen: courseId not found for internship notification, navigating without courseId');
+          navigation.navigate('Internship');
+        }
       }
     } catch (error) {
       console.error('❌ NotificationScreen: Error handling continue button:', error);

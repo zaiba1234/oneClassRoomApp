@@ -167,24 +167,44 @@ useEffect(() => {
     initializeData();
   }, [token]);
 
-  // Auto-refresh favorites when screen comes into focus
+  // Auto-refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
-      if (token) {
-        // Refresh favorites and update course states when screen comes into focus
-        const refreshFavoritesAndUpdateCourses = async () => {
-          try {
-            await fetchUserFavoriteCourses();
-            // Note: Course states will be updated by the fetchUserFavoriteCourses function
-            // No need to manually update here as it causes infinite loop
-          } catch (error) {
-            console.error('Error refreshing favorites:', error);
+      // Auto-refresh all data when screen comes into focus
+      const autoRefresh = async () => {
+        try {
+          console.log('🔄 HomeScreen: Auto-refresh triggered on screen focus');
+          
+          // Show refreshing state
+          setRefreshing(true);
+          
+          if (token) {
+            // For logged-in users: refresh user-specific data first
+            await Promise.all([
+              fetchUserFavoriteCourses(),
+              fetchUserProfile()
+            ]);
           }
-        };
 
-        refreshFavoritesAndUpdateCourses();
-      }
-    }, [token]) // Removed userFavoriteCourses from dependencies to prevent infinite loop
+          // Always refresh course and banner data
+          await Promise.all([
+            fetchCourseData(),
+            fetchFeaturedCourses(),
+            fetchBannerData()
+          ]);
+          
+          console.log('✅ HomeScreen: Auto-refresh completed');
+        } catch (error) {
+          console.log('❌ HomeScreen: Error during auto-refresh:', error);
+          // Continue even if some refreshes fail
+        } finally {
+          setRefreshing(false);
+        }
+      };
+
+      // Trigger auto-refresh when screen comes into focus
+      autoRefresh();
+    }, [token]) // Only depend on token to prevent unnecessary refreshes
   );
 
   // Function to fetch featured courses from API
