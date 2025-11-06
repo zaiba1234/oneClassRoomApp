@@ -128,49 +128,15 @@ const AppContent = ({ alertManagerRef }) => {
         console.log('🔔 [App] Notification opened app from background:', remoteMessage);
         
         try {
-          // Enrich notification data with lessonId for lesson_live notifications
-          const notificationService = require('./src/services/notificationService').default;
-          const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(remoteMessage);
+          // Always navigate to NotificationScreen when notification is tapped from background
+          console.log('🔗 [App] Navigating to NotificationScreen for all background notifications');
           
-          // Extract data for checking
-          const fcmData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
-          const notificationType = fcmData.type || fcmData.notificationType || 'general';
-          
-          // Generate deep link from enriched notification
-          const { generateDeepLinkFromNotification, navigateWithDeepLink } = require('./src/utils/deepLinking');
-          let deepLink = generateDeepLinkFromNotification(enrichedNotification);
-          console.log('🔗 [App] Generated deep link from background notification:', deepLink);
-          
-          // For internship notifications, always navigate to notification screen
-          const internshipNotificationTypes = [
-            'request_internship_letter',
-            'upload_internship_letter',
-            'internship_letter_uploaded',
-            'internship_letter_payment',
-            'internship_letter_payment_completed',
-            'internship',
-            'internshipNotification'
-          ];
-          
-          if (internshipNotificationTypes.includes(notificationType)) {
-            console.log('🔗 [App] Internship notification detected, navigating to notification screen');
-            deepLink = `learningsaint://notification`;
-            console.log('🔗 [App] Updated deep link for internship notification:', deepLink);
-          }
-          // If deep link is still pointing to notification screen for lesson_live, override it
-          else if (notificationType === 'lesson_live' && deepLink.includes('notification')) {
-            const lessonId = fcmData.lessonId || enrichedNotification.lessonId || fcmData.lesson_id;
-            if (lessonId) {
-              console.log('🔗 [App] Overriding deep link with lessonId:', lessonId);
-              deepLink = `learningsaint://lesson/live/${lessonId}`;
-              console.log('🔗 [App] Corrected deep link:', deepLink);
-            }
-          }
-          
-          // Navigate after a short delay to ensure navigation is ready
+          // Navigate to notification screen after a short delay to ensure navigation is ready
           setTimeout(() => {
             if (navigationRef.current && navigationRef.current.isReady()) {
-              navigateWithDeepLink(navigationRef.current, deepLink);
+              const { navigateWithDeepLink } = require('./src/utils/deepLinking');
+              navigateWithDeepLink(navigationRef.current, 'learningsaint://notification');
+              console.log('✅ [App] Navigated to NotificationScreen');
             }
           }, 1000);
         } catch (error) {
@@ -340,44 +306,30 @@ const AppContent = ({ alertManagerRef }) => {
         const pendingDeepLink = await AsyncStorage.getItem('pending_deep_link');
         
         if (pendingDeepLink) {
-          console.log('🔗 [App] Pending deep link found:', pendingDeepLink);
+          console.log('🔗 [App] Pending deep link found from notification:', pendingDeepLink);
           await AsyncStorage.removeItem('pending_deep_link');
           
-          // Also check for enriched notification data
+          // Clean up any pending notification data (not needed anymore)
           const pendingNotificationData = await AsyncStorage.getItem('pending_notification_data');
           if (pendingNotificationData) {
-            console.log('🔗 [App] Pending notification data found, using enriched deep link');
             await AsyncStorage.removeItem('pending_notification_data');
-            // Re-generate deep link from enriched data to ensure lessonId is included
-            try {
-              const { generateDeepLinkFromNotification } = require('./src/utils/deepLinking');
-              const enrichedData = JSON.parse(pendingNotificationData);
-              const enrichedDeepLink = generateDeepLinkFromNotification(enrichedData);
-              console.log('🔗 [App] Enriched deep link:', enrichedDeepLink);
-              
-              setTimeout(() => {
-                if (navigationRef.current) {
-                  navigateWithDeepLink(navigationRef.current, enrichedDeepLink);
-                }
-              }, 2000); // Wait for navigation to be ready
-              return;
-            } catch (enrichError) {
-              console.error('❌ [App] Error generating enriched deep link, using original:', enrichError);
-            }
+            console.log('🔗 [App] Cleaned up pending notification data');
           }
           
+          // Always navigate to NotificationScreen when opened from notification
+          console.log('🔗 [App] Navigating to NotificationScreen for notification deep link');
           setTimeout(() => {
             if (navigationRef.current) {
-              navigateWithDeepLink(navigationRef.current, pendingDeepLink);
+              navigateWithDeepLink(navigationRef.current, 'learningsaint://notification');
             }
           }, 2000); // Wait for navigation to be ready
           return;
         }
         
-        // Check for URL from deep link
+        // Check for URL from deep link (only if not from notification)
         const url = await Linking.getInitialURL();
         if (url) {
-          console.log('🔗 [App] Initial URL:', url);
+          console.log('🔗 [App] Initial URL (not from notification):', url);
           setTimeout(() => {
             if (navigationRef.current) {
               navigateWithDeepLink(navigationRef.current, url);

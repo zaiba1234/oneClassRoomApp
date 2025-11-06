@@ -23,6 +23,7 @@ import { setProfileData } from '../Redux/userSlice';
 import { profileAPI } from '../API/profileAPI';
 import { getApiUrl, ENDPOINTS } from '../API/config';
 import BackButton from '../Component/BackButton';
+import { checkApiResponseForTokenError } from '../utils/tokenErrorHandler';
 
 const PersonalInfoScreen = ({ navigation }) => {
   const dispatch = useAppDispatch();
@@ -140,6 +141,14 @@ const fetchUserProfile = async (isRefresh = false) => {
       hasData: !!result.data?.data,
       fullResponse: JSON.stringify(result, null, 2)
     });
+    
+    // Check for token errors - exit early if token error detected (auto-logout will happen)
+    if (result.isTokenError || checkApiResponseForTokenError({ status: result.status, data: result.data })) {
+      console.log('🔐 [PersonalInfoScreen] Token error detected in fetchUserProfile, exiting early');
+      setIsLoadingProfile(false);
+      setRefreshing(false);
+      return; // Exit early - navigation handled by tokenErrorHandler
+    }
     
     console.log('📱 [PersonalInfoScreen] getUserProfile Raw Response:', result);
     console.log('📱 [PersonalInfoScreen] Complete API Response Structure:', {
@@ -288,13 +297,28 @@ const handleEmailVerification = async () => {
     console.log('📧 [PersonalInfoScreen] send-emailotp API Response Status:', response.status);
     console.log('📧 [PersonalInfoScreen] send-emailotp API Response Headers:', response.headers);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log('❌ [PersonalInfoScreen] send-emailotp API Error Response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    // Parse response first to check for token errors
+    let result;
+    try {
+      const responseText = await response.text();
+      result = responseText ? JSON.parse(responseText) : {};
+    } catch (parseError) {
+      console.log('❌ [PersonalInfoScreen] Failed to parse response as JSON');
+      result = {};
     }
 
-    const result = await response.json();
+    // Check for token errors BEFORE checking response.ok
+    if (checkApiResponseForTokenError({ status: response.status, data: result })) {
+      console.log('🔐 [PersonalInfoScreen] Token error detected in handleEmailVerification, exiting early');
+      setIsLoading(false);
+      return; // Exit early - navigation handled by tokenErrorHandler
+    }
+
+    if (!response.ok) {
+      console.log('❌ [PersonalInfoScreen] send-emailotp API Error Response:', result);
+      throw new Error(result.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
     console.log('📧 [PersonalInfoScreen] send-emailotp API Response:', {
       success: result.success,
       message: result.message,
@@ -365,6 +389,13 @@ const handleSaveProfile = async () => {
       hasData: !!result.data?.data,
       fullResponse: JSON.stringify(result, null, 2)
     });
+    
+    // Check for token errors - exit early if token error detected (auto-logout will happen)
+    if (result.isTokenError || checkApiResponseForTokenError({ status: result.status, data: result.data })) {
+      console.log('🔐 [PersonalInfoScreen] Token error detected in handleSaveProfile, exiting early');
+      setIsLoading(false);
+      return; // Exit early - navigation handled by tokenErrorHandler
+    }
     
     console.log('📱 [PersonalInfoScreen] updateUserProfile Raw Response:', result);
 

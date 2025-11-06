@@ -19,6 +19,7 @@ import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
 import { useFocusEffect } from '@react-navigation/native';
 import BackButton from '../Component/BackButton';
+import { checkApiResponseForTokenError } from '../utils/tokenErrorHandler';
 
 const { width, height } = Dimensions.get('window');
 
@@ -89,6 +90,14 @@ const FavouritesScreen = ({ navigation }) => {
       
       const result = await courseAPI.getFavoriteCourses(token, page, 10);
       console.log('✅ getFavoriteCourses API CALL COMPLETED');
+      
+      // Check for token errors - exit early if token error detected (auto-logout will happen)
+      if (result.isTokenError || checkApiResponseForTokenError({ status: result.status, data: result.data })) {
+        console.log('🔐 [FavouritesScreen] Token error detected, exiting early');
+        setIsLoading(false);
+        setLoadingMore(false);
+        return; // Exit early - navigation handled by tokenErrorHandler
+      }
       
       // DETAILED API RESPONSE DEBUG FOR FAVORITE COURSES
       console.log('🔥🔥🔥 FAVORITE COURSES API RESPONSE DEBUG 🔥🔥🔥');
@@ -220,6 +229,12 @@ const FavouritesScreen = ({ navigation }) => {
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
       
       const result = await courseAPI.toggleFavorite(token, courseId);
+      
+      // Check for token errors - exit early if token error detected (auto-logout will happen)
+      if (result.isTokenError || checkApiResponseForTokenError({ status: result.status, data: result.data })) {
+        console.log('🔐 [FavouritesScreen] Token error detected in toggleFavorite, exiting early');
+        return; // Exit early - navigation handled by tokenErrorHandler
+      }
       
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response

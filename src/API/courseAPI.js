@@ -746,9 +746,19 @@ export const courseAPI = {
         body: body,
       });
 
-     
-
       const responseData = await response.json();
+      
+      // Check for token errors BEFORE processing response
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [courseAPI] Token error detected in toggleFavorite');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
     
       if (response.ok) {
         console.log('✅ courseAPI.toggleFavorite: API call successful');
@@ -784,14 +794,19 @@ export const courseAPI = {
         headers: headers,
       });
 
-      
-
-      if (!response.ok) {
-        console.log('❌ courseAPI.getFavoriteCourses: HTTP error! status:', response.status);
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const responseData = await response.json();
+      
+      // Check for token errors BEFORE processing response
+      if (checkApiResponseForTokenError({ status: response.status, data: responseData })) {
+        console.log('🔐 [courseAPI] Token error detected in getFavoriteCourses');
+        await handleTokenError(responseData, true);
+        return {
+          success: false,
+          data: responseData,
+          status: response.status,
+          isTokenError: true,
+        };
+      }
     
       // DETAILED API RESPONSE DEBUG FOR FAVORITE COURSES
      

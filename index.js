@@ -37,50 +37,20 @@ messaging().getInitialNotification().then(async (remoteMessage) => {
     console.log('🔗 [index.js] App opened from notification:', JSON.stringify(remoteMessage, null, 2));
     
     try {
-      // Enrich notification data with lessonId for lesson_live notifications
-      // Note: This is async, so we need to wait for it
-      const notificationService = require('./src/services/notificationService').default;
-      await notificationService.initialize(); // Ensure service is initialized
-      const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(remoteMessage);
+      // Always navigate to NotificationScreen when app is opened from notification (cold start)
+      console.log('🔗 [index.js] Navigating to NotificationScreen for all cold start notifications');
       
-      // Generate deep link from enriched notification
-      const { generateDeepLinkFromNotification } = require('./src/utils/deepLinking');
-      let deepLink = generateDeepLinkFromNotification(enrichedNotification);
-      console.log('🔗 [index.js] Generated deep link from initial notification:', deepLink);
-      
-      // For internship notifications, always navigate to notification screen
-      const fcmData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
-      const notificationType = fcmData.type || fcmData.notificationType || 'general';
-      const internshipNotificationTypes = [
-        'request_internship_letter',
-        'upload_internship_letter',
-        'internship_letter_uploaded',
-        'internship_letter_payment',
-        'internship_letter_payment_completed',
-        'internship',
-        'internshipNotification'
-      ];
-      
-      if (internshipNotificationTypes.includes(notificationType)) {
-        console.log('🔗 [index.js] Internship notification detected, navigating to notification screen');
-        deepLink = `learningsaint://notification`;
-        console.log('🔗 [index.js] Updated deep link for internship notification:', deepLink);
-      }
-      
-      // Store in AsyncStorage for App.js to pick up
+      // Store notification screen deep link for App.js to pick up
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.setItem('pending_deep_link', deepLink);
-      
-      // Also store the enriched notification data for App.js to use
-      await AsyncStorage.setItem('pending_notification_data', JSON.stringify(enrichedNotification));
+      await AsyncStorage.setItem('pending_deep_link', 'learningsaint://notification');
+      console.log('✅ [index.js] Stored NotificationScreen deep link for cold start');
     } catch (err) {
       console.error('❌ [index.js] Error processing initial notification:', err);
-      // Fallback: store basic deep link
+      // Fallback: store notification screen deep link
       try {
-        const { generateDeepLinkFromNotification } = require('./src/utils/deepLinking');
-        const deepLink = generateDeepLinkFromNotification(remoteMessage);
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        await AsyncStorage.setItem('pending_deep_link', deepLink);
+        await AsyncStorage.setItem('pending_deep_link', 'learningsaint://notification');
+        console.log('✅ [index.js] Stored NotificationScreen deep link (fallback)');
       } catch (fallbackErr) {
         console.error('❌ [index.js] Error storing pending deep link (fallback):', fallbackErr);
       }
