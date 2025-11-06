@@ -12,6 +12,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  BackHandler,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
@@ -57,6 +58,19 @@ const LibraryScreen = ({ navigation }) => {
       fetchCourseData(1, false);
     }
   }, [token]);
+
+  // Handle Android back button - navigate to Home tab
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        // Navigate to Home tab when back button is pressed
+        navigation.navigate('Home');
+        return true; // Prevent default back behavior
+      });
+
+      return () => backHandler.remove();
+    }
+  }, [navigation]);
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {

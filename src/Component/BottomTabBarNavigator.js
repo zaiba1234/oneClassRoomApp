@@ -17,91 +17,8 @@ import { useAppSelector } from '../Redux/hooks';
 
 const Tab = createBottomTabNavigator();
 
-// Wrapper component to handle gesture navigation at Stack Navigator level
+// Wrapper component - gesture navigation removed, only hardware back button handled
 const BottomTabNavigatorWrapper = () => {
-  const navigation = useNavigation();
-  const { isAuthenticated, token } = useAppSelector((state) => state.user);
-
-  // Handle gesture navigation and prevent going back to Login/Verify screens
-  useEffect(() => {
-    if (!isAuthenticated || !token) {
-      return; // Don't set up listener if not logged in
-    }
-
-    console.log('🔔 [BottomTabNavigatorWrapper] Setting up beforeRemove listener for gestures');
-
-    // Listen for beforeRemove event at Stack Navigator level (handles gestures)
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      console.log('🔔 [BottomTabNavigatorWrapper] beforeRemove event triggered (gesture or back button)');
-      // Prevent default behavior of leaving the screen
-      e.preventDefault();
-
-      try {
-        // Get root navigation state
-        const rootState = navigation.getRootState();
-        const rootRoutes = rootState?.routes || [];
-        const rootIndex = rootState?.index || 0;
-        const currentRootRoute = rootRoutes[rootIndex];
-        const currentRootRouteName = currentRootRoute?.name;
-        
-        console.log('🔔 [BottomTabNavigatorWrapper] Current route:', currentRootRouteName);
-        
-        // Check if we're on Home screen (which contains BottomTabNavigator)
-        if (currentRootRouteName === 'Home') {
-          // Get the tab navigator state (nested inside Home)
-          const tabState = currentRootRoute?.state;
-          const tabRoutes = tabState?.routes || [];
-          const tabIndex = tabState?.index || 0;
-          const currentTabRoute = tabRoutes[tabIndex];
-          const currentTabRouteName = currentTabRoute?.name;
-          
-          console.log('🔔 [BottomTabNavigatorWrapper] Current tab:', currentTabRouteName);
-          
-          // If on any tab screen, navigate to Home tab
-          if (currentTabRouteName) {
-            console.log('🔔 [BottomTabNavigatorWrapper] Navigating to Home tab');
-            navigation.navigate('Home');
-            return;
-          }
-        }
-        
-        // If on nested screen, check if going back would take us to Login/Verify
-        if (navigation.canGoBack()) {
-          const previousRootIndex = rootIndex - 1;
-          if (previousRootIndex >= 0 && rootRoutes[previousRootIndex]) {
-            const previousRootRoute = rootRoutes[previousRootIndex];
-            const previousRootRouteName = previousRootRoute?.name;
-            
-            console.log('🔔 [BottomTabNavigatorWrapper] Previous route:', previousRootRouteName);
-            
-            // Prevent going back to Login/Verify screens
-            const restrictedScreens = ['Login', 'Verify', 'OnBoard', 'Splash', 'Register', 'RegisterPopup'];
-            if (restrictedScreens.includes(previousRootRouteName)) {
-              // Navigate to Home instead
-              console.log('🔔 [BottomTabNavigatorWrapper] Preventing back to restricted screen, navigating to Home');
-              navigation.navigate('Home');
-              return;
-            }
-          }
-          
-          // Safe to go back - dispatch the original action
-          console.log('🔔 [BottomTabNavigatorWrapper] Safe to go back, dispatching action');
-          navigation.dispatch(e.data.action);
-        } else {
-          // No navigation stack - navigate to Home
-          console.log('🔔 [BottomTabNavigatorWrapper] No navigation stack, navigating to Home');
-          navigation.navigate('Home');
-        }
-      } catch (error) {
-        console.log('⚠️ [BottomTabNavigatorWrapper] Error in beforeRemove handler:', error);
-        // Fallback: navigate to Home
-        navigation.navigate('Home');
-      }
-    });
-
-    return unsubscribe;
-  }, [isAuthenticated, token, navigation]);
-
   return <BottomTabNavigator />;
 };
 
@@ -109,74 +26,8 @@ const BottomTabNavigator = () => {
   const navigation = useNavigation();
   const { isAuthenticated, token } = useAppSelector((state) => state.user);
   
-  // Handle gesture navigation and hardware back button - prevent going back to Login/Verify screens
-  useEffect(() => {
-    if (!isAuthenticated || !token) {
-      return; // Don't set up listener if not logged in
-    }
-
-    // Listen for beforeRemove event (handles both gesture navigation and hardware back button)
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      // Prevent default behavior of leaving the screen
-      e.preventDefault();
-
-      try {
-        // Get root navigation state
-        const rootState = navigation.getRootState();
-        const rootRoutes = rootState?.routes || [];
-        const rootIndex = rootState?.index || 0;
-        const currentRootRoute = rootRoutes[rootIndex];
-        const currentRootRouteName = currentRootRoute?.name;
-        
-        // Check if we're on Home screen (which contains BottomTabNavigator)
-        if (currentRootRouteName === 'Home') {
-          // Get the tab navigator state (nested inside Home)
-          const tabState = currentRootRoute?.state;
-          const tabRoutes = tabState?.routes || [];
-          const tabIndex = tabState?.index || 0;
-          const currentTabRoute = tabRoutes[tabIndex];
-          const currentTabRouteName = currentTabRoute?.name;
-          
-          // If on any tab screen, navigate to Home tab
-          if (currentTabRouteName) {
-            navigation.navigate('Home');
-            return;
-          }
-        }
-        
-        // If on nested screen, check if going back would take us to Login/Verify
-        if (navigation.canGoBack()) {
-          const previousRootIndex = rootIndex - 1;
-          if (previousRootIndex >= 0 && rootRoutes[previousRootIndex]) {
-            const previousRootRoute = rootRoutes[previousRootIndex];
-            const previousRootRouteName = previousRootRoute?.name;
-            
-            // Prevent going back to Login/Verify screens
-            const restrictedScreens = ['Login', 'Verify', 'OnBoard', 'Splash', 'Register', 'RegisterPopup'];
-            if (restrictedScreens.includes(previousRootRouteName)) {
-              // Navigate to Home instead
-              navigation.navigate('Home');
-              return;
-            }
-          }
-          
-          // Safe to go back - dispatch the original action
-          navigation.dispatch(e.data.action);
-        } else {
-          // No navigation stack - navigate to Home
-          navigation.navigate('Home');
-        }
-      } catch (error) {
-        console.log('⚠️ [BottomTabNavigator] Error in beforeRemove handler:', error);
-        // Fallback: navigate to Home
-        navigation.navigate('Home');
-      }
-    });
-
-    return unsubscribe;
-  }, [isAuthenticated, token, navigation]);
-
   // Handle hardware back button press - prevent going back to Login/Verify screens when logged in
+  // Always navigate to Home page maximum, never go to verify/login pages
   useEffect(() => {
     const backAction = () => {
       // If user is logged in, handle back button
@@ -189,6 +40,8 @@ const BottomTabNavigator = () => {
           const currentRootRoute = rootRoutes[rootIndex];
           const currentRootRouteName = currentRootRoute?.name;
           
+          console.log('🔙 [BottomTabNavigator] Back button pressed, current route:', currentRootRouteName);
+          
           // Check if we're on Home screen (which contains BottomTabNavigator)
           if (currentRootRouteName === 'Home') {
             // Get the tab navigator state (nested inside Home)
@@ -198,37 +51,69 @@ const BottomTabNavigator = () => {
             const currentTabRoute = tabRoutes[tabIndex];
             const currentTabRouteName = currentTabRoute?.name;
             
-            // If on any tab screen (Home, Courses, Programs, Favorites, Profile)
-            // Always navigate to Home tab (don't go back to Login/Verify)
-            if (currentTabRouteName) {
-              navigation.navigate('Home');
+            console.log('🔙 [BottomTabNavigator] On Home screen, current tab:', currentTabRouteName);
+            
+            // If on any tab screen other than Home (Courses, Programs, Favorites, Profile)
+            // Navigate to Home tab when back button is pressed
+            if (currentTabRouteName && currentTabRouteName !== 'Home') {
+              console.log('🔙 [BottomTabNavigator] On tab screen:', currentTabRouteName, '- navigating to Home tab');
+              // Navigate to Home tab - use the tab navigator's navigate method
+              // Since we're inside Tab.Navigator, we need to get the tab navigator reference
+              try {
+                // Try to navigate using the current navigation object (should be tab navigator)
+                navigation.navigate('Home');
+                console.log('✅ [BottomTabNavigator] Successfully navigated to Home tab');
+              } catch (navError) {
+                console.log('⚠️ [BottomTabNavigator] Navigation error, trying alternative method:', navError);
+                // Fallback: try to get parent and navigate
+                const parentNav = navigation.getParent();
+                if (parentNav) {
+                  parentNav.navigate('Home');
+                }
+              }
               return true; // Prevent default back behavior
+            }
+            
+            // If already on Home tab, allow default back behavior (will exit app or go to previous screen)
+            if (currentTabRouteName === 'Home') {
+              console.log('🔙 [BottomTabNavigator] Already on Home tab, allowing default back behavior');
+              return false; // Allow default back behavior
             }
           }
           
           // If on nested screen (like EnrollScreen, LessonVideoScreen, etc.)
-          // Check if going back would take us to Login/Verify screens
-          if (navigation.canGoBack()) {
-            // Get the previous route in root stack
-            const previousRootIndex = rootIndex - 1;
-            if (previousRootIndex >= 0 && rootRoutes[previousRootIndex]) {
-              const previousRootRoute = rootRoutes[previousRootIndex];
-              const previousRootRouteName = previousRootRoute?.name;
-              
-              // Prevent going back to Login/Verify screens
-              const restrictedScreens = ['Login', 'Verify', 'OnBoard', 'Splash', 'Register', 'RegisterPopup'];
-              if (restrictedScreens.includes(previousRootRouteName)) {
-                // Navigate to Home instead of going back to Login/Verify
-                navigation.navigate('Home');
-                return true; // Prevent default back behavior
-              }
+          // Check ALL routes in stack to see if any restricted screen exists
+          const restrictedScreens = ['Login', 'Verify', 'OnBoard', 'Splash', 'Register', 'RegisterPopup'];
+          let hasRestrictedScreen = false;
+          
+          // Check all routes in the stack
+          for (let i = 0; i < rootRoutes.length; i++) {
+            const route = rootRoutes[i];
+            if (restrictedScreens.includes(route?.name)) {
+              hasRestrictedScreen = true;
+              console.log('🔙 [BottomTabNavigator] Found restricted screen in stack:', route?.name);
+              break;
             }
-            
-            // Safe to go back (won't go to Login/Verify)
+          }
+          
+          // If any restricted screen exists in stack, navigate to Home instead of going back
+          if (hasRestrictedScreen) {
+            console.log('🔙 [BottomTabNavigator] Restricted screen found, navigating to Home instead');
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
+            return true; // Prevent default back behavior
+          }
+          
+          // If on nested screen and no restricted screens in stack, allow normal back
+          if (navigation.canGoBack()) {
+            console.log('🔙 [BottomTabNavigator] Safe to go back, allowing normal back navigation');
             navigation.goBack();
             return true; // Prevent default back behavior
           } else {
             // No navigation stack - navigate to Home tab to prevent app exit
+            console.log('🔙 [BottomTabNavigator] No navigation stack, navigating to Home');
             navigation.navigate('Home');
             return true; // Prevent default back behavior (don't exit app)
           }
@@ -243,9 +128,11 @@ const BottomTabNavigator = () => {
       return false;
     };
 
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-
-    return () => backHandler.remove();
+    // Only add back handler on Android
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+      return () => backHandler.remove();
+    }
   }, [isAuthenticated, token, navigation]);
   return (
     <Tab.Navigator

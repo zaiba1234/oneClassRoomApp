@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Platform,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -75,6 +76,19 @@ const FavouritesScreen = ({ navigation }) => {
       }
     }, [token])
   );
+
+  // Handle Android back button - navigate to Home tab
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        // Navigate to Home tab when back button is pressed
+        navigation.navigate('Home');
+        return true; // Prevent default back behavior
+      });
+
+      return () => backHandler.remove();
+    }
+  }, [navigation]);
 
   const fetchFavoriteCourses = async (page = 1, append = false) => {
     try {

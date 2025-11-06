@@ -368,8 +368,7 @@ const AppContent = ({ alertManagerRef }) => {
         initialRouteName="Splash" 
         screenOptions={{ 
           headerShown: false,
-          gestureEnabled: true, // Enable gesture navigation on Android
-          gestureDirection: 'horizontal', // Horizontal swipe gesture
+          gestureEnabled: false, // Disable gesture navigation on Android (causing issues)
         }}
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
@@ -384,9 +383,7 @@ const AppContent = ({ alertManagerRef }) => {
           name="Home" 
           component={BottomTabNavigator}
           options={{
-            gestureEnabled: true, // Enable gesture navigation on Android
-            gestureResponseDistance: 50, // Increase gesture response distance for better gesture detection
-            animationEnabled: true, // Enable animations for gestures
+            gestureEnabled: false, // Disable gesture navigation on Android (causing issues)
           }}
         />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />

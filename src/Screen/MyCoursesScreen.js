@@ -11,6 +11,7 @@ import {
   SafeAreaView,
   RefreshControl,
   Platform,
+  BackHandler,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -152,6 +153,19 @@ const MyCoursesScreen = ({ navigation }) => {
       fetchCourses(selectedFilter, 1, false);
     }
   }, [selectedFilter, token]);
+
+  // Handle Android back button - navigate to Home tab
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        // Navigate to Home tab when back button is pressed
+        navigation.navigate('Home');
+        return true; // Prevent default back behavior
+      });
+
+      return () => backHandler.remove();
+    }
+  }, [navigation]);
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
