@@ -112,32 +112,7 @@ const HomeScreen = () => {
     console.log('   4. Add pagination UI (Load More button, pagination info)');
   }, []);
 
-  // Component के अंदर, existing useEffect के बाद add करें
-useEffect(() => {
-  const backAction = () => {
-    // HomeScreen से back करने पर app बंद करें
-    Alert.alert(
-      "Exit App",
-      "Are you sure you want to exit?",
-      [
-        {
-          text: "Cancel",
-          onPress: () => null,
-          style: "cancel"
-        },
-        {
-          text: "Exit",
-          onPress: () => BackHandler.exitApp()
-        }
-      ]
-    );
-    return true;
-  };
-
-  const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-
-  return () => backHandler.remove();
-}, []);
+  // Back button handling is now done in BottomTabNavigator to handle all tabs
 
   // Fetch course data when component mounts or token changes
   useEffect(() => {

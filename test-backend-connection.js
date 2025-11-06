@@ -1,5 +1,6 @@
 // Test script to check backend connection
 const testBackendConnection = async () => {
+  // const baseUrl = 'https://main.learningsaint.com'; // Production URL (commented)
   const baseUrl = 'http://192.168.29.119:3000'; // Local development URL
   
   console.log('🧪 Testing backend connection...');
@@ -42,6 +43,9 @@ const testBackendConnection = async () => {
     console.log('2. Check if server is running on port 3000');
     console.log('3. For Android emulator, use http://10.0.2.2:3000');
     console.log('4. For iOS simulator, use http://localhost:3000');
+    // console.log('1. Check if production server is accessible: https://main.learningsaint.com'); // Production URL (commented)
+    // console.log('2. Verify network connectivity'); // Production troubleshooting (commented)
+    // console.log('3. Check SSL certificate validity'); // Production troubleshooting (commented)
   }
 };
 

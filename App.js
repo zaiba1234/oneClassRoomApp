@@ -364,7 +364,14 @@ const AppContent = ({ alertManagerRef }) => {
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking}>
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator 
+        initialRouteName="Splash" 
+        screenOptions={{ 
+          headerShown: false,
+          gestureEnabled: true, // Enable gesture navigation on Android
+          gestureDirection: 'horizontal', // Horizontal swipe gesture
+        }}
+      >
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="OnBoard" component={OnBoardScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -373,7 +380,15 @@ const AppContent = ({ alertManagerRef }) => {
         <Stack.Screen name="RegisterPopup" component={RegisteredPopupScreen} />
         <Stack.Screen name="Category" component={CategoryScreen} />
         <Stack.Screen name="MyCourses" component={MyCoursesScreen} />
-        <Stack.Screen name="Home" component={BottomTabNavigator} />
+        <Stack.Screen 
+          name="Home" 
+          component={BottomTabNavigator}
+          options={{
+            gestureEnabled: true, // Enable gesture navigation on Android
+            gestureResponseDistance: 50, // Increase gesture response distance for better gesture detection
+            animationEnabled: true, // Enable animations for gestures
+          }}
+        />
         <Stack.Screen name="PersonalInfo" component={PersonalInfoScreen} />
         <Stack.Screen name="ContinueLearning" component={ContinueLearningScreen} />
         <Stack.Screen name="Notification" component={NotificationScreen} />
