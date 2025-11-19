@@ -3,9 +3,8 @@ export const ENV_CONFIG = {
   // Razorpay Configuration
   RAZORPAY_KEY_ID: 'rzp_live_ZumwCLoX1AZdm9',
 
-  // API Base URL
-  // API_BASE_URL: 'https://main.learningsaint.com', // Production URL (commented)
-  API_BASE_URL: 'http://192.168.29.119:3000', // Local development URL
+  // API Base URL - Production URL
+  API_BASE_URL: 'https://main.learningsaint.com',
 
   // Other Environment Variables
   NODE_ENV: 'development',

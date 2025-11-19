@@ -39,7 +39,53 @@ const getResponsiveSize = (size) => {
   return Math.round(size * scale);
 };
 
+/**
+ * ============================================
+ * HOMESCREEN - API CALLS SUMMARY
+ * ============================================
+ * 
+ * This screen uses the following APIs:
+ * 
+ * 1. courseAPI.getPurchasedCourse(token)
+ *    - Endpoint: /api/course/get-purchased-course
+ *    - Purpose: Fetch featured/purchased courses for carousel
+ * 
+ * 2. courseAPI.getAllSubcourses(token, { page, limit })
+ *    - Endpoint: /api/course/get-all-subcourses
+ *    - Purpose: Fetch all courses (All Course filter)
+ * 
+ * 3. courseAPI.getPopularSubcourses(token, { page, limit })
+ *    - Endpoint: /api/course/get-popular-subcourses
+ *    - Purpose: Fetch popular courses (Popular filter)
+ * 
+ * 4. courseAPI.getNewestSubcourses(token, { page, limit })
+ *    - Endpoint: /api/course/get-newest-subcourses
+ *    - Purpose: Fetch newest courses (Newest filter)
+ * 
+ * 5. getApiUrl(ENDPOINTS.HOMEPAGE_BANNER)
+ *    - Endpoint: /api/user/course/homePage-banner
+ *    - Purpose: Fetch banner data (recentSubcourse, recentPurchasedSubcourse, promos)
+ * 
+ * 6. courseAPI.getFavoriteCourses(token)
+ *    - Endpoint: /api/course/get-favorite-courses
+ *    - Purpose: Fetch user's favorite courses
+ * 
+ * 7. profileAPI.getUserProfile(token)
+ *    - Endpoint: /api/user/profile/get-profile
+ *    - Purpose: Fetch user profile data
+ * 
+ * 8. courseAPI.toggleFavorite(token, courseId)
+ *    - Endpoint: /api/user/favorite/toggle-favouriteCourse
+ *    - Purpose: Toggle favorite status of a course
+ * 
+ * ============================================
+ */
+
 const HomeScreen = () => {
+  console.log('🏠 [HomeScreen] ============================================');
+  console.log('🏠 [HomeScreen] Component initialized');
+  console.log('🏠 [HomeScreen] ============================================');
+  
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
@@ -48,6 +94,14 @@ const HomeScreen = () => {
 
   // Get user data from Redux
   const { fullName, mobileNumber, token, isAuthenticated, _id, userId, profileImageUrl, address, email } = useAppSelector((state) => state.user);
+  
+  console.log('🏠 [HomeScreen] Redux State:', {
+    hasToken: !!token,
+    isAuthenticated,
+    fullName,
+    userId,
+    hasProfileImage: !!profileImageUrl
+  });
   // State for course data
   const [courseCards, setCourseCards] = useState([]); // Start with empty array instead of hardcoded data
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
@@ -65,12 +119,16 @@ const HomeScreen = () => {
     promos: []
   });
 
-  // Debug: Log banner data changes (production-safe)
+  // Debug: Log banner data changes
   useEffect(() => {
-    if (__DEV__) {
-      console.log('🏠 HomeScreen: Banner data state changed');
-      console.log('🏠 HomeScreen: Banner data - promos length:', bannerData.promos?.length || 0);
-    }
+    console.log('🏠 [HomeScreen] Banner data state changed');
+    console.log('🏠 [HomeScreen] Banner data - promos length:', bannerData.promos?.length || 0);
+    console.log('🏠 [HomeScreen] Banner data details:', {
+      hasRecentSubcourse: !!bannerData.recentSubcourse,
+      hasRecentPurchasedSubcourse: !!bannerData.recentPurchasedSubcourse,
+      promosCount: bannerData.promos?.length || 0,
+      timestamp: new Date().toISOString()
+    });
   }, [bannerData]);
 
 
@@ -105,36 +163,66 @@ const HomeScreen = () => {
   // Ref to track loading timeout
   const loadingTimeoutRef = useRef(null);
 
-  // Debug: Log pagination status
+  // Debug: Log component mount and initial state
   useEffect(() => {
-    
-    console.log('   3. Add loadMoreCourses function');
-    console.log('   4. Add pagination UI (Load More button, pagination info)');
+    console.log('🏠 [HomeScreen] Component mounted');
+    console.log('🏠 [HomeScreen] Initial State:', {
+      selectedFilter,
+      currentCarouselIndex,
+      courseCardsCount: courseCards.length,
+      featuredCoursesCount: featuredCourses.length,
+      hasToken: !!token,
+      searchKeyword,
+      currentPage,
+      totalPages
+    });
   }, []);
 
   // Back button handling is now done in BottomTabNavigator to handle all tabs
 
   // Fetch course data when component mounts or token changes
   useEffect(() => {
+    console.log('🏠 [HomeScreen] useEffect triggered - token changed:', {
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 15)}...` : 'No token',
+      timestamp: new Date().toISOString()
+    });
+    
     // Initialize data regardless of token status for better UX
     const initializeData = async () => {
       try {
+        console.log('🏠 [HomeScreen] Initializing data...');
+        
         if (token) {
+          console.log('🏠 [HomeScreen] User is logged in, fetching user-specific data');
           // For logged-in users: fetch user-specific data first
+          console.log('📡 [API] Calling fetchUserFavoriteCourses...');
           await fetchUserFavoriteCourses();
+          console.log('📡 [API] Calling fetchUserProfile...');
           await fetchUserProfile();
+        } else {
+          console.log('🏠 [HomeScreen] User is not logged in, skipping user-specific data');
         }
 
         // Always fetch course data and banner data (these should work for all users)
-        console.log('🏠 HomeScreen: Starting parallel API calls...');
+        console.log('🏠 [HomeScreen] Starting parallel API calls for public data...');
+        console.log('📡 [API] Calling fetchCourseData with page=1, limit=5...');
+        console.log('📡 [API] Calling fetchFeaturedCourses...');
+        console.log('📡 [API] Calling fetchBannerData...');
+        
         await Promise.all([
-          fetchCourseData(),
+          fetchCourseData(1, 5), // Explicitly set page=1, limit=5
           fetchFeaturedCourses(),
           fetchBannerData()
         ]);
-        console.log('🏠 HomeScreen: All parallel API calls completed');
+        
+        console.log('✅ [HomeScreen] All parallel API calls completed successfully');
       } catch (error) {
-        console.log('HomeScreen: Error during initialization:', error);
+        console.error('❌ [HomeScreen] Error during initialization:', {
+          message: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString()
+        });
         // Continue with fallback data even if some APIs fail
       }
     };
@@ -145,35 +233,59 @@ const HomeScreen = () => {
   // Auto-refresh when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      console.log('🔄 [HomeScreen] Screen focused - auto-refresh triggered');
+      
       // Auto-refresh all data when screen comes into focus
       const autoRefresh = async () => {
         try {
-          console.log('🔄 HomeScreen: Auto-refresh triggered on screen focus');
+          console.log('🔄 [HomeScreen] Starting auto-refresh...');
+          console.log('🔄 [HomeScreen] Current state:', {
+            selectedFilter,
+            courseCardsCount: courseCards.length,
+            hasToken: !!token,
+            timestamp: new Date().toISOString()
+          });
           
           // Show refreshing state
           setRefreshing(true);
+          console.log('🔄 [HomeScreen] Refreshing state set to true');
           
           if (token) {
+            console.log('🔄 [HomeScreen] User logged in, refreshing user-specific data');
             // For logged-in users: refresh user-specific data first
+            console.log('📡 [API] Auto-refresh: Calling fetchUserFavoriteCourses...');
+            console.log('📡 [API] Auto-refresh: Calling fetchUserProfile...');
             await Promise.all([
               fetchUserFavoriteCourses(),
               fetchUserProfile()
             ]);
+            console.log('✅ [HomeScreen] User-specific data refreshed');
+          } else {
+            console.log('🔄 [HomeScreen] User not logged in, skipping user-specific data');
           }
 
           // Always refresh course and banner data
+          console.log('📡 [API] Auto-refresh: Calling fetchCourseData with page=1, limit=5...');
+          console.log('📡 [API] Auto-refresh: Calling fetchFeaturedCourses...');
+          console.log('📡 [API] Auto-refresh: Calling fetchBannerData...');
+          
           await Promise.all([
-            fetchCourseData(),
+            fetchCourseData(1, 5), // Explicitly set page=1, limit=5
             fetchFeaturedCourses(),
             fetchBannerData()
           ]);
           
-          console.log('✅ HomeScreen: Auto-refresh completed');
+          console.log('✅ [HomeScreen] Auto-refresh completed successfully');
         } catch (error) {
-          console.log('❌ HomeScreen: Error during auto-refresh:', error);
+          console.error('❌ [HomeScreen] Error during auto-refresh:', {
+            message: error.message,
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+          });
           // Continue even if some refreshes fail
         } finally {
           setRefreshing(false);
+          console.log('🔄 [HomeScreen] Refreshing state set to false');
         }
       };
 
@@ -196,8 +308,21 @@ const HomeScreen = () => {
       setIsLoadingFeatured(true);
       setFeaturedError(null);
 
+      console.log('📡 [API] getPurchasedCourse - Making API call...');
+      const startTime = Date.now();
       const result = await courseAPI.getPurchasedCourse(token);
-
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      console.log('📱 [API] getPurchasedCourse - API call completed', {
+        duration: `${duration}ms`,
+        success: result.success,
+        status: result.status,
+        hasData: !!result.data,
+        dataKeys: result.data ? Object.keys(result.data) : 'No data',
+        timestamp: new Date().toISOString()
+      });
+      
       console.log('📱 [HomeScreen] getPurchasedCourse API Response:', {
         success: result.success,
         status: result.status,
@@ -271,6 +396,7 @@ const HomeScreen = () => {
   };
 
   // Function to fetch course data from API
+  // Pagination: limit=5 per page, loads 5 courses per page
   const fetchCourseData = async (page = 1, limit = 5) => {
     try {
       console.log('🚀 [HomeScreen] fetchCourseData called - getAllSubcourses API');
@@ -294,15 +420,27 @@ const HomeScreen = () => {
 
       // Set a timeout to prevent infinite loading
       loadingTimeoutRef.current = setTimeout(() => {
-        if (__DEV__) {
-          console.log('⏰ HomeScreen: Course loading timeout, stopping loader');
-        }
+        console.log('⏰ [HomeScreen] Course loading timeout, stopping loader');
+        console.log('⏰ [HomeScreen] Timeout after 10 seconds - API might be slow or failed');
         setIsLoadingCourses(false);
       }, 10000); // 10 second timeout
 
-      console.log('🚀 CALLING getAllSubcourses API NOW...');
+      console.log('📡 [API] getAllSubcourses - Making API call...', {
+        page,
+        limit,
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
+      const startTime = Date.now();
       const result = await courseAPI.getAllSubcourses(token, { page, limit });
-      console.log('✅ getAllSubcourses API CALL COMPLETED');
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log('✅ [API] getAllSubcourses - API call completed', {
+        duration: `${duration}ms`,
+        success: result.success,
+        status: result.status,
+        timestamp: new Date().toISOString()
+      });
 
       // Clear timeout if API call completes
       if (loadingTimeoutRef.current) {
@@ -325,12 +463,10 @@ const HomeScreen = () => {
       }
       console.log('🔥🔥🔥 END ALL COURSES DEBUG 🔥🔥🔥');
 
-      // Production-safe API response logging
-      if (__DEV__) {
-        console.log('🔥 API Response Success:', result.success);
-        console.log('🔥 Courses Count:', result.data?.data?.length || 0);
-        console.log('🔥 Has Pagination:', !!result.data?.pagination);
-      }
+      // API response logging
+      console.log('🔥 [API] getAllSubcourses Response Success:', result.success);
+      console.log('🔥 [API] getAllSubcourses Courses Count:', result.data?.data?.length || 0);
+      console.log('🔥 [API] getAllSubcourses Has Pagination:', !!result.data?.pagination);
 
       // Debug pagination structure for All Courses
       console.log('🔍 [DEBUG] All Courses API Response Structure:');
@@ -364,11 +500,41 @@ const HomeScreen = () => {
 
         // Update pagination state
         if (result.data.pagination) {
+          // Use API pagination data
           setCurrentPage(result.data.pagination.currentPage || page);
           setTotalPages(result.data.pagination.totalPages || 1);
           setTotalCourses(result.data.pagination.totalCourses || apiCourses.length);
           setHasNextPage(result.data.pagination.hasNextPage || false);
           setHasPrevPage(result.data.pagination.hasPrevPage || false);
+          
+          console.log('📄 [Pagination] API Pagination Data:', {
+            currentPage: result.data.pagination.currentPage || page,
+            totalPages: result.data.pagination.totalPages || 1,
+            totalCourses: result.data.pagination.totalCourses || apiCourses.length,
+            hasNextPage: result.data.pagination.hasNextPage || false,
+            hasPrevPage: result.data.pagination.hasPrevPage || false
+          });
+        } else {
+          // Fallback: Calculate pagination based on returned data
+          // If we got exactly 'limit' items, assume there might be more pages
+          const receivedCount = apiCourses.length;
+          const hasMore = receivedCount >= limit; // If we got full limit (5), there might be more
+          
+          setCurrentPage(page);
+          // Estimate total pages (we don't know total, so we'll keep loading until we get less than limit)
+          setTotalPages(hasMore ? page + 1 : page); // Estimate: at least one more page if we got full limit
+          setTotalCourses(page === 1 ? receivedCount : (page - 1) * limit + receivedCount);
+          setHasNextPage(hasMore); // Show "Load More" if we got full limit (5)
+          setHasPrevPage(page > 1);
+          
+          console.log('📄 [Pagination] Fallback Pagination Calculated:', {
+            currentPage: page,
+            receivedCount,
+            limit,
+            hasMore,
+            hasNextPage: hasMore,
+            estimatedTotal: page === 1 ? receivedCount : (page - 1) * limit + receivedCount
+          });
         }
 
         // Transform API data to match existing UI structure
@@ -390,8 +556,22 @@ const HomeScreen = () => {
         // If it's the first page, replace courses; otherwise append
         if (page === 1) {
           setCourseCards(transformedCourses);
+          console.log('📄 [Pagination] First page loaded - Replaced course cards:', {
+            page: 1,
+            coursesLoaded: transformedCourses.length,
+            limit: limit
+          });
         } else {
-          setCourseCards(prevCourses => [...prevCourses, ...transformedCourses]);
+          setCourseCards(prevCourses => {
+            const updated = [...prevCourses, ...transformedCourses];
+            console.log('📄 [Pagination] Page loaded - Appended courses:', {
+              page,
+              newCourses: transformedCourses.length,
+              totalCourses: updated.length,
+              limit: limit
+            });
+            return updated;
+          });
         }
         console.log('✅ HomeScreen: Course data loaded successfully - Total courses:', transformedCourses.length);
 
@@ -446,9 +626,22 @@ const HomeScreen = () => {
       setIsLoadingCourses(true);
       setCourseError(null);
 
-      console.log('🚀 CALLING getPopularSubcourses API NOW...');
+      console.log('📡 [API] getPopularSubcourses - Making API call...', {
+        page,
+        limit,
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
+      const startTime = Date.now();
       const result = await courseAPI.getPopularSubcourses(token, { page, limit });
-      console.log('✅ getPopularSubcourses API CALL COMPLETED');
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log('✅ [API] getPopularSubcourses - API call completed', {
+        duration: `${duration}ms`,
+        success: result.success,
+        status: result.status,
+        timestamp: new Date().toISOString()
+      });
 
       console.log('📱 [HomeScreen] getPopularSubcourses API Response:', {
         success: result.success,
@@ -459,11 +652,9 @@ const HomeScreen = () => {
 
       // DETAILED API RESPONSE DEBUG FOR POPULAR COURSES
       console.log('🔥🔥🔥 POPULAR COURSES API RESPONSE DEBUG 🔥🔥🔥');
-      console.log('🔥 API Name: getPopularSubcourses');
-      console.log('🔥 Endpoint: /api/course/get-popular-subcourses');
-      if (__DEV__) {
-        console.log('🔥 API Response Success:', result.success);
-      }
+      console.log('🔥 [API] API Name: getPopularSubcourses');
+      console.log('🔥 [API] Endpoint: /api/course/get-popular-subcourses');
+      console.log('🔥 [API] Response Success:', result.success);
       console.log('🔥 Response Success:', result.success);
       console.log('🔥 Response Status:', result.status);
       console.log('🔥 Response Data:', result.data);
@@ -602,9 +793,22 @@ const HomeScreen = () => {
       setIsLoadingCourses(true);
       setCourseError(null);
 
-      console.log('🚀 CALLING getNewestSubcourses API NOW...');
+      console.log('📡 [API] getNewestSubcourses - Making API call...', {
+        page,
+        limit,
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
+      const startTime = Date.now();
       const result = await courseAPI.getNewestSubcourses(token, { page, limit });
-      console.log('✅ getNewestSubcourses API CALL COMPLETED');
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log('✅ [API] getNewestSubcourses - API call completed', {
+        duration: `${duration}ms`,
+        success: result.success,
+        status: result.status,
+        timestamp: new Date().toISOString()
+      });
 
       console.log('📱 [HomeScreen] getNewestSubcourses API Response:', {
         success: result.success,
@@ -615,11 +819,9 @@ const HomeScreen = () => {
 
       // DETAILED API RESPONSE DEBUG FOR NEWEST COURSES
       console.log('🔥🔥🔥 NEWEST COURSES API RESPONSE DEBUG 🔥🔥🔥');
-      console.log('🔥 API Name: getNewestSubcourses');
-      console.log('🔥 Endpoint: /api/course/get-newest-subcourses');
-      if (__DEV__) {
-        console.log('🔥 API Response Success:', result.success);
-      }
+      console.log('🔥 [API] API Name: getNewestSubcourses');
+      console.log('🔥 [API] Endpoint: /api/course/get-newest-subcourses');
+      console.log('🔥 [API] Response Success:', result.success);
       console.log('🔥 Response Success:', result.success);
       console.log('🔥 Response Status:', result.status);
       console.log('🔥 Response Data:', result.data);
@@ -745,6 +947,12 @@ const HomeScreen = () => {
       setBannerError(null);
 
       const apiUrl = getApiUrl(ENDPOINTS.HOMEPAGE_BANNER);
+      console.log('📡 [API] HOMEPAGE_BANNER - Making API call...', {
+        endpoint: ENDPOINTS.HOMEPAGE_BANNER,
+        fullUrl: apiUrl,
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
       console.log('🏠 HomeScreen: Fetching banner from URL:', apiUrl);
       console.log('🏠 HomeScreen: ENDPOINTS.HOMEPAGE_BANNER:', ENDPOINTS.HOMEPAGE_BANNER);
 
@@ -761,10 +969,20 @@ const HomeScreen = () => {
       }
 
       console.log('🏠 HomeScreen: Banner request headers:', headers);
-
+      
+      const startTime = Date.now();
+      console.log('📡 [API] HOMEPAGE_BANNER - Fetch request started');
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers,
+      });
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log('✅ [API] HOMEPAGE_BANNER - Fetch request completed', {
+        duration: `${duration}ms`,
+        status: response.status,
+        statusText: response.statusText,
+        timestamp: new Date().toISOString()
       }); 
 
       console.log('🏠 HomeScreen: Banner response status:', response.status);
@@ -779,10 +997,8 @@ const HomeScreen = () => {
       }
 
       if (response.ok) {
-        if (__DEV__) {
-          console.log('🏠 HomeScreen: Raw API response success:', result.success);
-        }
-        console.log('🏠 HomeScreen: Response success:', result.success);
+        console.log('🏠 [HomeScreen] Banner API response success:', result.success);
+        console.log('🏠 [HomeScreen] Response success:', result.success);
         console.log('🏠 HomeScreen: Response data:', result.data);
         console.log('🏠 HomeScreen: Response message:', result.message);
 
@@ -868,8 +1084,22 @@ const HomeScreen = () => {
         timestamp: new Date().toISOString()
       });
 
+      console.log('📡 [API] getFavoriteCourses - Making API call...', {
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
+      const startTime = Date.now();
       const result = await courseAPI.getFavoriteCourses(token);
-
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      console.log('✅ [API] getFavoriteCourses - API call completed', {
+        duration: `${duration}ms`,
+        success: result.success,
+        status: result.status,
+        timestamp: new Date().toISOString()
+      });
+      
       console.log('📱 [HomeScreen] getFavoriteCourses API Response:', {
         success: result.success,
         status: result.status,
@@ -938,7 +1168,12 @@ const HomeScreen = () => {
       }
     } catch (error) {
       setUserFavoriteCourses(new Set()); // Set empty set on error
-      console.error('💥 HomeScreen: Error fetching favorite courses:', error);
+      console.error('💥 [HomeScreen] Error fetching favorite courses:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
     }
   };
 
@@ -953,8 +1188,22 @@ const HomeScreen = () => {
         timestamp: new Date().toISOString()
       });
 
+      console.log('📡 [API] getUserProfile - Making API call...', {
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
+      const startTime = Date.now();
       const result = await profileAPI.getUserProfile(token);
-
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      console.log('✅ [API] getUserProfile - API call completed', {
+        duration: `${duration}ms`,
+        success: result.success,
+        status: result.status,
+        timestamp: new Date().toISOString()
+      });
+      
       console.log('📱 [HomeScreen] getUserProfile API Response:', {
         success: result.success,
         status: result.status,
@@ -1000,12 +1249,27 @@ const HomeScreen = () => {
 
   // Function to load more courses (pagination)
   const loadMoreCourses = async () => {
-    if (isLoadingMore || !hasNextPage) return;
+    console.log('📄 [HomeScreen] loadMoreCourses called', {
+      isLoadingMore,
+      hasNextPage,
+      currentPage,
+      selectedFilter,
+      timestamp: new Date().toISOString()
+    });
+    
+    if (isLoadingMore || !hasNextPage) {
+      console.log('📄 [HomeScreen] Load more cancelled:', {
+        isLoadingMore,
+        hasNextPage
+      });
+      return;
+    }
     
     try {
       setIsLoadingMore(true);
       const nextPage = currentPage + 1;
       console.log('📄 [HomeScreen] Loading more courses - Page:', nextPage, 'Filter:', selectedFilter);
+      console.log('📡 [API] Load more - fetching next page');
       
       // Load more based on selected filter
       if (selectedFilter === 'Popular') {
@@ -1024,12 +1288,20 @@ const HomeScreen = () => {
 
   // Function to search courses based on keyword
   const searchCourses = (keyword) => {
+    console.log('🔍 [HomeScreen] searchCourses called', {
+      keyword,
+      keywordLength: keyword.length,
+      timestamp: new Date().toISOString()
+    });
+    
     if (!keyword.trim()) {
+      console.log('🔍 [HomeScreen] Empty keyword, clearing search');
       setFilteredCourses([]);
       setIsSearching(false);
       return;
     }
 
+    console.log('🔍 [HomeScreen] Starting search with keyword:', keyword);
     setIsSearching(true);
 
     // Add a small delay to show loading state and prevent too many rapid searches
@@ -1049,10 +1321,18 @@ const HomeScreen = () => {
 
   // Function to handle search input change
   const handleSearchChange = (text) => {
+    console.log('🔍 [HomeScreen] Search input changed', {
+      text,
+      textLength: text.length,
+      timestamp: new Date().toISOString()
+    });
+    
     setSearchKeyword(text);
     if (text.trim()) {
+      console.log('🔍 [HomeScreen] Non-empty search, triggering searchCourses');
       searchCourses(text);
     } else {
+      console.log('🔍 [HomeScreen] Empty search, clearing results');
       setFilteredCourses([]);
       setIsSearching(false);
     }
@@ -1073,50 +1353,97 @@ const HomeScreen = () => {
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
+    console.log('🔄 [HomeScreen] Pull-to-refresh triggered', {
+      hasToken: !!token,
+      selectedFilter,
+      timestamp: new Date().toISOString()
+    });
+    
     setRefreshing(true);
     try {
       if (token) {
+        console.log('🔄 [HomeScreen] User logged in, refreshing user-specific data');
         // For logged-in users: refresh user-specific data
+        console.log('📡 [API] Refresh: Calling fetchUserFavoriteCourses...');
         await fetchUserFavoriteCourses();
+        console.log('📡 [API] Refresh: Calling fetchUserProfile...');
         await fetchUserProfile();
+      } else {
+        console.log('🔄 [HomeScreen] User not logged in, skipping user-specific data');
       }
 
       // Always refresh course and banner data
+      console.log('📡 [API] Refresh: Calling fetchCourseData...');
+      console.log('📡 [API] Refresh: Calling fetchFeaturedCourses...');
+      console.log('📡 [API] Refresh: Calling fetchBannerData...');
+      
       await Promise.all([
         fetchCourseData(),
         fetchFeaturedCourses(),
         fetchBannerData()
       ]);
+      
+      console.log('✅ [HomeScreen] Pull-to-refresh completed successfully');
     } catch (error) {
-      console.log('HomeScreen: Error during refresh:', error);
+      console.error('❌ [HomeScreen] Error during refresh:', {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       // Continue even if some refreshes fail
     } finally {
       setRefreshing(false);
+      console.log('🔄 [HomeScreen] Refreshing state set to false');
     }
   };
 
   // Function to toggle favorite status
   const toggleFavorite = async (courseId, currentFavoriteStatus) => {
+    console.log('❤️ [HomeScreen] toggleFavorite called', {
+      courseId,
+      currentFavoriteStatus,
+      hasToken: !!token,
+      timestamp: new Date().toISOString()
+    });
+    
     try {
       // Check if token exists
       if (!token) {
+        console.log('⚠️ [HomeScreen] toggleFavorite - No token available');
         return;
       }
 
       // Check if courseId exists
       if (!courseId) {
+        console.log('⚠️ [HomeScreen] toggleFavorite - No courseId provided');
         return;
       }
 
       // Check if already toggling this course to prevent double calls
       if (togglingFavorites.has(String(courseId))) {
+        console.log('⚠️ [HomeScreen] toggleFavorite - Already toggling this course, skipping');
         return;
       }
 
       // Set loading state for this specific course
       setTogglingFavorites(prev => new Set(prev).add(String(courseId)));
 
+      console.log('📡 [API] toggleFavorite - Making API call...', {
+        courseId,
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
+      const startTime = Date.now();
       const result = await courseAPI.toggleFavorite(token, courseId);
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      console.log('✅ [API] toggleFavorite - API call completed', {
+        duration: `${duration}ms`,
+        success: result.success,
+        status: result.status,
+        timestamp: new Date().toISOString()
+      });
 
       if (result.success && result.data.success) {
         // Get the new favorite status from the API response
@@ -1156,9 +1483,24 @@ const HomeScreen = () => {
           return updatedFeatured;
         });
 
+        console.log('✅ [HomeScreen] toggleFavorite - Successfully updated favorite status:', {
+          courseId,
+          newStatus: newFavoriteStatus,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log('❌ [HomeScreen] toggleFavorite - API call failed:', {
+          success: result.success,
+          status: result.status,
+          message: result.data?.message
+        });
       }
     } catch (error) {
-      // Handle error silently
+      console.error('💥 [HomeScreen] toggleFavorite - Error:', {
+        message: error.message,
+        courseId,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       // Remove loading state for this course
       setTogglingFavorites(prev => {
@@ -1317,9 +1659,18 @@ const HomeScreen = () => {
                     courseIdToPass = item.id;
                   }
 
+                  console.log('🎯 [HomeScreen] Carousel button pressed', {
+                    buttonText,
+                    index,
+                    courseIdToPass,
+                    timestamp: new Date().toISOString()
+                  });
+                  
                   if (courseIdToPass) {
+                    console.log('🧭 [Navigation] Navigating to Enroll with courseId:', courseIdToPass);
                     navigation.navigate('Enroll', { courseId: courseIdToPass });
                   } else {
+                    console.log('🧭 [Navigation] Navigating to Enroll without courseId');
                     navigation.navigate('Enroll');
                   }
                 }}
@@ -1345,10 +1696,20 @@ const HomeScreen = () => {
         course.isUpComingCourse && styles.courseCardDisabled
       ]}
       onPress={() => {
+        console.log('📚 [HomeScreen] Course card pressed', {
+          courseId: course.id,
+          courseTitle: course.title,
+          isUpComingCourse: course.isUpComingCourse,
+          timestamp: new Date().toISOString()
+        });
+        
         // Don't navigate if it's a coming soon course
         if (course.isUpComingCourse) {
+          console.log('📚 [HomeScreen] Course is upcoming, navigation blocked');
           return;
         }
+        
+        console.log('🧭 [Navigation] Navigating to Enroll screen with courseId:', course.id);
         navigation.navigate('Enroll', { courseId: course.id });
       }}
       disabled={course.isUpComingCourse}
@@ -1431,7 +1792,11 @@ const HomeScreen = () => {
               <Text style={styles.userName}>{fullName || 'User'}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.notificationButton} onPress={() => navigation.navigate('Notification')}>
+          <TouchableOpacity style={styles.notificationButton}       onPress={() => {
+        console.log('🔔 [HomeScreen] Notification button pressed');
+        console.log('🧭 [Navigation] Navigating to Notification screen');
+        navigation.navigate('Notification');
+      }}>
             <NotificationBadge
               size={24}
               color="#000000"
@@ -1531,10 +1896,8 @@ const HomeScreen = () => {
               (bannerData.promos && bannerData.promos.length > 0);
             const hasFeaturedContent = featuredCourses.length > 0;
 
-            if (__DEV__) {
-              console.log('🏠 HomeScreen: Carousel render check - bannerData promos:', bannerData.promos?.length || 0);
-            }
-            console.log('🏠 HomeScreen: Carousel render check - hasBannerContent:', hasBannerContent);
+            console.log('🏠 [HomeScreen] Carousel render check - bannerData promos:', bannerData.promos?.length || 0);
+            console.log('🏠 [HomeScreen] Carousel render check - hasBannerContent:', hasBannerContent);
             console.log('🏠 HomeScreen: Carousel render check - hasFeaturedContent:', hasFeaturedContent);
             console.log('🏠 HomeScreen: Carousel render check - featuredCourses:', featuredCourses);
             console.log('🏠 HomeScreen: Carousel render check - isLoadingBanner:', isLoadingBanner);
@@ -1789,6 +2152,12 @@ const HomeScreen = () => {
                 selectedFilter === filter && styles.filterButtonActive,
               ]}
               onPress={() => {
+                console.log('🔘 [HomeScreen] Filter button pressed:', {
+                  previousFilter: selectedFilter,
+                  newFilter: filter,
+                  timestamp: new Date().toISOString()
+                });
+                
                 setSelectedFilter(filter);
                 // Reset pagination when switching filters
                 setCurrentPage(1);
@@ -1797,7 +2166,11 @@ const HomeScreen = () => {
                 setHasNextPage(false);
                 setHasPrevPage(false);
                 
+                console.log('🔘 [HomeScreen] Filter changed to:', filter);
+                console.log('🔘 [HomeScreen] Pagination reset');
+                
                 if (filter === 'Popular' && token) {
+                  console.log('📡 [API] Filter Popular selected - fetching popular courses');
                   // Refresh favorites first, then fetch popular courses
                   const refreshAndFetchPopular = async () => {
                     await fetchUserFavoriteCourses();
@@ -1805,6 +2178,7 @@ const HomeScreen = () => {
                   };
                   refreshAndFetchPopular();
                 } else if (filter === 'All Course' && token) {
+                  console.log('📡 [API] Filter All Course selected - fetching all courses');
                   // Refresh favorites first, then fetch all courses
                   const refreshAndFetchAll = async () => {
                     await fetchUserFavoriteCourses();
@@ -1812,12 +2186,15 @@ const HomeScreen = () => {
                   };
                   refreshAndFetchAll();
                 } else if (filter === 'Newest' && token) {
+                  console.log('📡 [API] Filter Newest selected - fetching newest courses');
                   // Refresh favorites first, then fetch newest courses
                   const refreshAndFetchNewest = async () => {
                     await fetchUserFavoriteCourses();
                     await fetchNewestCourses(1, 6);
                   };
                   refreshAndFetchNewest();
+                } else {
+                  console.log('🔘 [HomeScreen] Filter selected but no token or filter not handled:', filter);
                 }
               }}
             >

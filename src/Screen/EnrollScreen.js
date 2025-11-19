@@ -51,7 +51,6 @@ const EnrollScreen = ({ navigation, route }) => {
   // Update activeTab when route params change (including when screen is focused)
   useEffect(() => {
     if (route.params?.activeTab) {
-      console.log('📑 EnrollScreen: Setting activeTab from route params:', route.params.activeTab);
       setActiveTab(route.params.activeTab);
     }
   }, [route.params?.activeTab]);
@@ -62,7 +61,6 @@ const EnrollScreen = ({ navigation, route }) => {
       // Check for activeTab in route params when screen is focused
       const tabFromParams = route.params?.activeTab;
       if (tabFromParams && (tabFromParams === 'lessons' || tabFromParams === 'downloads')) {
-        console.log('📑 EnrollScreen: Screen focused, setting activeTab to:', tabFromParams);
         setActiveTab(tabFromParams);
       }
     }, [route.params?.activeTab])
@@ -123,6 +121,10 @@ const EnrollScreen = ({ navigation, route }) => {
     onSecondaryPress: null
   });
   
+  // Pagination state for lessons
+  const [lessonsPage, setLessonsPage] = useState(1);
+  const lessonsPerPage = 10;
+  
   // Track courseData state changes
   useEffect(() => {
   
@@ -141,7 +143,6 @@ const EnrollScreen = ({ navigation, route }) => {
   // Ensure activeTab is set from route params on mount and when courseId changes
   useEffect(() => {
     if (route.params?.activeTab && (route.params.activeTab === 'lessons' || route.params.activeTab === 'downloads')) {
-      console.log('📑 EnrollScreen: Setting activeTab on mount/courseId change:', route.params.activeTab);
       setActiveTab(route.params.activeTab);
     }
   }, [courseId, route.params?.activeTab]);
@@ -194,24 +195,12 @@ const EnrollScreen = ({ navigation, route }) => {
   
 
       const result = await courseAPI.getSubcourseById(token, courseId);
-
-      console.log('📥 EnrollScreen: getSubcourseById API Response:', result);
-      console.log('📥 EnrollScreen: result.success:', result.success);
-      console.log('📥 EnrollScreen: result.data:', result.data);
-      console.log('📥 EnrollScreen: result.status:', result.status);
      
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
-        console.log('📥 EnrollScreen: Course data from API:', apiCourse);
-        console.log('📥 EnrollScreen: apiCourse.isRecordedLessonPurchased:', apiCourse.isRecordedLessonPurchased);
-        console.log('📥 EnrollScreen: apiCourse.recordedlessonsLink:', apiCourse.recordedlessonsLink);
-        console.log('📥 EnrollScreen: apiCourse.recordedlessonsPrice:', apiCourse.recordedlessonsPrice);
-        console.log('📥 EnrollScreen: apiCourse._id:', apiCourse._id);
-        console.log('📥 EnrollScreen: apiCourse.subcourseName:', apiCourse.subcourseName);
         
         // Check if subcourse data exists
         if (!apiCourse || !apiCourse._id) {
-          console.log('❌ EnrollScreen: No subcourse data found in API response');
           setCourseError('No subcourse added');
           return;
         }
@@ -256,11 +245,8 @@ const EnrollScreen = ({ navigation, route }) => {
         }
 
         setCourseData(transformedCourse);
-        
-        console.log('✅ EnrollScreen: Course data transformed and set successfully');
-        console.log('✅ EnrollScreen: transformedCourse.isRecordedLessonPurchased:', transformedCourse.isRecordedLessonPurchased);
-        console.log('✅ EnrollScreen: transformedCourse.recordedlessonsLink:', transformedCourse.recordedlessonsLink);
-        console.log('✅ EnrollScreen: transformedCourse.recordedlessonsPrice:', transformedCourse.recordedlessonsPrice);
+        // Reset lessons pagination when course data is loaded
+        setLessonsPage(1);
 
       } else {
         // Check if it's a "no subcourse found" error
@@ -321,15 +307,6 @@ const EnrollScreen = ({ navigation, route }) => {
         const lessonDate = new Date(lesson.date);
         const lessonDateString = lessonDate.toISOString().split('T')[0];
         
-        console.log(`📅 Lesson ${index + 1} date parsing:`, {
-          originalDate: lesson.date,
-          parsedDate: lessonDateString,
-          currentDate,
-          isToday: lessonDateString === currentDate,
-          isFuture: lessonDateString > currentDate,
-          isPast: lessonDateString < currentDate
-        });
-        
         // Check if lesson is today or in the future
         if (lessonDateString >= currentDate) {
           const [startHour, startMinute] = lesson.startTime.split(':').map(Number);
@@ -340,20 +317,10 @@ const EnrollScreen = ({ navigation, route }) => {
           if (lessonDateString === currentDate) {
             // Lesson is today - calculate time difference
             timeDiff = lessonStartSeconds - currentTimeInSeconds;
-            console.log(`📊 Time difference for lesson ${index + 1} (today):`, {
-              timeDiff,
-              isPast: timeDiff <= 0,
-              isFuture: timeDiff > 0
-            });
           } else {
             // Lesson is in future days - calculate time until start of that day + start time
             const daysDiff = Math.ceil((lessonDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             timeDiff = (daysDiff * 24 * 3600) + lessonStartSeconds - currentTimeInSeconds;
-            console.log(`📊 Time difference for lesson ${index + 1} (future day):`, {
-              daysDiff,
-              timeDiff,
-              isFuture: true
-            });
           }
 
           // Check if this lesson is in the future
@@ -363,29 +330,10 @@ const EnrollScreen = ({ navigation, route }) => {
             if (timeDiff < minTimeDiff) {
               minTimeDiff = timeDiff;
               nextLesson = lesson;
-              console.log(`✅ New closest future lesson found:`, {
-                lessonName: lesson.lessonName,
-                timeDiff,
-                minTimeDiff,
-                lessonDate: lessonDateString
-              });
           }
-          } else {
-            console.log(`⏰ Lesson ${index + 1} is in the past`);
           }
-        } else {
-          console.log(`📅 Lesson ${index + 1} is in the past (date: ${lessonDateString})`);
         }
-      } else {
-        console.log(`❌ Lesson ${index + 1} missing startTime or date`);
       }
-    });
-
-    console.log('🎯 Final calculation result:', {
-      nextLesson: nextLesson ? nextLesson.lessonName : 'None',
-      minTimeDiff,
-      isInfinity: minTimeDiff === Infinity,
-      hasFutureLesson
     });
 
     // If no future lesson found, don't show timer
@@ -431,8 +379,6 @@ const EnrollScreen = ({ navigation, route }) => {
       return () => {
         clearInterval(interval);
       };
-    } else {
-      console.log('❌ No lessons available, not starting timer');
     }
   }, [courseData.lessons]);
 
@@ -493,14 +439,7 @@ const EnrollScreen = ({ navigation, route }) => {
       const priceInRupees = parseFloat(priceString) || 1;
       const priceInPaise = Math.round(priceInRupees * 100);
 
-      console.log('💳 EnrollScreen: Creating course order...');
-      console.log('💳 EnrollScreen: Order details - courseId:', courseId, 'priceInPaise:', priceInPaise);
-
       const orderResult = await courseAPI.createCourseOrder(token, courseId, priceInPaise);
-
-      console.log('📥 EnrollScreen: createCourseOrder API Response:', orderResult);
-      console.log('📥 EnrollScreen: Order Success:', orderResult.success);
-      console.log('📥 EnrollScreen: Order Data:', orderResult.data);
 
       if (!orderResult.success || !orderResult.data.success) {
         setPaymentStatus('failed');
@@ -550,9 +489,6 @@ const EnrollScreen = ({ navigation, route }) => {
         return;
       }
 
-      console.log('✅ EnrollScreen: Verifying payment...');
-      console.log('✅ EnrollScreen: Payment details - orderId:', orderData.orderId, 'paymentId:', paymentId, 'signature:', signature);
-
       const verificationResult = await courseAPI.verifyPayment(
         token,
         orderData.orderId,
@@ -560,10 +496,6 @@ const EnrollScreen = ({ navigation, route }) => {
         signature,
         courseId // Pass courseId as subcourseId
       );
-
-      console.log('📥 EnrollScreen: verifyPayment API Response:', verificationResult);
-      console.log('📥 EnrollScreen: Verification Success:', verificationResult.success);
-      console.log('📥 EnrollScreen: Verification Data:', verificationResult.data);
 
       if (verificationResult.success && verificationResult.data.success) {
         setPaymentStatus('success');
@@ -734,20 +666,14 @@ const EnrollScreen = ({ navigation, route }) => {
   // Function to download recorded lesson video
   const downloadRecordedLessonVideo = (videoUrl) => {
     try {
-      console.log('📥 EnrollScreen: Starting video download...');
-      console.log('📥 EnrollScreen: Video URL:', videoUrl);
-      
       // Use Linking to open the video URL
       // This will allow the device to handle the video download/playback
       Linking.openURL(videoUrl).then(() => {
-        console.log('✅ EnrollScreen: Video opened successfully');
         Alert.alert('Success', 'Video is opening in your default video player. You can download it from there.');
       }).catch((error) => {
-        console.log('❌ EnrollScreen: Error opening video:', error);
         Alert.alert('Error', 'Could not open video. Please try again.');
       });
     } catch (error) {
-      console.log('❌ EnrollScreen: Error in downloadRecordedLessonVideo:', error);
       Alert.alert('Error', 'Something went wrong while downloading the video.');
     }
   };
@@ -755,29 +681,19 @@ const EnrollScreen = ({ navigation, route }) => {
   // Function to handle Watch Recorded Lesson button
   const handleWatchRecordedLesson = async () => {
     try {
-      console.log('🎬 EnrollScreen: handleWatchRecordedLesson called');
-      console.log('🎬 EnrollScreen: courseData.paymentStatus:', courseData.paymentStatus);
-      console.log('🎬 EnrollScreen: courseData.isRecordedLessonPurchased:', courseData.isRecordedLessonPurchased);
-      console.log('🎬 EnrollScreen: courseData.recordedlessonsLink:', courseData.recordedlessonsLink);
-      console.log('🎬 EnrollScreen: courseData._id:', courseData._id);
-      console.log('🎬 EnrollScreen: courseData.title:', courseData.title);
-      
       // Scenario 1: Check if paymentStatus is false - button should not be clickable
       if (!courseData.paymentStatus) {
-        console.log('❌ EnrollScreen: Payment status is false, button should not be clickable');
         setShowRecordedLessonModal(true);
         return;
       }
       
       // Scenario 2: paymentStatus is true, check if recorded lesson is already purchased
       if (courseData.isRecordedLessonPurchased) {
-        console.log('✅ EnrollScreen: Recorded lesson already purchased, downloading video');
         // If purchased, download the video
         if (courseData.recordedlessonsLink) {
           // Download the recorded lesson video
           downloadRecordedLessonVideo(courseData.recordedlessonsLink);
         } else {
-          console.log('❌ EnrollScreen: Recorded lesson link not available');
           Alert.alert(
             'Link Not Available',
             'Recorded lesson link is not available at the moment. Please try refreshing the page or contact support if the issue persists.',
@@ -796,12 +712,10 @@ const EnrollScreen = ({ navigation, route }) => {
           );
         }
       } else {
-        console.log('💰 EnrollScreen: Recorded lesson not purchased, starting payment flow');
         // If not purchased, start Razorpay payment for recorded lesson
         await handleRecordedLessonPayment();
       }
     } catch (error) {
-      console.log('❌ EnrollScreen: Error in handleWatchRecordedLesson:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
@@ -809,36 +723,19 @@ const EnrollScreen = ({ navigation, route }) => {
   // Function to handle recorded lesson payment
   const handleRecordedLessonPayment = async () => {
     try {
-      console.log('💰 EnrollScreen: handleRecordedLessonPayment started');
-      console.log('💰 EnrollScreen: token:', token);
-      console.log('💰 EnrollScreen: courseData._id:', courseData._id);
-      
       setPaymentStatus('processing');
       
       // Create order for recorded lesson
-      console.log('📞 EnrollScreen: Calling createRecordedLessonOrder API...');
       const orderData = await courseAPI.createRecordedLessonOrder(token, courseData._id);
       
-      console.log('📥 EnrollScreen: createRecordedLessonOrder API Response:', orderData);
-      console.log('📥 EnrollScreen: orderData.success:', orderData?.success);
-      console.log('📥 EnrollScreen: orderData.data:', orderData?.data);
-      console.log('📥 EnrollScreen: orderData.orderId:', orderData?.orderId);
-      
       if (!orderData || !orderData.orderId) {
-        console.log('❌ EnrollScreen: Failed to create payment order - no orderId');
         throw new Error('Failed to create payment order');
       }
 
-      console.log('✅ EnrollScreen: Order created successfully, opening Razorpay...');
       // Open Razorpay payment interface
       const paymentData = await handlePaymentWithRazorpay(orderData);
       
-      console.log('📥 EnrollScreen: Razorpay payment response:', paymentData);
-      console.log('📥 EnrollScreen: paymentData.razorpay_payment_id:', paymentData?.razorpay_payment_id);
-      console.log('📥 EnrollScreen: paymentData.razorpay_signature:', paymentData?.razorpay_signature);
-      
       if (paymentData && paymentData.razorpay_payment_id) {
-        console.log('✅ EnrollScreen: Payment successful, verifying payment...');
         // Verify payment
         const verifyData = {
           razorpayOrderId: orderData.orderId,
@@ -847,24 +744,14 @@ const EnrollScreen = ({ navigation, route }) => {
           subcourseId: courseData._id
         };
         
-        console.log('📞 EnrollScreen: Calling verifyRecordedLessonPayment API...');
-        console.log('📞 EnrollScreen: verifyData:', verifyData);
-        
         const verifyResult = await courseAPI.verifyRecordedLessonPayment(token, verifyData);
         
-        console.log('📥 EnrollScreen: verifyRecordedLessonPayment API Response:', verifyResult);
-        console.log('📥 EnrollScreen: verifyResult.success:', verifyResult?.success);
-        console.log('📥 EnrollScreen: verifyResult.data:', verifyResult?.data);
-        console.log('📥 EnrollScreen: verifyResult.message:', verifyResult?.message);
-        
         if (verifyResult.success) {
-          console.log('✅ EnrollScreen: Payment verification successful!');
           setPaymentStatus('success');
           Alert.alert('Success', 'Recorded lesson purchased successfully!', [
             {
               text: 'OK',
               onPress: () => {
-                console.log('🔄 EnrollScreen: Refreshing course data...');
                 // Refresh course data to get updated purchase status
                 fetchCourseDetails();
                 // No navigation - just refresh data
@@ -872,24 +759,17 @@ const EnrollScreen = ({ navigation, route }) => {
             }
           ]);
         } else {
-          console.log('❌ EnrollScreen: Payment verification failed');
           throw new Error(verifyResult.message || 'Payment verification failed');
         }
       } else {
-        console.log('❌ EnrollScreen: Payment was cancelled or failed');
         throw new Error('Payment was cancelled or failed');
       }
     } catch (error) {
-      console.log('❌ EnrollScreen: Error in handleRecordedLessonPayment:', error);
-      console.log('❌ EnrollScreen: Error message:', error.message);
-      console.log('❌ EnrollScreen: Error stack:', error.stack);
       setPaymentStatus('failed');
       
       if (error.message === 'PAYMENT_CANCELLED') {
-        console.log('🚫 EnrollScreen: Payment was cancelled by user');
         Alert.alert('Payment Cancelled', 'You cancelled the payment. You can try again anytime.');
       } else {
-        console.log('💥 EnrollScreen: Payment failed with error:', error.message);
         Alert.alert('Payment Failed', error.message || 'Something went wrong. Please try again.');
       }
     }
@@ -1018,11 +898,9 @@ const EnrollScreen = ({ navigation, route }) => {
       const internshipCourseId = courseData._id || courseId;
       if (internshipCourseId) {
         navigation.navigate('Internship', { courseId: internshipCourseId });
-      } else {
-        console.log('⚠️ EnrollScreen: No courseId available for internship letter navigation');
       }
     } catch (error) {
-      console.log('❌ EnrollScreen: Error navigating to internship letter:', error);
+      // Handle error silently
     }
   };
 
@@ -1397,21 +1275,11 @@ const EnrollScreen = ({ navigation, route }) => {
   };
 
   const renderLessons = () => {
-    // Debug log for lessons data
-    console.log('🔍 EnrollScreen: renderLessons Debug:', {
-      totalLessons: courseData.totalLessons,
-      lessonsArray: courseData.lessons,
-      lessonsLength: courseData.lessons?.length,
-      isLessonsArray: Array.isArray(courseData.lessons)
-    });
-    
     // Add extra safety check - check both totalLessons and lessons array
     const hasNoLessons = !courseData.lessons || 
                         !Array.isArray(courseData.lessons) || 
                         courseData.lessons.length === 0 || 
                         courseData.totalLessons === 0;
-    
-    console.log('🔍 EnrollScreen: hasNoLessons result:', hasNoLessons);
     
     if (hasNoLessons) {
       // Return empty view with proper message
@@ -1426,13 +1294,22 @@ const EnrollScreen = ({ navigation, route }) => {
       );
     }
 
+    // Pagination logic - show only lessons for current page
+    const totalLessons = courseData.lessons.length;
+    const startIndex = 0;
+    const endIndex = lessonsPage * lessonsPerPage;
+    const displayedLessons = courseData.lessons.slice(startIndex, endIndex);
+    const hasMoreLessons = endIndex < totalLessons;
+
     return (
       <View style={styles.lessonsContainer}>
-        {courseData.lessons.map((lesson, index) => {
+        {displayedLessons.map((lesson, index) => {
+          // Calculate original index from full array for lock logic
+          const originalIndex = startIndex + index;
           // Extra safety checks for each property
           const lessonTitle = lesson && lesson.lessonName && typeof lesson.lessonName === 'string'
             ? lesson.lessonName
-            : `Lesson ${index + 1}`;
+            : `Lesson ${originalIndex + 1}`;
 
           const lessonDuration = lesson && lesson.duration && typeof lesson.duration === 'string'
             ? lesson.duration
@@ -1445,13 +1322,13 @@ const EnrollScreen = ({ navigation, route }) => {
             : null; // No fallback image
 
           // Check if lesson should be locked
-          const isFirstLesson = index === 0;
+          const isFirstLesson = originalIndex === 0;
           const isLessonLocked = !courseData.paymentStatus ||
-            (!isFirstLesson && !courseData.lessons[index - 1]?.isCompleted);
+            (!isFirstLesson && !courseData.lessons[originalIndex - 1]?.isCompleted);
 
           return (
             <TouchableOpacity
-              key={`lesson-${index}`}
+              key={`lesson-${originalIndex}`}
               style={styles.lessonItem}
               onPress={() => {
                 if (isLessonLocked) {
@@ -1507,6 +1384,32 @@ const EnrollScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           );
         })}
+        
+        {/* Load More Button */}
+        {hasMoreLessons && (
+          <LinearGradient
+            colors={['#F6B800', '#FF8800']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.loadMoreLessonsButton}
+          >
+            <TouchableOpacity
+              style={styles.loadMoreLessonsButtonTouchable}
+              onPress={() => setLessonsPage(prev => prev + 1)}
+            >
+              <Text style={styles.loadMoreLessonsButtonText}>Load More Lessons</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        )}
+        
+        {/* End of list message */}
+        {!hasMoreLessons && totalLessons > 0 && (
+          <View style={styles.endOfLessonsContainer}>
+            <Text style={styles.endOfLessonsText}>
+              Showing {displayedLessons.length} of {totalLessons} lessons
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -2632,6 +2535,32 @@ const styles = StyleSheet.create({
     width: getFontSize(10),
     height: getFontSize(10),
     tintColor: '#999999',
+  },
+  loadMoreLessonsButton: {
+    borderRadius: getFontSize(8),
+    marginTop: getVerticalSize(20),
+    marginBottom: getVerticalSize(10),
+  },
+  loadMoreLessonsButtonTouchable: {
+    paddingVertical: getVerticalSize(12),
+    paddingHorizontal: getVerticalSize(20),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadMoreLessonsButtonText: {
+    color: '#FFFFFF',
+    fontSize: getFontSize(16),
+    fontWeight: 'bold',
+  },
+  endOfLessonsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: getVerticalSize(20),
+  },
+  endOfLessonsText: {
+    fontSize: getFontSize(14),
+    color: '#999999',
+    textAlign: 'center',
   },
 });
 

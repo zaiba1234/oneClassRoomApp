@@ -254,10 +254,13 @@ export const courseAPI = {
     }
   },
 
-  getEnrolledStudents: async (token, subcourseId) => {
+  getEnrolledStudents: async (token, subcourseId, { page = 1, limit = 10 } = {}) => {
     try {
-
-      const url = getApiUrl(`/api/user/course/get-enrolled-students/${subcourseId}`);
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      const url = getApiUrl(`/api/user/course/get-enrolled-students/${subcourseId}?${queryParams}`);
       const headers = {
         ...getApiHeaders(),
         'Authorization': `Bearer ${token}`,

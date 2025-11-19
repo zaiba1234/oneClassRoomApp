@@ -61,7 +61,7 @@ const BottomTabNavigator = () => {
               // Since we're inside Tab.Navigator, we need to get the tab navigator reference
               try {
                 // Try to navigate using the current navigation object (should be tab navigator)
-                navigation.navigate('Home');
+              navigation.navigate('Home');
                 console.log('✅ [BottomTabNavigator] Successfully navigated to Home tab');
               } catch (navError) {
                 console.log('⚠️ [BottomTabNavigator] Navigation error, trying alternative method:', navError);
