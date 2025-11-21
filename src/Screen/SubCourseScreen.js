@@ -87,11 +87,25 @@ const SubCourseScreen = ({ navigation, route }) => {
         setSubcourses(transformedSubcourses);
 
       } else {
-        setSubcourseError(result.data?.message || 'Failed to fetch subcourses');
+        // Check for specific error messages and show user-friendly messages
+        const errorMessage = result.data?.message || 'Failed to fetch subcourses';
+        if (errorMessage.toLowerCase().includes('no subcourses found') || 
+            errorMessage.toLowerCase().includes('no subcourse')) {
+          setSubcourseError('No subcourses available for this course.');
+        } else if (errorMessage.toLowerCase().includes('not found') || result.status === 404) {
+          setSubcourseError('Course not found.');
+        } else {
+          setSubcourseError('Unable to load subcourses. Please try again.');
+        }
         // Keep existing subcourse data if API fails
       }
     } catch (error) {
-      setSubcourseError(error.message || 'Network error occurred');
+      // Show user-friendly network error message
+      if (error.message && error.message.toLowerCase().includes('network')) {
+        setSubcourseError('Network issue. Please check your internet and try again.');
+      } else {
+        setSubcourseError('Unable to load subcourses. Please try again.');
+      }
       // Keep existing subcourse data if error occurs
     } finally {
       if (isRefresh) {
@@ -282,16 +296,15 @@ const SubCourseScreen = ({ navigation, route }) => {
             </View>
           ) : subcourseError ? (
             <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Error: {subcourseError}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={fetchSubcourseData}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
+              <Icon name="book-outline" size={64} color="#CCCCCC" style={styles.errorIcon} />
+              <Text style={styles.errorText}>{subcourseError}</Text>
             </View>
           ) : displaySubcourses.length > 0 ? (
             displaySubcourses.map((course) => renderCourseCard(course))
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No subcourses available</Text>
+              <Icon name="book-outline" size={64} color="#CCCCCC" style={styles.emptyIcon} />
+              <Text style={styles.emptyText}>No subcourses available for this course.</Text>
             </View>
           )}
         </View>
@@ -453,13 +466,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    padding: 40,
+    paddingTop: 60,
+  },
+  errorIcon: {
+    marginBottom: 20,
   },
   errorText: {
-    fontSize: 18,
-    color: '#FF0000',
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    lineHeight: 22,
   },
   retryButton: {
     backgroundColor: '#FF8800',
@@ -476,10 +494,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 50,
+    padding: 40,
+    paddingTop: 60,
+  },
+  emptyIcon: {
+    marginBottom: 20,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#666',
     textAlign: 'center',
   },

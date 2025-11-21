@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Linking, Platform } from 'react-native';
 import store from './src/Redux/store';
+import mobileAds from 'react-native-google-mobile-ads';
 
 // Suppress Firebase warnings
 import './src/utils/suppressWarnings';
@@ -66,6 +67,26 @@ const AppContent = ({ alertManagerRef }) => {
 
   useEffect(() => {
     console.log('🚀 App started!');
+    
+    // Initialize AdMob (using test IDs for development)
+    // Only initialize on Android to avoid iOS issues
+    if (Platform.OS === 'android') {
+      try {
+        mobileAds()
+          .initialize()
+          .then(adapterStatuses => {
+            console.log('✅ AdMob initialized successfully');
+            console.log('📊 AdMob adapter statuses:', adapterStatuses);
+          })
+          .catch(error => {
+            console.error('❌ AdMob initialization failed:', error);
+            // Don't crash the app if AdMob fails to initialize
+          });
+      } catch (error) {
+        console.error('❌ AdMob initialization error:', error);
+        // Continue app execution even if AdMob fails
+      }
+    }
     
     // Note: WebSocket removed - using Firebase push notifications only
     console.log('📱 App: Using Firebase push notifications only (WebSocket removed)');

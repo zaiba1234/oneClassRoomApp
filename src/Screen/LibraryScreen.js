@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
 import BackButton from '../Component/BackButton';
+import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
 const { width, height } = Dimensions.get('window');
 
@@ -46,6 +47,18 @@ const LibraryScreen = ({ navigation }) => {
   const [hasMoreData, setHasMoreData] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Interstitial Ad for course clicks (Android only, using production ID)
+  const interstitialAdRef = useRef(
+    Platform.OS === 'android'
+      ? InterstitialAd.createForAdRequest('ca-app-pub-7361876223006934/3796924172', {
+          requestNonPersonalizedAdsOnly: true,
+        })
+      : null
+  );
+  
+  // Store navigation params for after ad closes
+  const pendingNavigationRef = useRef(null);
+
   // Fetch course data when component mounts
   useEffect(() => {
     if (token) {
@@ -58,6 +71,42 @@ const LibraryScreen = ({ navigation }) => {
       fetchCourseData(1, false);
     }
   }, [token]);
+
+  // Load Interstitial Ad on mount (Android only)
+  useEffect(() => {
+    if (Platform.OS === 'android' && interstitialAdRef.current) {
+      const unsubscribeLoaded = interstitialAdRef.current.addAdEventListener(AdEventType.LOADED, () => {
+        console.log('✅ [LibraryScreen] Interstitial Ad loaded successfully');
+      });
+
+      const unsubscribeClosed = interstitialAdRef.current.addAdEventListener(AdEventType.CLOSED, () => {
+        console.log('✅ [LibraryScreen] Interstitial Ad closed');
+        // Navigate after ad closes if there's a pending navigation
+        if (pendingNavigationRef.current) {
+          const { screen, params } = pendingNavigationRef.current;
+          pendingNavigationRef.current = null;
+          console.log('🧭 [Navigation] Ad closed, navigating to:', screen, params);
+          navigation.navigate(screen, params);
+        }
+        // Reload ad for next time
+        interstitialAdRef.current.load();
+      });
+
+      const unsubscribeError = interstitialAdRef.current.addAdEventListener(AdEventType.ERROR, (error) => {
+        console.log('❌ [LibraryScreen] Interstitial Ad error:', error);
+      });
+
+      // Load the ad
+      interstitialAdRef.current.load();
+      console.log('📱 [LibraryScreen] Interstitial Ad loading started');
+
+      return () => {
+        unsubscribeLoaded();
+        unsubscribeClosed();
+        unsubscribeError();
+      };
+    }
+  }, [navigation]);
 
   // Handle Android back button - navigate to Home tab
   useEffect(() => {
@@ -202,7 +251,33 @@ const LibraryScreen = ({ navigation }) => {
     <TouchableOpacity 
       key={course.id} 
       style={styles.libraryCard}
-      onPress={() => navigation.navigate('SubCourse', { courseId: course.id, courseName: course.title })}
+      onPress={async () => {
+        // Show Interstitial Ad before navigation (Android only)
+        if (Platform.OS === 'android' && interstitialAdRef.current) {
+          try {
+            const isLoaded = interstitialAdRef.current.loaded;
+            if (isLoaded) {
+              console.log('📱 [LibraryScreen] Showing Interstitial Ad before navigation');
+              // Store navigation params for after ad closes
+              pendingNavigationRef.current = {
+                screen: 'SubCourse',
+                params: { courseId: course.id, courseName: course.title }
+              };
+              await interstitialAdRef.current.show();
+            } else {
+              console.log('📱 [LibraryScreen] Interstitial Ad not loaded yet, navigating directly');
+              navigation.navigate('SubCourse', { courseId: course.id, courseName: course.title });
+            }
+          } catch (error) {
+            console.error('❌ [LibraryScreen] Error showing Interstitial Ad:', error);
+            // Navigate even if ad fails
+            navigation.navigate('SubCourse', { courseId: course.id, courseName: course.title });
+          }
+        } else {
+          // iOS or ad not available, navigate directly
+          navigation.navigate('SubCourse', { courseId: course.id, courseName: course.title });
+        }
+      }}
     >
       <Image 
         source={course.image} 
@@ -249,9 +324,17 @@ const LibraryScreen = ({ navigation }) => {
             </View>
           ) : courseError ? (
             <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Error: {courseError}</Text>
+              <Icon name="alert-circle-outline" size={48} color="#FF8800" style={styles.errorIcon} />
+              <Text style={styles.errorTitle}>Unable to Load Courses</Text>
+              <Text style={styles.errorText}>
+                {courseError.toLowerCase().includes('no courses') || courseError.toLowerCase().includes('not found')
+                  ? 'No courses available at the moment. Please check back later!'
+                  : courseError.toLowerCase().includes('network')
+                  ? 'Network connection issue. Please check your internet and try again.'
+                  : 'Something went wrong. Please try again.'}
+              </Text>
               <TouchableOpacity style={styles.retryButton} onPress={() => fetchCourseData(1, false)}>
-                <Text style={styles.retryButtonText}>Retry</Text>
+                <Text style={styles.retryButtonText}>Try Again</Text>
               </TouchableOpacity>
             </View>
           ) : libraryCourses.length > 0 ? (
@@ -283,7 +366,12 @@ const LibraryScreen = ({ navigation }) => {
             </>
           ) : (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No courses available</Text>
+              <Icon name="library-outline" size={64} color="#CCCCCC" style={styles.emptyIcon} />
+              <Text style={styles.emptyTitle}>No Courses Available</Text>
+              <Text style={styles.emptySubText}>
+                There are no courses in the library yet.{'\n'}
+                Please check back later!
+              </Text>
             </View>
           )}
         </View>
@@ -384,13 +472,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 40,
+    paddingTop: 60,
+  },
+  errorIcon: {
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   errorText: {
     fontSize: 16,
-    color: '#FF0000',
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
+    lineHeight: 22,
   },
   retryButton: {
     backgroundColor: '#007BFF',
@@ -407,12 +507,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 40,
+    paddingTop: 60,
+  },
+  emptyIcon: {
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   emptyText: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
   },
   refreshIndicator: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppSelector } from '../Redux/hooks';
 import { courseAPI } from '../API/courseAPI';
 import BackButton from '../Component/BackButton';
+import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,10 +45,58 @@ const MyCoursesScreen = ({ navigation }) => {
   const [hasMoreData, setHasMoreData] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Interstitial Ad for course clicks (Android only, using production ID)
+  const interstitialAdRef = useRef(
+    Platform.OS === 'android'
+      ? InterstitialAd.createForAdRequest('ca-app-pub-7361876223006934/3796924172', {
+          requestNonPersonalizedAdsOnly: true,
+        })
+      : null
+  );
+  
+  // Store navigation params for after ad closes
+  const pendingNavigationRef = useRef(null);
+
   // Get user token from Redux
   const { token } = useAppSelector((state) => state.user);
 
   const filterOptions = ['All Course', 'In Progress', 'Completed'];
+
+  // Load Interstitial Ad on mount (Android only)
+  useEffect(() => {
+    if (Platform.OS === 'android' && interstitialAdRef.current) {
+      const unsubscribeLoaded = interstitialAdRef.current.addAdEventListener(AdEventType.LOADED, () => {
+        console.log('✅ [MyCoursesScreen] Interstitial Ad loaded successfully');
+      });
+
+      const unsubscribeClosed = interstitialAdRef.current.addAdEventListener(AdEventType.CLOSED, () => {
+        console.log('✅ [MyCoursesScreen] Interstitial Ad closed');
+        // Navigate after ad closes if there's a pending navigation
+        if (pendingNavigationRef.current) {
+          const { screen, params } = pendingNavigationRef.current;
+          pendingNavigationRef.current = null;
+          console.log('🧭 [Navigation] Ad closed, navigating to:', screen, params);
+          navigation.navigate(screen, params);
+        }
+        // Reload ad for next time
+        interstitialAdRef.current.load();
+      });
+
+      const unsubscribeError = interstitialAdRef.current.addAdEventListener(AdEventType.ERROR, (error) => {
+        console.log('❌ [MyCoursesScreen] Interstitial Ad error:', error);
+      });
+
+      // Load the ad
+      interstitialAdRef.current.load();
+      console.log('📱 [MyCoursesScreen] Interstitial Ad loading started');
+
+      return () => {
+        unsubscribeLoaded();
+        unsubscribeClosed();
+        unsubscribeError();
+      };
+    }
+  }, [navigation]);
 
   // Fetch courses based on selected filter (first page)
   const fetchCourses = async (filter, page = 1, append = false) => {
@@ -255,11 +304,30 @@ const MyCoursesScreen = ({ navigation }) => {
     <TouchableOpacity 
       key={course.id} 
       style={styles.courseCard}
-      onPress={() => {
-        if (course.progress === 100) {
-          navigation.navigate('Enroll', { courseId: course.subcourseId });
+      onPress={async () => {
+        // Show Interstitial Ad before navigation (Android only)
+        if (Platform.OS === 'android' && interstitialAdRef.current) {
+          try {
+            const isLoaded = interstitialAdRef.current.loaded;
+            if (isLoaded) {
+              console.log('📱 [MyCoursesScreen] Showing Interstitial Ad before navigation');
+              // Store navigation params for after ad closes
+              pendingNavigationRef.current = {
+                screen: 'Enroll',
+                params: { courseId: course.subcourseId }
+              };
+              await interstitialAdRef.current.show();
+            } else {
+              console.log('📱 [MyCoursesScreen] Interstitial Ad not loaded yet, navigating directly');
+              navigation.navigate('Enroll', { courseId: course.subcourseId });
+            }
+          } catch (error) {
+            console.error('❌ [MyCoursesScreen] Error showing Interstitial Ad:', error);
+            // Navigate even if ad fails
+            navigation.navigate('Enroll', { courseId: course.subcourseId });
+          }
         } else {
-          // Navigate to EnrollScreen with subcourseId for enrolled courses
+          // iOS or ad not available, navigate directly
           navigation.navigate('Enroll', { courseId: course.subcourseId });
         }
       }}

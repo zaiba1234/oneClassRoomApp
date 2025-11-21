@@ -29,6 +29,7 @@ import { getApiUrl, ENDPOINTS } from '../API/config';
 import { useFocusEffect } from '@react-navigation/native';
 import NotificationBadge from '../Component/NotificationBadge';
 import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
+import { BannerAd, BannerAdSize, TestIds, InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
 
 const { width, height } = Dimensions.get('window');
 
@@ -163,6 +164,18 @@ const HomeScreen = () => {
   // Ref to track loading timeout
   const loadingTimeoutRef = useRef(null);
 
+  // Interstitial Ad for course clicks (Android only, using production ID)
+  const interstitialAdRef = useRef(
+    Platform.OS === 'android'
+      ? InterstitialAd.createForAdRequest('ca-app-pub-7361876223006934/3796924172', {
+          requestNonPersonalizedAdsOnly: true,
+        })
+      : null
+  );
+  
+  // Store courseId for navigation after ad closes
+  const pendingNavigationRef = useRef(null);
+
   // Debug: Log component mount and initial state
   useEffect(() => {
     console.log('🏠 [HomeScreen] Component mounted');
@@ -177,6 +190,42 @@ const HomeScreen = () => {
       totalPages
     });
   }, []);
+
+  // Load Interstitial Ad on mount (Android only)
+  useEffect(() => {
+    if (Platform.OS === 'android' && interstitialAdRef.current) {
+      const unsubscribeLoaded = interstitialAdRef.current.addAdEventListener(AdEventType.LOADED, () => {
+        console.log('✅ [HomeScreen] Interstitial Ad loaded successfully');
+      });
+
+      const unsubscribeClosed = interstitialAdRef.current.addAdEventListener(AdEventType.CLOSED, () => {
+        console.log('✅ [HomeScreen] Interstitial Ad closed');
+        // Navigate after ad closes if there's a pending navigation
+        if (pendingNavigationRef.current) {
+          const courseId = pendingNavigationRef.current;
+          pendingNavigationRef.current = null;
+          console.log('🧭 [Navigation] Ad closed, navigating to Enroll screen with courseId:', courseId);
+          navigation.navigate('Enroll', { courseId: courseId });
+        }
+        // Reload ad for next time
+        interstitialAdRef.current.load();
+      });
+
+      const unsubscribeError = interstitialAdRef.current.addAdEventListener(AdEventType.ERROR, (error) => {
+        console.log('❌ [HomeScreen] Interstitial Ad error:', error);
+      });
+
+      // Load the ad
+      interstitialAdRef.current.load();
+      console.log('📱 [HomeScreen] Interstitial Ad loading started');
+
+      return () => {
+        unsubscribeLoaded();
+        unsubscribeClosed();
+        unsubscribeError();
+      };
+    }
+  }, [navigation]);
 
   // Back button handling is now done in BottomTabNavigator to handle all tabs
 
@@ -1695,7 +1744,7 @@ const HomeScreen = () => {
         styles.courseCard,
         course.isUpComingCourse && styles.courseCardDisabled
       ]}
-      onPress={() => {
+      onPress={async () => {
         console.log('📚 [HomeScreen] Course card pressed', {
           courseId: course.id,
           courseTitle: course.title,
@@ -1709,8 +1758,29 @@ const HomeScreen = () => {
           return;
         }
         
-        console.log('🧭 [Navigation] Navigating to Enroll screen with courseId:', course.id);
-        navigation.navigate('Enroll', { courseId: course.id });
+        // Show Interstitial Ad before navigation (Android only)
+        if (Platform.OS === 'android' && interstitialAdRef.current) {
+          try {
+            const isLoaded = interstitialAdRef.current.loaded;
+            if (isLoaded) {
+              console.log('📱 [HomeScreen] Showing Interstitial Ad before navigation');
+              // Store courseId for navigation after ad closes
+              pendingNavigationRef.current = course.id;
+              await interstitialAdRef.current.show();
+            } else {
+              console.log('📱 [HomeScreen] Interstitial Ad not loaded yet, navigating directly');
+              navigation.navigate('Enroll', { courseId: course.id });
+            }
+          } catch (error) {
+            console.error('❌ [HomeScreen] Error showing Interstitial Ad:', error);
+            // Navigate even if ad fails
+            navigation.navigate('Enroll', { courseId: course.id });
+          }
+        } else {
+          // iOS or ad not available, navigate directly
+          console.log('🧭 [Navigation] Navigating to Enroll screen with courseId:', course.id);
+          navigation.navigate('Enroll', { courseId: course.id });
+        }
       }}
       disabled={course.isUpComingCourse}
     >
@@ -1863,6 +1933,25 @@ const HomeScreen = () => {
           )}
         </View>
 
+        {/* AdMob Banner Ad - HomeScreenBanner */}
+        {/* Only show on Android to avoid crashes */}
+        {Platform.OS === 'android' && (
+          <View style={styles.bannerAdContainer}>
+            <BannerAd
+              unitId="ca-app-pub-7361876223006934/6909446326"
+              size={BannerAdSize.BANNER}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+              onAdLoaded={() => {
+                console.log('🏠 [HomeScreen] AdMob Banner Ad (HomeScreenBanner) loaded successfully');
+              }}
+              onAdFailedToLoad={(error) => {
+                console.log('🏠 [HomeScreen] AdMob Banner Ad (HomeScreenBanner) failed to load:', error);
+              }}
+            />
+          </View>
+        )}
 
         {/* Featured Course Carousel */}
         <View style={styles.carouselSection}>
@@ -2418,6 +2507,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  bannerAdContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: getResponsiveSize(10),
+    marginBottom: getResponsiveSize(10),
+    width: '100%',
   },
   carouselSection: {
     marginBottom: getResponsiveSize(10),

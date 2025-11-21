@@ -128,6 +128,10 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+    
+    // Google Play Services Ads for AdMob
+    // Note: Version should match react-native-google-mobile-ads requirements
+    implementation("com.google.android.gms:play-services-ads:23.5.0")
 }
 
 configurations.all {

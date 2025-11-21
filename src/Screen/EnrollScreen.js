@@ -27,6 +27,7 @@ import { courseAPI } from '../API/courseAPI';
 import { RAZORPAY_KEY_ID } from '../config/env';
 import BackButton from '../Component/BackButton';
 import RazorpayCheckout from 'react-native-razorpay';
+import { InterstitialAd, AdEventType, TestIds } from 'react-native-google-mobile-ads';
 
 const StudentIcon = require('../assests/images/student.png');
 const StarIcon = require('../assests/images/star.png');
