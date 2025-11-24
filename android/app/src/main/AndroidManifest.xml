@@ -1,8 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+
+        <!-- AdMob Advertising ID Permission (Required for Android 13+) -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+   <!-- FORCE AD_ID permission – beats Firebase's removal -->
+
     
     <!-- WebView permissions for Firebase reCAPTCHA -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -20,6 +27,9 @@
     
     <!-- Firebase Cloud Messaging -->
     <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+    
+    <!-- AdMob Advertising ID Permission (Required for Android 13+) -->
+
 
    
 

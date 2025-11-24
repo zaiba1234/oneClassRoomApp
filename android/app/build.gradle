@@ -84,7 +84,7 @@ android {
         applicationId "com.learningsaint"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
+        versionCode 28
         versionName "1.2.1"
         
         // Support for 16 KB memory page sizes (Android 15 requirement)
@@ -122,6 +122,7 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+     implementation 'com.google.android.gms:play-services-ads:22.6.0'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
