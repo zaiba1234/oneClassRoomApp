@@ -1102,9 +1102,13 @@ const InternshipLetterScreen = () => {
           const internshipUploadStatus = courseData?.internshipUploadStatus;
           const isInternshipLetterFree = courseData?.isInternshipLetterFree === true || courseData?.isInternshipLetterFree === 'true';
           
+          // Check if status message should be shown (payment done and upload pending)
+          const shouldShowStatusMessage = (internshipPaymentStatus === true || (isInternshipLetterFree && internshipPaymentStatus === true)) && internshipUploadStatus === 'upload';
+          
           console.log('🆓 InternshipLetterScreen: Button render - isInternshipLetterFree:', isInternshipLetterFree);
           console.log('🆓 InternshipLetterScreen: Button render - internshipPaymentStatus:', internshipPaymentStatus);
           console.log('🆓 InternshipLetterScreen: Button render - internshipUploadStatus:', internshipUploadStatus);
+          console.log('🆓 InternshipLetterScreen: Button render - shouldShowStatusMessage:', shouldShowStatusMessage);
           
           // If payment is successful (or free request completed) and letter is uploaded, show enabled download button
           if (internshipPaymentStatus === true && internshipUploadStatus === 'uploaded') {
@@ -1130,7 +1134,8 @@ const InternshipLetterScreen = () => {
           }
           
           // If payment is successful (or free request completed) but letter is still being processed (upload status)
-          if (internshipPaymentStatus === true && internshipUploadStatus === 'upload') {
+          // OR if status message is showing, button should be disabled
+          if ((internshipPaymentStatus === true && internshipUploadStatus === 'upload') || shouldShowStatusMessage) {
             return (
               <TouchableOpacity 
                 style={[styles.downloadButton, styles.downloadButtonDisabled]}
@@ -1143,14 +1148,14 @@ const InternshipLetterScreen = () => {
                   end={{ x: 1, y: 0 }}
                 >
                   <Text style={[styles.downloadButtonText, styles.downloadButtonTextDisabled]}>
-                    Download
+                    {isInternshipLetterFree ? 'Get Internship Letter - Free' : 'Download'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
             );
           }
           
-          // Default: Show payment/request button (when internshipPaymentStatus is false)
+          // Default: Show payment/request button (when internshipPaymentStatus is false or undefined)
           // If free, show "Free" instead of price
           return (
             <TouchableOpacity 
