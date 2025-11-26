@@ -104,6 +104,7 @@ const EnrollScreen = ({ navigation, route }) => {
     lessons: [],
     paymentStatus: false, // Add paymentStatus to track enrollment
     isCompleted: false, // Add isCompleted flag initialization
+    isRecordedLessonFree: false, // Flag to check if recorded lesson is free
   });
 
   const [isLoadingCourse, setIsLoadingCourse] = useState(true);
@@ -128,7 +129,10 @@ const EnrollScreen = ({ navigation, route }) => {
   
   // Track courseData state changes
   useEffect(() => {
-  
+    // Debug: Log courseData whenever it changes
+    console.log('🟠 [EnrollScreen] courseData State Updated:', JSON.stringify(courseData, null, 2));
+    console.log('🟠 [EnrollScreen] isRecordedLessonFree in state:', courseData.isRecordedLessonFree);
+    console.log('🟠 [EnrollScreen] recordedlessonsPrice in state:', courseData.recordedlessonsPrice);
   }, [courseData]);
 
   // Fetch course data when component mounts
@@ -196,9 +200,20 @@ const EnrollScreen = ({ navigation, route }) => {
   
 
       const result = await courseAPI.getSubcourseById(token, courseId);
+      
+      // Debug: Log complete API response
+      console.log('🔵 [EnrollScreen] Complete API Response:', JSON.stringify(result, null, 2));
+      console.log('🔵 [EnrollScreen] API Response Success:', result.success);
+      console.log('🔵 [EnrollScreen] API Response Data:', result.data);
      
       if (result.success && result.data.success) {
         const apiCourse = result.data.data;
+        
+        // Debug: Log raw API course data
+        console.log('🟢 [EnrollScreen] Raw API Course Data:', JSON.stringify(apiCourse, null, 2));
+        console.log('🟢 [EnrollScreen] isRecordedLessonFree (raw):', apiCourse.isRecordedLessonFree);
+        console.log('🟢 [EnrollScreen] isRecordedLessonFree (type):', typeof apiCourse.isRecordedLessonFree);
+        console.log('🟢 [EnrollScreen] recordedlessonsPrice:', apiCourse.recordedlessonsPrice);
         
         // Check if subcourse data exists
         if (!apiCourse || !apiCourse._id) {
@@ -230,7 +245,14 @@ const EnrollScreen = ({ navigation, route }) => {
           isRecordedLessonPurchased: Boolean(apiCourse.isRecordedLessonPurchased),
           recordedlessonsLink: apiCourse.recordedlessonsLink || '',
           recordedlessonsPrice: apiCourse.recordedlessonsPrice || 0,
+          isRecordedLessonFree: apiCourse.isRecordedLessonFree === true || apiCourse.isRecordedLessonFree === 'true', // Add isRecordedLessonFree flag - strict check
         };
+
+        // Debug: Log transformed course data
+        console.log('🟡 [EnrollScreen] Transformed Course Data:', JSON.stringify(transformedCourse, null, 2));
+        console.log('🟡 [EnrollScreen] isRecordedLessonFree (transformed):', transformedCourse.isRecordedLessonFree);
+        console.log('🟡 [EnrollScreen] isRecordedLessonFree (type):', typeof transformedCourse.isRecordedLessonFree);
+        console.log('🟡 [EnrollScreen] recordedlessonsPrice (transformed):', transformedCourse.recordedlessonsPrice);
 
         // Check each lesson for startTime
         if (transformedCourse.lessons && transformedCourse.lessons.length > 0) {
@@ -245,11 +267,22 @@ const EnrollScreen = ({ navigation, route }) => {
           transformedCourse.isCompleted = true;
         }
 
+        // Debug: Log final course data before setting state
+        console.log('🟣 [EnrollScreen] Final Course Data (before setState):', JSON.stringify(transformedCourse, null, 2));
+        console.log('🟣 [EnrollScreen] Final isRecordedLessonFree:', transformedCourse.isRecordedLessonFree);
+
         setCourseData(transformedCourse);
         // Reset lessons pagination when course data is loaded
         setLessonsPage(1);
+        
+        // Debug: Log after state is set (will show in next render)
+        console.log('🟣 [EnrollScreen] Course data set in state successfully');
 
       } else {
+        // Debug: Log error response
+        console.log('🔴 [EnrollScreen] API Response Error:', result);
+        console.log('🔴 [EnrollScreen] Error Message:', result.data?.message);
+        
         // Check if it's a "no subcourse found" error
         const errorMessage = result.data?.message || 'Failed to fetch course details';
         if ((errorMessage || '').toLowerCase().includes('not found') || 
@@ -261,6 +294,11 @@ const EnrollScreen = ({ navigation, route }) => {
         }
       }
     } catch (error) {
+      // Debug: Log exception error
+      console.log('🔴 [EnrollScreen] Exception Error:', error);
+      console.log('🔴 [EnrollScreen] Error Message:', error.message);
+      console.log('🔴 [EnrollScreen] Error Stack:', error.stack);
+      
       setCourseError(error.message || 'Network error occurred');
     } finally {
       setIsLoadingCourse(false);
@@ -682,14 +720,51 @@ const EnrollScreen = ({ navigation, route }) => {
   // Function to handle Watch Recorded Lesson button
   const handleWatchRecordedLesson = async () => {
     try {
+      // Debug: Log current state when button is clicked
+      console.log('🔵 [EnrollScreen] handleWatchRecordedLesson - Button Clicked');
+      console.log('🔵 [EnrollScreen] paymentStatus:', courseData.paymentStatus);
+      console.log('🔵 [EnrollScreen] isRecordedLessonFree:', courseData.isRecordedLessonFree);
+      console.log('🔵 [EnrollScreen] isRecordedLessonPurchased:', courseData.isRecordedLessonPurchased);
+      console.log('🔵 [EnrollScreen] recordedlessonsLink:', courseData.recordedlessonsLink);
+      
       // Scenario 1: Check if paymentStatus is false - button should not be clickable
       if (!courseData.paymentStatus) {
+        console.log('🟡 [EnrollScreen] Payment status is false, showing modal');
         setShowRecordedLessonModal(true);
         return;
       }
       
-      // Scenario 2: paymentStatus is true, check if recorded lesson is already purchased
+      // Scenario 2: paymentStatus is true, check if recorded lesson is free
+      if (courseData.isRecordedLessonFree === true) {
+        console.log('🟢 [EnrollScreen] Recorded lesson is FREE, bypassing payment');
+        // If free, directly download the video without payment
+        if (courseData.recordedlessonsLink) {
+          // Download the recorded lesson video
+          downloadRecordedLessonVideo(courseData.recordedlessonsLink);
+        } else {
+          Alert.alert(
+            'Link Not Available',
+            'Recorded lesson link is not available at the moment. Please try refreshing the page or contact support if the issue persists.',
+            [
+              {
+                text: 'Close',
+                style: 'cancel'
+              },
+              {
+                text: 'Refresh',
+                onPress: () => {
+                  onRefresh();
+                }
+              }
+            ]
+          );
+        }
+        return;
+      }
+      
+      // Scenario 3: paymentStatus is true, check if recorded lesson is already purchased
       if (courseData.isRecordedLessonPurchased) {
+        console.log('🟢 [EnrollScreen] Recorded lesson is already PURCHASED');
         // If purchased, download the video
         if (courseData.recordedlessonsLink) {
           // Download the recorded lesson video
@@ -713,10 +788,12 @@ const EnrollScreen = ({ navigation, route }) => {
           );
         }
       } else {
-        // If not purchased, start Razorpay payment for recorded lesson
+        // If not purchased and not free, start Razorpay payment for recorded lesson
+        console.log('🟡 [EnrollScreen] Recorded lesson requires PAYMENT, starting Razorpay flow');
         await handleRecordedLessonPayment();
       }
     } catch (error) {
+      console.log('🔴 [EnrollScreen] Error in handleWatchRecordedLesson:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
@@ -1463,9 +1540,17 @@ const EnrollScreen = ({ navigation, route }) => {
         >
           <View style={styles.recordedLessonHeader}>
             <Text style={styles.recordedLessonTitle}>Get Recorded Lessons</Text>
-            <Text style={styles.recordedLessonPrice}>
-              Price: <Text style={styles.priceValue}>₹{courseData.recordedlessonsPrice || 0}</Text>
-            </Text>
+            {courseData.isRecordedLessonFree === true ? (
+              <Text style={styles.includedFreeText}>
+                Included Free
+              </Text>
+            ) : (
+              <Text style={styles.recordedLessonPrice}>
+                Price: <Text style={styles.priceValue}>
+                  ₹{courseData.recordedlessonsPrice || 0}
+                </Text>
+              </Text>
+            )}
           </View>
 
           <View style={styles.recordedLessonButtonContainer}>
@@ -1480,6 +1565,24 @@ const EnrollScreen = ({ navigation, route }) => {
                   style={styles.linkIconDisabled}
                 />
               </View>
+            ) : courseData.isRecordedLessonFree === true ? (
+              // Scenario 2: paymentStatus is true + isRecordedLessonFree is true - orange button (free access)
+              <LinearGradient
+                colors={['#F6B800', '#FF8800']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.recordedLessonButton}
+              >
+                <View style={styles.recordedLessonButtonTouchable}>
+                  <Text style={styles.recordedLessonButtonTextEnabled}>
+                    Get Link
+                  </Text>
+                  <Image 
+                    source={LinkIcon} 
+                    style={styles.linkIconEnabled}
+                  />
+                </View>
+              </LinearGradient>
             ) : courseData.isRecordedLessonPurchased ? (
               // Scenario 3: paymentStatus is true + isRecordedLessonPurchased is true - orange button
               <LinearGradient
@@ -1499,7 +1602,7 @@ const EnrollScreen = ({ navigation, route }) => {
                 </View>
               </LinearGradient>
             ) : (
-              // Scenario 2: paymentStatus is true + isRecordedLessonPurchased is false - grey button for payment
+              // Scenario 4: paymentStatus is true + isRecordedLessonPurchased is false - grey button for payment
               <View style={styles.recordedLessonButtonDisabled}>
                 <Text style={styles.recordedLessonButtonTextDisabled}>
                   Get Link
@@ -2472,6 +2575,11 @@ const styles = StyleSheet.create({
   recordedLessonPrice: {
     fontSize: getFontSize(14),
     color: '#666666',
+  },
+  includedFreeText: {
+    fontSize: getFontSize(14),
+    color: '#228B22',
+    fontWeight: '600',
   },
   recordedLessonButtonContainer: {
     width: '100%',

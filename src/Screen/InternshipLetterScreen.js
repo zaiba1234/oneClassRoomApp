@@ -196,13 +196,17 @@ const InternshipLetterScreen = () => {
                   console.log('📥 InternshipLetterScreen: fetchWithNewSubcourseId courseDetails:', JSON.stringify(courseDetails, null, 2));
                   
                   if (courseDetails) {
+                    const isInternshipLetterFree = courseDetails.isInternshipLetterFree === true || courseDetails.isInternshipLetterFree === 'true';
+                    console.log('🆓 InternshipLetterScreen: fetchWithNewSubcourseId isInternshipLetterFree:', isInternshipLetterFree);
+                    
                     const courseWithPrice = {
                       _id: courseDetails._id, // Store _id from API response (this is the subcourseId)
                       courseName: courseDetails.subcourseName,
                       description: courseDetails.certificateDescription,
                       price: courseDetails.internshipLetterPrice ? `₹${courseDetails.internshipLetterPrice}.00` : '₹99.00',
                       internshipPaymentStatus: courseDetails.internshipPaymentStatus,
-                      internshipUploadStatus: courseDetails.internshipUploadStatus
+                      internshipUploadStatus: courseDetails.internshipUploadStatus,
+                      isInternshipLetterFree: isInternshipLetterFree // Add flag to courseData
                     };
                     console.log('✅ InternshipLetterScreen: fetchWithNewSubcourseId formatted data:', JSON.stringify(courseWithPrice, null, 2));
                     setCourseData(courseWithPrice);
@@ -301,13 +305,18 @@ const InternshipLetterScreen = () => {
         
         if (courseDetails) {
           // Format the course data with new API response structure
+          const isInternshipLetterFree = courseDetails.isInternshipLetterFree === true || courseDetails.isInternshipLetterFree === 'true';
+          console.log('🆓 InternshipLetterScreen: isInternshipLetterFree flag:', isInternshipLetterFree);
+          console.log('🆓 InternshipLetterScreen: isInternshipLetterFree (raw):', courseDetails.isInternshipLetterFree);
+          
           const courseWithPrice = {
             _id: courseDetails._id, // Store _id from API response (this is the subcourseId)
             courseName: courseDetails.subcourseName,
             description: courseDetails.certificateDescription,
             price: courseDetails.internshipLetterPrice ? `₹${courseDetails.internshipLetterPrice}.00` : '₹99.00',
             internshipPaymentStatus: courseDetails.internshipPaymentStatus,
-            internshipUploadStatus: courseDetails.internshipUploadStatus
+            internshipUploadStatus: courseDetails.internshipUploadStatus,
+            isInternshipLetterFree: isInternshipLetterFree // Add flag to courseData
           };
           
           console.log('✅ InternshipLetterScreen: Formatted course data:', JSON.stringify(courseWithPrice, null, 2));
@@ -420,8 +429,18 @@ const InternshipLetterScreen = () => {
     try {
       setIsRequesting(true);
       
-      // Check if already paid from courseData
-      if (courseData?.internshipPaymentStatus === true) {
+      // Check if already paid from courseData (but allow free requests if not yet requested)
+      const isInternshipLetterFree = courseData?.isInternshipLetterFree === true || courseData?.isInternshipLetterFree === 'true';
+      
+      // If already paid/requested, don't allow another request
+      if (courseData?.internshipPaymentStatus === true && !isInternshipLetterFree) {
+        setIsRequesting(false);
+        return;
+      }
+      
+      // For free requests, allow if not yet requested (paymentStatus is false)
+      if (isInternshipLetterFree && courseData?.internshipPaymentStatus === true) {
+        // Already requested (free), don't allow duplicate
         setIsRequesting(false);
         return;
       }
@@ -463,10 +482,42 @@ const InternshipLetterScreen = () => {
       const result = await response.json();
       
       if (response.ok && result.success && result.data) {
-        setRequestData(result.data);
+        // Check if this is a free internship letter request (no razorpayOrderId)
+        const isFreeRequest = !result.data.internshipLetter?.razorpayOrderId;
+        console.log('🆓 InternshipLetterScreen: isFreeRequest:', isFreeRequest);
+        console.log('🆓 InternshipLetterScreen: API response data:', JSON.stringify(result.data, null, 2));
         
-        // After successful request, open Razorpay payment
-        openRazorpayPayment(result.data);
+        if (isFreeRequest) {
+          // Free request - no payment needed, update state immediately and refresh
+          console.log('🆓 InternshipLetterScreen: Free internship letter requested, updating state...');
+          setRequestData(result.data);
+          
+          // Immediately update courseData to show disabled button (upload status)
+          if (result.data.internshipLetter) {
+            setCourseData(prevData => ({
+              ...prevData,
+              internshipPaymentStatus: true, // Mark as paid (free)
+              internshipUploadStatus: result.data.internshipLetter.uploadStatus || 'upload', // Set upload status
+            }));
+            console.log('🆓 InternshipLetterScreen: Course data updated immediately for free request');
+          }
+          
+          // Refresh course data to get latest status from server
+          await fetchCourseDetails();
+          
+          showCustomAlert(
+            'Request Successful! 🎉',
+            'Free internship letter requested successfully. Admin will upload it soon and you will be notified.',
+            'success',
+            [{ text: 'Great!', onPress: hideCustomAlert }]
+          );
+        } else {
+          // Paid request - proceed with payment
+          setRequestData(result.data);
+          
+          // After successful request, open Razorpay payment
+          openRazorpayPayment(result.data);
+        }
       } else {
         showCustomAlert(
           'Request Failed',
@@ -1030,11 +1081,12 @@ const InternshipLetterScreen = () => {
 
       {/* Status Message and Download Button */}
       <View style={styles.downloadButtonContainer}>
-        {/* Status Message - Show when internshipPaymentStatus=true and internshipUploadStatus=upload */}
+        {/* Status Message - Show when internshipPaymentStatus=true (or free) and internshipUploadStatus=upload */}
         {(() => {
           const internshipPaymentStatus = courseData?.internshipPaymentStatus;
           const internshipUploadStatus = courseData?.internshipUploadStatus;
-          const shouldShowMessage = internshipPaymentStatus === true && internshipUploadStatus === 'upload';
+          const isInternshipLetterFree = courseData?.isInternshipLetterFree === true || courseData?.isInternshipLetterFree === 'true';
+          const shouldShowMessage = (internshipPaymentStatus === true || isInternshipLetterFree) && internshipUploadStatus === 'upload';
           
           return shouldShowMessage ? (
             <View style={styles.statusMessageContainer}>
@@ -1048,8 +1100,13 @@ const InternshipLetterScreen = () => {
         {(() => {
           const internshipPaymentStatus = courseData?.internshipPaymentStatus;
           const internshipUploadStatus = courseData?.internshipUploadStatus;
+          const isInternshipLetterFree = courseData?.isInternshipLetterFree === true || courseData?.isInternshipLetterFree === 'true';
           
-          // If payment is successful and letter is uploaded, show enabled download button
+          console.log('🆓 InternshipLetterScreen: Button render - isInternshipLetterFree:', isInternshipLetterFree);
+          console.log('🆓 InternshipLetterScreen: Button render - internshipPaymentStatus:', internshipPaymentStatus);
+          console.log('🆓 InternshipLetterScreen: Button render - internshipUploadStatus:', internshipUploadStatus);
+          
+          // If payment is successful (or free request completed) and letter is uploaded, show enabled download button
           if (internshipPaymentStatus === true && internshipUploadStatus === 'uploaded') {
             return (
               <TouchableOpacity 
@@ -1072,7 +1129,7 @@ const InternshipLetterScreen = () => {
             );
           }
           
-          // If payment is successful but letter is still being processed (upload status)
+          // If payment is successful (or free request completed) but letter is still being processed (upload status)
           if (internshipPaymentStatus === true && internshipUploadStatus === 'upload') {
             return (
               <TouchableOpacity 
@@ -1093,7 +1150,8 @@ const InternshipLetterScreen = () => {
             );
           }
           
-          // Default: Show payment button (when internshipPaymentStatus is false)
+          // Default: Show payment/request button (when internshipPaymentStatus is false)
+          // If free, show "Free" instead of price
           return (
             <TouchableOpacity 
               style={[styles.downloadButton, (isRequesting || isLoadingCourse || !courseData) && styles.downloadButtonDisabled]}
@@ -1109,7 +1167,12 @@ const InternshipLetterScreen = () => {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.downloadButtonText}>
-                  {isRequesting ? 'Processing...' : `Get Internship Letter - ${courseData?.price || '₹00.00'}`}
+                  {isRequesting 
+                    ? 'Processing...' 
+                    : isInternshipLetterFree 
+                      ? 'Get Internship Letter - Free'
+                      : `Get Internship Letter - ${courseData?.price || '₹00.00'}`
+                  }
                 </Text>
               </LinearGradient>
             </TouchableOpacity>

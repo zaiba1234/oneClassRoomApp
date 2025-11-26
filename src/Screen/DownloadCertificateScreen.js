@@ -126,6 +126,8 @@ const DownloadCertificateScreen = () => {
         if (result.success && result.data) {
           console.log('📊 DownloadCertificate: Setting certificate data:', result.data);
           console.log('💰 DownloadCertificate: Payment status - isPaymentDone:', result.data.isPaymentDone);
+          console.log('🆓 DownloadCertificate: isCertificateFree flag:', result.data.isCertificateFree);
+          console.log('🆓 DownloadCertificate: isCertificateFree type:', typeof result.data.isCertificateFree);
           setCertificateData(result.data);
         } else {
           console.log('❌ DownloadCertificate: API response not successful:', result);
@@ -347,11 +349,21 @@ const DownloadCertificateScreen = () => {
         return;
       }
 
-      // Check payment status first
-      if (!certificateData?.isPaymentDone) {
-        console.log('💳 Payment not done, initiating payment flow...');
-        await initiateRazorpayPayment();
-        return;
+      // Check if certificate is free - if true, bypass payment
+      const isCertificateFree = certificateData?.isCertificateFree === true || certificateData?.isCertificateFree === 'true';
+      console.log('🆓 DownloadCertificate: isCertificateFree check:', isCertificateFree);
+      console.log('🆓 DownloadCertificate: certificateData.isCertificateFree:', certificateData?.isCertificateFree);
+
+      // If certificate is free, skip payment check and go directly to download
+      if (!isCertificateFree) {
+        // Check payment status only if certificate is not free
+        if (!certificateData?.isPaymentDone) {
+          console.log('💳 Payment not done, initiating payment flow...');
+          await initiateRazorpayPayment();
+          return;
+        }
+      } else {
+        console.log('🆓 DownloadCertificate: Certificate is FREE, bypassing payment');
       }
 
       // Request storage permission first
@@ -685,9 +697,11 @@ const DownloadCertificateScreen = () => {
                 ? 'Processing Payment...' 
                 : isDownloading 
                   ? 'Downloading...' 
-                  : certificateData?.isPaymentDone 
-                    ? 'Download Certificate' 
-                    : `Download Pay ₹${certificateData?.certificatePrice || 0}`
+                  : (certificateData?.isCertificateFree === true || certificateData?.isCertificateFree === 'true')
+                    ? 'Download Certificate'
+                    : certificateData?.isPaymentDone 
+                      ? 'Download Certificate' 
+                      : `Download Pay ₹${certificateData?.certificatePrice || 0}`
               }
             </Text>
           </LinearGradient>
