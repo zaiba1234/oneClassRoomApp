@@ -30,6 +30,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import NotificationBadge from '../Component/NotificationBadge';
 import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
 import { BannerAd, BannerAdSize, TestIds, InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
+import ChatbotModal from '../Component/ChatbotModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -157,6 +158,9 @@ const HomeScreen = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPrevPage, setHasPrevPage] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // State for chatbot
+  const [isChatbotVisible, setIsChatbotVisible] = useState(false);
 
   // Ref to track last fetch time to prevent too frequent API calls
   const lastFetchTimeRef = useRef(0);
@@ -2381,6 +2385,20 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
 
+      {/* Chatbot Floating Button */}
+      <TouchableOpacity
+        style={styles.chatbotButton}
+        onPress={() => setIsChatbotVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Icon name="chatbubbles" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Chatbot Modal */}
+      <ChatbotModal
+        visible={isChatbotVisible}
+        onClose={() => setIsChatbotVisible(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -2958,5 +2976,22 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: getResponsiveSize(16),
     fontWeight: '600',
+  },
+  chatbotButton: {
+    position: 'absolute',
+    bottom: getResponsiveSize(100),
+    right: getResponsiveSize(20),
+    width: getResponsiveSize(56),
+    height: getResponsiveSize(56),
+    borderRadius: getResponsiveSize(28),
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 1000,
   },
 });
