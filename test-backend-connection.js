@@ -1,6 +1,8 @@
 // Test script to check backend connection
 const testBackendConnection = async () => {
-  const baseUrl = 'http://192.168.29.157:3000'; // Production URL
+  const baseUrl = 'https://main.learningsaint.com'; // Production URL
+  // Local IP (commented out - use production URL)
+  // const baseUrl = 'http://192.168.29.157:3000';
   
   console.log('🧪 Testing backend connection...');
   console.log('🌐 Base URL:', baseUrl);
@@ -38,7 +40,7 @@ const testBackendConnection = async () => {
   } catch (error) {
     console.error('❌ Backend connection failed:', error.message);
     console.log('\n🔧 Troubleshooting steps:');
-    console.log('1. Check if production server is accessible: http://192.168.29.157:3000');
+    console.log('1. Check if production server is accessible: https://main.learningsaint.com');
     console.log('2. Verify network connectivity');
     console.log('3. Check SSL certificate validity');
   }

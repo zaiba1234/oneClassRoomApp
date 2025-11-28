@@ -47,12 +47,16 @@ const LibraryScreen = ({ navigation }) => {
   const [hasMoreData, setHasMoreData] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Interstitial Ad for course clicks (Android only, using production ID)
+  // Interstitial Ad for course clicks (Android only)
+  // Use TestIds in development, production IDs in production
   const interstitialAdRef = useRef(
     Platform.OS === 'android'
-      ? InterstitialAd.createForAdRequest('ca-app-pub-7361876223006934/3796924172', {
-          requestNonPersonalizedAdsOnly: true,
-        })
+      ? InterstitialAd.createForAdRequest(
+          __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-7361876223006934/3796924172',
+          {
+            requestNonPersonalizedAdsOnly: true,
+          }
+        )
       : null
   );
   

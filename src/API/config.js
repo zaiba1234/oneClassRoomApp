@@ -4,10 +4,16 @@ const API_CONFIG = {
   
   // Base URL configuration for different platforms - Production URL
   BASE_URL: Platform.select({
-    android: 'http://192.168.29.157:3000',
-    ios: 'http://192.168.29.157:3000',
-    default: 'http://192.168.29.157:3000',
+    android: 'https://main.learningsaint.com',
+    ios: 'https://main.learningsaint.com',
+    default: 'https://main.learningsaint.com',
   }),
+  // Local IP (commented out - use production URL)
+  // BASE_URL: Platform.select({
+  //   android: 'http://192.168.29.157:3000',
+  //   ios: 'http://192.168.29.157:3000',
+  //   default: 'http://192.168.29.157:3000',
+  // }),
 
   // Razorpay configuration
   RAZORPAY: {
@@ -57,7 +63,7 @@ export const getApiUrl = (endpoint) => {
   if (!API_CONFIG.BASE_URL) {
     console.error('❌ API Config: BASE_URL is undefined! Platform:', Platform.OS);
     // Fallback to production URL if BASE_URL is somehow undefined
-    const fallbackUrl = `http://192.168.29.157:3000${endpoint}`;
+    const fallbackUrl = `https://main.learningsaint.com${endpoint}`;
     return fallbackUrl;
   }
   

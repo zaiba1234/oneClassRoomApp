@@ -41,48 +41,6 @@ const getResponsiveSize = (size) => {
   return Math.round(size * scale);
 };
 
-/**
- * ============================================
- * HOMESCREEN - API CALLS SUMMARY
- * ============================================
- * 
- * This screen uses the following APIs:
- * 
- * 1. courseAPI.getPurchasedCourse(token)
- *    - Endpoint: /api/course/get-purchased-course
- *    - Purpose: Fetch featured/purchased courses for carousel
- * 
- * 2. courseAPI.getAllSubcourses(token, { page, limit })
- *    - Endpoint: /api/course/get-all-subcourses
- *    - Purpose: Fetch all courses (All Course filter)
- * 
- * 3. courseAPI.getPopularSubcourses(token, { page, limit })
- *    - Endpoint: /api/course/get-popular-subcourses
- *    - Purpose: Fetch popular courses (Popular filter)
- * 
- * 4. courseAPI.getNewestSubcourses(token, { page, limit })
- *    - Endpoint: /api/course/get-newest-subcourses
- *    - Purpose: Fetch newest courses (Newest filter)
- * 
- * 5. getApiUrl(ENDPOINTS.HOMEPAGE_BANNER)
- *    - Endpoint: /api/user/course/homePage-banner
- *    - Purpose: Fetch banner data (recentSubcourse, recentPurchasedSubcourse, promos)
- * 
- * 6. courseAPI.getFavoriteCourses(token)
- *    - Endpoint: /api/course/get-favorite-courses
- *    - Purpose: Fetch user's favorite courses
- * 
- * 7. profileAPI.getUserProfile(token)
- *    - Endpoint: /api/user/profile/get-profile
- *    - Purpose: Fetch user profile data
- * 
- * 8. courseAPI.toggleFavorite(token, courseId)
- *    - Endpoint: /api/user/favorite/toggle-favouriteCourse
- *    - Purpose: Toggle favorite status of a course
- * 
- * ============================================
- */
-
 const HomeScreen = () => {
   console.log('🏠 [HomeScreen] ============================================');
   console.log('🏠 [HomeScreen] Component initialized');
@@ -137,6 +95,12 @@ const HomeScreen = () => {
   const [isLoadingBanner, setIsLoadingBanner] = useState(false);
   const [bannerError, setBannerError] = useState(null);
 
+  // State for activities
+  const [activities, setActivities] = useState([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  const [activitiesError, setActivitiesError] = useState(null);
+  const [currentActivityIndex, setCurrentActivityIndex] = useState(0);
+
   // State for favorite toggling
   const [togglingFavorites, setTogglingFavorites] = useState(new Set());
 
@@ -168,12 +132,16 @@ const HomeScreen = () => {
   // Ref to track loading timeout
   const loadingTimeoutRef = useRef(null);
 
-  // Interstitial Ad for course clicks (Android only, using production ID)
+  // Interstitial Ad for course clicks (Android only)
+  // Use TestIds in development, production IDs in production
   const interstitialAdRef = useRef(
     Platform.OS === 'android'
-      ? InterstitialAd.createForAdRequest('ca-app-pub-7361876223006934/3796924172', {
-          requestNonPersonalizedAdsOnly: true,
-        })
+      ? InterstitialAd.createForAdRequest(
+          __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-7361876223006934/3796924172',
+          {
+            requestNonPersonalizedAdsOnly: true,
+          }
+        )
       : null
   );
   
@@ -182,7 +150,7 @@ const HomeScreen = () => {
 
   // Debug: Log component mount and initial state
   useEffect(() => {
-    console.log('🏠 [HomeScreen] Component mounted');
+   
     console.log('🏠 [HomeScreen] Initial State:', {
       selectedFilter,
       currentCarouselIndex,
@@ -258,15 +226,13 @@ const HomeScreen = () => {
         }
 
         // Always fetch course data and banner data (these should work for all users)
-        console.log('🏠 [HomeScreen] Starting parallel API calls for public data...');
-        console.log('📡 [API] Calling fetchCourseData with page=1, limit=5...');
-        console.log('📡 [API] Calling fetchFeaturedCourses...');
-        console.log('📡 [API] Calling fetchBannerData...');
+       
         
         await Promise.all([
           fetchCourseData(1, 5), // Explicitly set page=1, limit=5
           fetchFeaturedCourses(),
-          fetchBannerData()
+          fetchBannerData(),
+          fetchActivities()
         ]);
         
         console.log('✅ [HomeScreen] All parallel API calls completed successfully');
@@ -318,14 +284,13 @@ const HomeScreen = () => {
           }
 
           // Always refresh course and banner data
-          console.log('📡 [API] Auto-refresh: Calling fetchCourseData with page=1, limit=5...');
-          console.log('📡 [API] Auto-refresh: Calling fetchFeaturedCourses...');
-          console.log('📡 [API] Auto-refresh: Calling fetchBannerData...');
+        
           
           await Promise.all([
             fetchCourseData(1, 5), // Explicitly set page=1, limit=5
             fetchFeaturedCourses(),
-            fetchBannerData()
+            fetchBannerData(),
+            fetchActivities()
           ]);
           
           console.log('✅ [HomeScreen] Auto-refresh completed successfully');
@@ -463,10 +428,7 @@ const HomeScreen = () => {
       });
 
       // Debug API call parameters
-      console.log('🔍 [DEBUG] All Courses API Call Parameters:');
-      console.log('🔍 [DEBUG] - Page:', page);
-      console.log('🔍 [DEBUG] - Limit:', limit);
-      console.log('🔍 [DEBUG] - Pagination enabled');
+      
 
       setIsLoadingCourses(true);
       setCourseError(null);
@@ -503,35 +465,21 @@ const HomeScreen = () => {
 
       // DETAILED API RESPONSE DEBUG FOR ALL COURSES
       
-      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
-      console.log('🔥 Courses Array:', result.data?.data);
-      console.log('🔥 Courses Count:', result.data?.data?.length);
-      console.log('🔥 Pagination Info:', result.data?.pagination);
-      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+     
       if (result.data?.pagination) {
-        console.log('🔥 Pagination Details:');
-        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
-        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
+       
        
       }
       console.log('🔥🔥🔥 END ALL COURSES DEBUG 🔥🔥🔥');
 
       // API response logging
-      console.log('🔥 [API] getAllSubcourses Response Success:', result.success);
-      console.log('🔥 [API] getAllSubcourses Courses Count:', result.data?.data?.length || 0);
-      console.log('🔥 [API] getAllSubcourses Has Pagination:', !!result.data?.pagination);
+      
 
       // Debug pagination structure for All Courses
-      console.log('🔍 [DEBUG] All Courses API Response Structure:');
-      console.log('🔍 [DEBUG] result.success:', result.success);
-      console.log('🔍 [DEBUG] result.data:', result.data);
      
       
       if (result.data?.pagination) {
-        console.log('🔍 [DEBUG] Pagination Details:');
-        console.log('🔍 [DEBUG] - currentPage:', result.data.pagination.currentPage);
-        console.log('🔍 [DEBUG] - totalPages:', result.data.pagination.totalPages);
-        console.log('🔍 [DEBUG] - totalCourses:', result.data.pagination.totalCourses);
+        
       
       } else {
         console.log('🔍 [DEBUG] No pagination data found in response');
@@ -704,51 +652,17 @@ const HomeScreen = () => {
       });
 
       // DETAILED API RESPONSE DEBUG FOR POPULAR COURSES
-      console.log('🔥🔥🔥 POPULAR COURSES API RESPONSE DEBUG 🔥🔥🔥');
-      console.log('🔥 [API] API Name: getPopularSubcourses');
-      console.log('🔥 [API] Endpoint: /api/course/get-popular-subcourses');
-      console.log('🔥 [API] Response Success:', result.success);
-      console.log('🔥 Response Success:', result.success);
-      console.log('🔥 Response Status:', result.status);
-      console.log('🔥 Response Data:', result.data);
-      console.log('🔥 Response Data Success:', result.data?.success);
-      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
-      console.log('🔥 Courses Array:', result.data?.data);
-      console.log('🔥 Courses Count:', result.data?.data?.length);
-      console.log('🔥 Pagination Info:', result.data?.pagination);
-      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      
       if (result.data?.pagination) {
-        console.log('🔥 Pagination Details:');
-        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
-        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
-        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
-        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
-        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
-        console.log('🔥 - limit:', result.data.pagination.limit);
-        console.log('🔥 - offset:', result.data.pagination.offset);
+       
       }
       console.log('🔥🔥🔥 END POPULAR COURSES DEBUG 🔥🔥🔥');
 
       // Debug pagination structure for Popular Courses
-      console.log('🔍 [DEBUG] Popular Courses API Response Structure:');
-      console.log('🔍 [DEBUG] result.success:', result.success);
-      console.log('🔍 [DEBUG] result.data:', result.data);
-      console.log('🔍 [DEBUG] result.data.success:', result.data?.success);
-      console.log('🔍 [DEBUG] result.data.data:', result.data?.data);
-      console.log('🔍 [DEBUG] result.data.pagination:', result.data?.pagination);
-      console.log('🔍 [DEBUG] result.data.data type:', typeof result.data?.data);
-      console.log('🔍 [DEBUG] result.data.data isArray:', Array.isArray(result.data?.data));
-      console.log('🔍 [DEBUG] result.data.data length:', result.data?.data?.length);
+      
       
       if (result.data?.pagination) {
-        console.log('🔍 [DEBUG] Popular Courses Pagination Details:');
-        console.log('🔍 [DEBUG] - currentPage:', result.data.pagination.currentPage);
-        console.log('🔍 [DEBUG] - totalPages:', result.data.pagination.totalPages);
-        console.log('🔍 [DEBUG] - totalCourses:', result.data.pagination.totalCourses);
-        console.log('🔍 [DEBUG] - hasNextPage:', result.data.pagination.hasNextPage);
-        console.log('🔍 [DEBUG] - hasPrevPage:', result.data.pagination.hasPrevPage);
-        console.log('🔍 [DEBUG] - limit:', result.data.pagination.limit);
-        console.log('🔍 [DEBUG] - offset:', result.data.pagination.offset);
+       
       } else {
         console.log('🔍 [DEBUG] No pagination data found in Popular Courses response');
       }
@@ -871,51 +785,16 @@ const HomeScreen = () => {
       });
 
       // DETAILED API RESPONSE DEBUG FOR NEWEST COURSES
-      console.log('🔥🔥🔥 NEWEST COURSES API RESPONSE DEBUG 🔥🔥🔥');
-      console.log('🔥 [API] API Name: getNewestSubcourses');
-      console.log('🔥 [API] Endpoint: /api/course/get-newest-subcourses');
-      console.log('🔥 [API] Response Success:', result.success);
-      console.log('🔥 Response Success:', result.success);
-      console.log('🔥 Response Status:', result.status);
-      console.log('🔥 Response Data:', result.data);
-      console.log('🔥 Response Data Success:', result.data?.success);
-      console.log('🔥 Response Data Keys:', result.data ? Object.keys(result.data) : 'No data');
-      console.log('🔥 Courses Array:', result.data?.data);
-      console.log('🔥 Courses Count:', result.data?.data?.length);
-      console.log('🔥 Pagination Info:', result.data?.pagination);
-      console.log('🔥 Has Pagination:', !!result.data?.pagination);
+      
       if (result.data?.pagination) {
-        console.log('🔥 Pagination Details:');
-        console.log('🔥 - currentPage:', result.data.pagination.currentPage);
-        console.log('🔥 - totalPages:', result.data.pagination.totalPages);
-        console.log('🔥 - totalCourses:', result.data.pagination.totalCourses);
-        console.log('🔥 - hasNextPage:', result.data.pagination.hasNextPage);
-        console.log('🔥 - hasPrevPage:', result.data.pagination.hasPrevPage);
-        console.log('🔥 - limit:', result.data.pagination.limit);
-        console.log('🔥 - offset:', result.data.pagination.offset);
+        
       }
       console.log('🔥🔥🔥 END NEWEST COURSES DEBUG 🔥🔥🔥');
 
       // Debug pagination structure for Newest Courses
-      console.log('🔍 [DEBUG] Newest Courses API Response Structure:');
-      console.log('🔍 [DEBUG] result.success:', result.success);
-      console.log('🔍 [DEBUG] result.data:', result.data);
-      console.log('🔍 [DEBUG] result.data.success:', result.data?.success);
-      console.log('🔍 [DEBUG] result.data.data:', result.data?.data);
-      console.log('🔍 [DEBUG] result.data.pagination:', result.data?.pagination);
-      console.log('🔍 [DEBUG] result.data.data type:', typeof result.data?.data);
-      console.log('🔍 [DEBUG] result.data.data isArray:', Array.isArray(result.data?.data));
-      console.log('🔍 [DEBUG] result.data.data length:', result.data?.data?.length);
       
       if (result.data?.pagination) {
-        console.log('🔍 [DEBUG] Newest Courses Pagination Details:');
-        console.log('🔍 [DEBUG] - currentPage:', result.data.pagination.currentPage);
-        console.log('🔍 [DEBUG] - totalPages:', result.data.pagination.totalPages);
-        console.log('🔍 [DEBUG] - totalCourses:', result.data.pagination.totalCourses);
-        console.log('🔍 [DEBUG] - hasNextPage:', result.data.pagination.hasNextPage);
-        console.log('🔍 [DEBUG] - hasPrevPage:', result.data.pagination.hasPrevPage);
-        console.log('🔍 [DEBUG] - limit:', result.data.pagination.limit);
-        console.log('🔍 [DEBUG] - offset:', result.data.pagination.offset);
+       
       } else {
         console.log('🔍 [DEBUG] No pagination data found in Newest Courses response');
       }
@@ -1050,22 +929,15 @@ const HomeScreen = () => {
       }
 
       if (response.ok) {
-        console.log('🏠 [HomeScreen] Banner API response success:', result.success);
-        console.log('🏠 [HomeScreen] Response success:', result.success);
-        console.log('🏠 HomeScreen: Response data:', result.data);
-        console.log('🏠 HomeScreen: Response message:', result.message);
+       
 
         if (result.success && result.data) {
-          console.log('🏠 HomeScreen: Banner data fetched successfully:', result.data);
-          console.log('🏠 HomeScreen: Banner data details - recentSubcourse:', result.data.recentSubcourse);
+        
           console.log('🏠 HomeScreen: Banner data details - recentPurchasedSubcourse:', result.data.recentPurchasedSubcourse);
         
           setBannerData(result.data);
         } else {
-          console.log('❌ HomeScreen: Banner API response not successful:', result);
-          console.log('❌ HomeScreen: Response success:', result.success);
-          console.log('❌ HomeScreen: Response data exists:', !!result.data);
-          console.log('❌ HomeScreen: Response message:', result.message);
+         
           // Set fallback banner data for new users
           const fallbackData = {
             recentSubcourse: null,
@@ -1115,6 +987,93 @@ const HomeScreen = () => {
       });
     } finally {
       setIsLoadingBanner(false);
+    }
+  };
+
+  // Function to fetch activities from API
+  const fetchActivities = async () => {
+    try {
+      console.log('🏠 HomeScreen: fetchActivities called');
+      setIsLoadingActivities(true);
+      setActivitiesError(null);
+
+      const apiUrl = getApiUrl('/api/user/activites/get-activity-images');
+      console.log('📡 [API] ACTIVITIES - Making API call...', {
+        endpoint: '/api/user/activites/get-activity-images',
+        fullUrl: apiUrl,
+        hasToken: !!token,
+        timestamp: new Date().toISOString()
+      });
+      console.log('🏠 HomeScreen: Fetching activities from URL:', apiUrl);
+
+      // Prepare headers - include token if available
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('🏠 HomeScreen: Using token for activities request');
+      } else {
+        console.log('🏠 HomeScreen: No token available for activities request');
+      }
+
+      console.log('🏠 HomeScreen: Activities request headers:', headers);
+      
+      const startTime = Date.now();
+      console.log('📡 [API] ACTIVITIES - Fetch request started');
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers,
+      });
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      console.log('✅ [API] ACTIVITIES - Fetch request completed', {
+        duration: `${duration}ms`,
+        status: response.status,
+        statusText: response.statusText,
+        timestamp: new Date().toISOString()
+      }); 
+
+      console.log('🏠 HomeScreen: Activities response status:', response.status);
+
+      const result = await response.json();
+
+      // Check for token errors
+      if (checkApiResponseForTokenError({ status: response.status, data: result })) {
+        console.log('🔐 [HomeScreen] Token error detected in fetchActivities');
+        await handleTokenError(result, true);
+        return; // Exit early - navigation handled by tokenErrorHandler
+      }
+
+      if (response.ok) {
+        console.log('🏠 [HomeScreen] Activities API response success:', result.success);
+        console.log('🏠 HomeScreen: Response data:', result.data);
+        console.log('🏠 HomeScreen: Response message:', result.message);
+
+        if (result.success && result.data) {
+          console.log('🏠 HomeScreen: Activities data fetched successfully:', result.data);
+          setActivities(result.data || []);
+        } else {
+          console.log('❌ HomeScreen: Activities API response not successful:', result);
+          setActivitiesError(result.message || 'Failed to fetch activities');
+          setActivities([]);
+        }
+      } else {
+        const errorMessage = `Activities API call failed: ${response.status} ${response.statusText}`;
+        console.log('❌ HomeScreen: Activities API call failed:', response.status, response.statusText);
+        console.log('❌ HomeScreen: Setting activities error:', errorMessage);
+        setActivitiesError(errorMessage);
+        setActivities([]);
+      }
+    } catch (error) {
+      const errorMessage = error.message || 'Network error occurred';
+      console.log('❌ HomeScreen: Activities fetch error:', errorMessage);
+      console.log('❌ HomeScreen: Activities error details:', error);
+      setActivitiesError(errorMessage);
+      setActivities([]);
+    } finally {
+      setIsLoadingActivities(false);
     }
   };
 
@@ -1429,11 +1388,13 @@ const HomeScreen = () => {
       console.log('📡 [API] Refresh: Calling fetchCourseData...');
       console.log('📡 [API] Refresh: Calling fetchFeaturedCourses...');
       console.log('📡 [API] Refresh: Calling fetchBannerData...');
+      console.log('📡 [API] Refresh: Calling fetchActivities...');
       
       await Promise.all([
         fetchCourseData(),
         fetchFeaturedCourses(),
-        fetchBannerData()
+        fetchBannerData(),
+        fetchActivities()
       ]);
       
       console.log('✅ [HomeScreen] Pull-to-refresh completed successfully');
@@ -1890,6 +1851,7 @@ const HomeScreen = () => {
           { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 100, 100) : insets.bottom + 100 }
         ]}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1939,19 +1901,20 @@ const HomeScreen = () => {
 
         {/* AdMob Banner Ad - HomeScreenBanner */}
         {/* Only show on Android to avoid crashes */}
+        {/* Use TestIds in development, production IDs in production */}
         {Platform.OS === 'android' && (
           <View style={styles.bannerAdContainer}>
             <BannerAd
-              unitId="ca-app-pub-7361876223006934/6909446326"
+              unitId={__DEV__ ? TestIds.BANNER : "ca-app-pub-7361876223006934/6909446326"}
               size={BannerAdSize.BANNER}
               requestOptions={{
                 requestNonPersonalizedAdsOnly: true,
               }}
               onAdLoaded={() => {
-                console.log('🏠 [HomeScreen] AdMob Banner Ad (HomeScreenBanner) loaded successfully');
+                console.log('🏠 [HomeScreen] AdMob Banner Ad loaded successfully', __DEV__ ? '(Test Ad)' : '(Production Ad)');
               }}
               onAdFailedToLoad={(error) => {
-                console.log('🏠 [HomeScreen] AdMob Banner Ad (HomeScreenBanner) failed to load:', error);
+                console.log('🏠 [HomeScreen] AdMob Banner Ad failed to load:', error);
               }}
             />
           </View>
@@ -1989,14 +1952,7 @@ const HomeScreen = () => {
               (bannerData.promos && bannerData.promos.length > 0);
             const hasFeaturedContent = featuredCourses.length > 0;
 
-            console.log('🏠 [HomeScreen] Carousel render check - bannerData promos:', bannerData.promos?.length || 0);
-            console.log('🏠 [HomeScreen] Carousel render check - hasBannerContent:', hasBannerContent);
-            console.log('🏠 HomeScreen: Carousel render check - hasFeaturedContent:', hasFeaturedContent);
-            console.log('🏠 HomeScreen: Carousel render check - featuredCourses:', featuredCourses);
-            console.log('🏠 HomeScreen: Carousel render check - isLoadingBanner:', isLoadingBanner);
-            console.log('🏠 HomeScreen: Carousel render check - isLoadingFeatured:', isLoadingFeatured);
-            console.log('🏠 HomeScreen: Carousel render check - featuredError:', featuredError);
-            console.log('🏠 HomeScreen: Carousel render check - bannerError:', bannerError);
+            
 
             // Check if banner data is still in initial state (all null/empty)
             const isBannerDataInitial = !bannerData.recentSubcourse && 
@@ -2235,6 +2191,82 @@ const HomeScreen = () => {
           })()}
         </View>
 
+        {/* Activities Section */}
+        <View style={styles.activitiesSection}>
+          <Text style={styles.activitiesTitle}>Activities</Text>
+          {isLoadingActivities ? (
+            <View style={styles.activitiesLoadingContainer}>
+              <Text style={styles.activitiesLoadingText}>Loading activities...</Text>
+            </View>
+          ) : activitiesError ? (
+            <View style={styles.activitiesErrorContainer}>
+              <LinearGradient
+                colors={['#FFF5E6', '#FFE5CC']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.comingSoonGradient}
+              >
+                <Icon name="sparkles" size={getResponsiveSize(20)} color="#FF8800" style={styles.comingSoonIcon} />
+                <Text style={styles.activitiesErrorText}>Something new coming</Text>
+              </LinearGradient>
+            </View>
+          ) : activities.length > 0 ? (
+            <>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(event) => {
+                  const itemWidth = width - getResponsiveSize(40);
+                  const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
+                  setCurrentActivityIndex(index);
+                }}
+                snapToInterval={width - getResponsiveSize(40)}
+                decelerationRate="fast"
+                style={styles.activitiesCarousel}
+                contentContainerStyle={styles.activitiesCarouselContent}
+              >
+                {activities.map((activity, index) => (
+                  <TouchableOpacity
+                    key={activity.id || index}
+                    style={styles.activityItem}
+                    onPress={() => {
+                      console.log('🎯 [HomeScreen] Activity clicked:', activity.id);
+                      if (activity.id) {
+                        navigation.navigate('ActivityDetail', { activityId: activity.id });
+                      } else {
+                        console.log('⚠️ [HomeScreen] Activity ID missing');
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={{ uri: activity.imageUrl }}
+                      style={styles.activityImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Activities Dots */}
+              {activities.length > 1 && (
+                <View style={styles.activitiesDotsContainer}>
+                  {activities.map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.activityDot,
+                        currentActivityIndex === index && styles.activityDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </>
+          ) : null}
+        </View>
+
         {/* Filter Buttons */}
         <View style={styles.filterContainer}>
           {filterOptions.map((filter) => (
@@ -2368,15 +2400,22 @@ const HomeScreen = () => {
                 {/* Load More Button */}
                 {hasNextPage && (
                   <TouchableOpacity
-                    style={styles.loadMoreButton}
                     onPress={loadMoreCourses}
                     disabled={isLoadingMore}
+                    activeOpacity={0.8}
                   >
-                    {isLoadingMore ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Text style={styles.loadMoreButtonText}>Load More Courses</Text>
-                    )}
+                    <LinearGradient
+                      colors={['#F6B800', '#FF8800']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.loadMoreButton}
+                    >
+                      {isLoadingMore ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text style={styles.loadMoreButtonText}>Load More Courses</Text>
+                      )}
+                    </LinearGradient>
                   </TouchableOpacity>
                 )}
               </>
@@ -2391,7 +2430,11 @@ const HomeScreen = () => {
         onPress={() => setIsChatbotVisible(true)}
         activeOpacity={0.8}
       >
-        <Icon name="chatbubbles" size={24} color="#fff" />
+        <Image 
+          source={require('../assests/images/chatbot.png')} 
+          style={styles.chatbotIcon}
+          resizeMode="contain"
+        />
       </TouchableOpacity>
 
       {/* Chatbot Modal */}
@@ -2536,6 +2579,87 @@ const styles = StyleSheet.create({
   },
   carouselSection: {
     marginBottom: getResponsiveSize(10),
+  },
+  activitiesSection: {
+    marginBottom: getResponsiveSize(20),
+  },
+  activitiesTitle: {
+    fontSize: getResponsiveSize(18),
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: getResponsiveSize(15),
+    paddingHorizontal: getResponsiveSize(20),
+  },
+  activitiesCarousel: {
+    height: getResponsiveSize(100),
+  },
+  activitiesCarouselContent: {
+    paddingHorizontal: getResponsiveSize(20),
+  },
+  activityItem: {
+    width: width - getResponsiveSize(40),
+    height: getResponsiveSize(100),
+    marginRight: getResponsiveSize(10),
+    borderRadius: getResponsiveSize(12),
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  activityImage: {
+    width: width - getResponsiveSize(40),
+    height: getResponsiveSize(100),
+    borderRadius: getResponsiveSize(12),
+  },
+  activitiesDotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: getResponsiveSize(15),
+  },
+  activityDot: {
+    width: getResponsiveSize(8),
+    height: getResponsiveSize(8),
+    borderRadius: getResponsiveSize(4),
+    backgroundColor: '#D0D0D0',
+    marginHorizontal: getResponsiveSize(4),
+  },
+  activityDotActive: {
+    backgroundColor: '#FF8800',
+    width: getResponsiveSize(12),
+  },
+  activitiesLoadingContainer: {
+    height: getResponsiveSize(100),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activitiesLoadingText: {
+    fontSize: getResponsiveSize(16),
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  activitiesErrorContainer: {
+    height: getResponsiveSize(100),
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(20),
+  },
+  comingSoonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: getResponsiveSize(12),
+    paddingHorizontal: getResponsiveSize(20),
+    borderRadius: getResponsiveSize(12),
+    borderWidth: 1,
+    borderColor: '#FFE5CC',
+    width: '100%',
+  },
+  comingSoonIcon: {
+    marginRight: getResponsiveSize(8),
+  },
+  activitiesErrorText: {
+    fontSize: getResponsiveSize(16),
+    color: '#FF8800',
+    textAlign: 'center',
+    fontWeight: '600',
   },
   carousel: {
     height: getResponsiveSize(180),
@@ -2960,17 +3084,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   loadMoreButton: {
-    backgroundColor: '#FF8800',
-    paddingVertical: getResponsiveSize(12),
-    paddingHorizontal: getResponsiveSize(24),
-    borderRadius: getResponsiveSize(25),
+    paddingVertical: getResponsiveSize(14),
+    paddingHorizontal: getResponsiveSize(18),
+    borderRadius: getResponsiveSize(16),
     alignItems: 'center',
+    justifyContent: 'center',
     marginVertical: getResponsiveSize(15),
-    shadowColor: '#FF8800',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    minHeight: getResponsiveSize(55),
   },
   loadMoreButtonText: {
     color: '#fff',
@@ -2981,17 +3101,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: getResponsiveSize(100),
     right: getResponsiveSize(20),
-    width: getResponsiveSize(56),
-    height: getResponsiveSize(56),
-    borderRadius: getResponsiveSize(28),
-    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
     zIndex: 1000,
+  },
+  chatbotIcon: {
+    width: getResponsiveSize(120),
+    height: getResponsiveSize(120),
   },
 });

@@ -1545,10 +1545,10 @@ const EnrollScreen = ({ navigation, route }) => {
                 Included Free
               </Text>
             ) : (
-              <Text style={styles.recordedLessonPrice}>
+            <Text style={styles.recordedLessonPrice}>
                 Price: <Text style={styles.priceValue}>
                   ₹{courseData.recordedlessonsPrice || 0}
-                </Text>
+            </Text>
               </Text>
             )}
           </View>

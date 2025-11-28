@@ -55,6 +55,7 @@ import SubCourseScreen from './src/Screen/SubCourseScreen';
 import GlobalNotificationTester from './src/Component/GlobalNotificationTester';
 import CourseCertificateDownload from './src/Screen/CourseCertificateDownload';
 import InternshipLetterScreen from './src/Screen/InternshipLetterScreen';
+import ActivityDetailScreen from './src/Screen/ActivityDetailScreen';
 
 const Stack = createStackNavigator();
 
@@ -428,6 +429,7 @@ const AppContent = ({ alertManagerRef }) => {
       
         <Stack.Screen name="CourseCertificate" component={CourseCertificateDownload} />
         <Stack.Screen name="Internship" component={InternshipLetterScreen} />
+        <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

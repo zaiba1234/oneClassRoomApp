@@ -357,10 +357,10 @@ const DownloadCertificateScreen = () => {
       // If certificate is free, skip payment check and go directly to download
       if (!isCertificateFree) {
         // Check payment status only if certificate is not free
-        if (!certificateData?.isPaymentDone) {
-          console.log('💳 Payment not done, initiating payment flow...');
-          await initiateRazorpayPayment();
-          return;
+      if (!certificateData?.isPaymentDone) {
+        console.log('💳 Payment not done, initiating payment flow...');
+        await initiateRazorpayPayment();
+        return;
         }
       } else {
         console.log('🆓 DownloadCertificate: Certificate is FREE, bypassing payment');
@@ -699,9 +699,9 @@ const DownloadCertificateScreen = () => {
                   ? 'Downloading...' 
                   : (certificateData?.isCertificateFree === true || certificateData?.isCertificateFree === 'true')
                     ? 'Download Certificate'
-                    : certificateData?.isPaymentDone 
-                      ? 'Download Certificate' 
-                      : `Download Pay ₹${certificateData?.certificatePrice || 0}`
+                  : certificateData?.isPaymentDone 
+                    ? 'Download Certificate' 
+                    : `Download Pay ₹${certificateData?.certificatePrice || 0}`
               }
             </Text>
           </LinearGradient>

@@ -4,7 +4,9 @@ export const ENV_CONFIG = {
   RAZORPAY_KEY_ID: 'rzp_live_ZumwCLoX1AZdm9',
 
   // API Base URL - Production URL
-  API_BASE_URL: 'http://192.168.29.157:3000',
+  API_BASE_URL: 'https://main.learningsaint.com',
+  // Local IP (commented out - use production URL)
+  // API_BASE_URL: 'http://192.168.29.157:3000',
 
   // Chatbot API Configuration
   // ============================================

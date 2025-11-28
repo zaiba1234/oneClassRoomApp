@@ -19,6 +19,9 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- No media permissions needed - using Android Photo Picker for one-time media access -->
     
+    <!-- Voice recognition permission for chatbot -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    
     <!-- Firebase Cloud Messaging Permissions -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />

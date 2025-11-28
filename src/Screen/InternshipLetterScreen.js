@@ -513,10 +513,10 @@ const InternshipLetterScreen = () => {
           );
         } else {
           // Paid request - proceed with payment
-          setRequestData(result.data);
-          
-          // After successful request, open Razorpay payment
-          openRazorpayPayment(result.data);
+        setRequestData(result.data);
+        
+        // After successful request, open Razorpay payment
+        openRazorpayPayment(result.data);
         }
       } else {
         showCustomAlert(
