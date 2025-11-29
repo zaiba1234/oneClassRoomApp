@@ -147,6 +147,9 @@ const HomeScreen = () => {
   
   // Store courseId for navigation after ad closes
   const pendingNavigationRef = useRef(null);
+  
+  // Store activityId for navigation after ad closes
+  const pendingActivityNavigationRef = useRef(null);
 
   // Debug: Log component mount and initial state
   useEffect(() => {
@@ -178,6 +181,11 @@ const HomeScreen = () => {
           pendingNavigationRef.current = null;
           console.log('🧭 [Navigation] Ad closed, navigating to Enroll screen with courseId:', courseId);
           navigation.navigate('Enroll', { courseId: courseId });
+        } else if (pendingActivityNavigationRef.current) {
+          const activityId = pendingActivityNavigationRef.current;
+          pendingActivityNavigationRef.current = null;
+          console.log('🧭 [Navigation] Ad closed, navigating to ActivityDetail screen with activityId:', activityId);
+          navigation.navigate('ActivityDetail', { activityId: activityId });
         }
         // Reload ad for next time
         interstitialAdRef.current.load();
@@ -2230,12 +2238,35 @@ const HomeScreen = () => {
                   <TouchableOpacity
                     key={activity.id || index}
                     style={styles.activityItem}
-                    onPress={() => {
+                    onPress={async () => {
                       console.log('🎯 [HomeScreen] Activity clicked:', activity.id);
-                      if (activity.id) {
-                        navigation.navigate('ActivityDetail', { activityId: activity.id });
-                      } else {
+                      if (!activity.id) {
                         console.log('⚠️ [HomeScreen] Activity ID missing');
+                        return;
+                      }
+                      
+                      // Show Interstitial Ad before navigation (Android only)
+                      if (Platform.OS === 'android' && interstitialAdRef.current) {
+                        try {
+                          const isLoaded = interstitialAdRef.current.loaded;
+                          if (isLoaded) {
+                            console.log('📱 [HomeScreen] Showing Interstitial Ad before activity navigation');
+                            // Store activityId for navigation after ad closes
+                            pendingActivityNavigationRef.current = activity.id;
+                            await interstitialAdRef.current.show();
+                          } else {
+                            console.log('📱 [HomeScreen] Interstitial Ad not loaded yet, navigating directly');
+                            navigation.navigate('ActivityDetail', { activityId: activity.id });
+                          }
+                        } catch (error) {
+                          console.error('❌ [HomeScreen] Error showing Interstitial Ad:', error);
+                          // Navigate even if ad fails
+                          navigation.navigate('ActivityDetail', { activityId: activity.id });
+                        }
+                      } else {
+                        // iOS or ad not available, navigate directly
+                        console.log('🧭 [Navigation] Navigating to ActivityDetail screen with activityId:', activity.id);
+                        navigation.navigate('ActivityDetail', { activityId: activity.id });
                       }
                     }}
                     activeOpacity={0.8}
@@ -3106,7 +3137,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   chatbotIcon: {
-    width: getResponsiveSize(120),
-    height: getResponsiveSize(120),
+    width: getResponsiveSize(90),
+    height: getResponsiveSize(90),
   },
 });

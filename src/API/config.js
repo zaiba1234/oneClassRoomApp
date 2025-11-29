@@ -2,18 +2,18 @@ import { Platform } from 'react-native';
 
 const API_CONFIG = {
   
-  // Base URL configuration for different platforms - Production URL
-  BASE_URL: Platform.select({
-    android: 'https://main.learningsaint.com',
-    ios: 'https://main.learningsaint.com',
-    default: 'https://main.learningsaint.com',
-  }),
-  // Local IP (commented out - use production URL)
+  // Base URL configuration for different platforms - Local IP (commented out - use production URL)
   // BASE_URL: Platform.select({
   //   android: 'http://192.168.29.157:3000',
   //   ios: 'http://192.168.29.157:3000',
   //   default: 'http://192.168.29.157:3000',
   // }),
+  // Production URL
+  BASE_URL: Platform.select({
+    android: 'https://main.learningsaint.com',
+    ios: 'https://main.learningsaint.com',
+    default: 'https://main.learningsaint.com',
+  }),
 
   // Razorpay configuration
   RAZORPAY: {
