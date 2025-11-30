@@ -263,21 +263,21 @@ const ChatbotModal = ({ visible, onClose }) => {
           >
             <View style={{ flex: 1, flexDirection: 'column' }}>
               {/* Messages */}
-              <ScrollView
+          <ScrollView
                 ref={scrollRef}
                 style={{ flex: 1 }}
                 contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-                showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="none"
-              >
+          >
                 {messages.map(msg => (
                   <View key={msg.id} style={[styles.messageRow, msg.isUser ? styles.userRow : styles.botRow]}>
                     {!msg.isUser && (
                       <LinearGradient colors={['#FF8800', '#F6B800']} style={styles.botAvatarSmall}>
-                        <Icon name="chatbubbles" size={16} color="#fff" />
+                    <Icon name="chatbubbles" size={16} color="#fff" />
                       </LinearGradient>
-                    )}
+                )}
                     <View style={styles.messageContentContainer}>
                       <View style={[
                         styles.bubble,
@@ -286,10 +286,10 @@ const ChatbotModal = ({ visible, onClose }) => {
                       ]}>
                         <Text style={[styles.messageText, msg.isUser ? { color: '#fff' } : { color: '#333' }]}>
                           {msg.text}
-                        </Text>
+                  </Text>
                       </View>
                       {!msg.isUser && !msg.isError && (
-                        <TouchableOpacity
+                    <TouchableOpacity
                           onPress={() => {
                             if (playingAudioId === msg.id) {
                               stopAudio();
@@ -299,43 +299,43 @@ const ChatbotModal = ({ visible, onClose }) => {
                           }}
                           style={styles.speakerIcon}
                           disabled={loadingAudioId === msg.id}
-                        >
+                    >
                           {loadingAudioId === msg.id ? (
                             <ActivityIndicator size="small" color="#FF8800" />
                           ) : (
-                            <Icon
+                      <Icon
                               name={playingAudioId === msg.id ? "volume-high" : "volume-medium-outline"} 
                               size={20} 
                               color={playingAudioId === msg.id ? "#FF8800" : "#666"} 
-                            />
+                      />
                           )}
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                ))}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            ))}
                 {isLoading && <ThinkingDots />}
-              </ScrollView>
+          </ScrollView>
 
               {/* Input - Fixed at bottom */}
               <View style={styles.inputBar}>
                 <TouchableOpacity onPress={startVoice} style={[styles.micBtn, isRecording && { backgroundColor: '#FF3B30' }]}>
                   <Icon name={isRecording ? "mic" : "mic-outline"} size={22} color={isRecording ? "#fff" : "#666"} />
-                </TouchableOpacity>
-                
-                <TextInput
+            </TouchableOpacity>
+            
+            <TextInput
                   style={styles.textInput}
                   placeholder={isRecording ? "Listening..." : "Type a message..."}
                   placeholderTextColor="#333"
-                  value={inputText}
+              value={inputText}
                   onChangeText={setInputText}
                   onSubmitEditing={sendMessage}
                   returnKeyType="send"
                   blurOnSubmit={false}
                   multiline={false}
-                />
-                
-                <TouchableOpacity
+            />
+            
+            <TouchableOpacity
                   onPress={sendMessage}
                   disabled={!inputText.trim() || isLoading}
                   style={{ marginLeft: 8 }}
@@ -343,13 +343,13 @@ const ChatbotModal = ({ visible, onClose }) => {
                   <LinearGradient
                     colors={!inputText.trim() || isLoading ? ['#ccc', '#ccc'] : ['#FF8800', '#F6B800']}
                     style={styles.sendBtn}
-                  >
+            >
                     {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Icon name="send" size={20} color="#fff" />}
                   </LinearGradient>
-                </TouchableOpacity>
+            </TouchableOpacity>
               </View>
-            </View>
-          </KeyboardAvoidingView>
+          </View>
+        </KeyboardAvoidingView>
           
           {/* Hidden WebView for audio playback */}
           <WebView
@@ -415,10 +415,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row', 
+    flexDirection: 'row',
     padding: 12, 
-    backgroundColor: '#fff', 
-    borderTopWidth: 1, 
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
     borderColor: '#eee', 
     width: '100%',
     minHeight: 70,

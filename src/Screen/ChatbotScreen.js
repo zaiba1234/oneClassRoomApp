@@ -274,8 +274,8 @@ const ChatbotScreen = () => {
         style={{ flex: 1 }} 
         behavior={Platform.OS === 'android' ? 'height' : 'padding'}
         keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
-      >
-        <View style={{ flex: 1, flexDirection: 'column' }}>
+        enabled={true} >
+        <View style={{ flex: 1 }}>
           {/* Messages */}
           <ScrollView
             ref={scrollRef}
@@ -283,8 +283,7 @@ const ChatbotScreen = () => {
             contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="none"
-          >
+            keyboardDismissMode="none" >
             {messages.map(msg => (
               <View key={msg.id} style={[styles.messageRow, msg.isUser ? styles.userRow : styles.botRow]}>
                 {!msg.isUser && (
@@ -331,7 +330,7 @@ const ChatbotScreen = () => {
             {isLoading && <ThinkingDots />}
           </ScrollView>
 
-          {/* Input - Fixed at bottom */}
+          {/* Input - Fixed at bottom, moves up with keyboard */}
           <View style={styles.inputBar}>
             <TouchableOpacity onPress={startVoice} style={[styles.micBtn, isRecording && { backgroundColor: '#FF3B30' }]}>
               <Icon name={isRecording ? "mic" : "mic-outline"} size={22} color={isRecording ? "#fff" : "#666"} />
@@ -347,17 +346,17 @@ const ChatbotScreen = () => {
               returnKeyType="send"
               blurOnSubmit={false}
               multiline={false}
+              selectionColor="#FF8800"
+              underlineColorAndroid="transparent"
             />
 
             <TouchableOpacity
               onPress={sendMessage}
               disabled={!inputText.trim() || isLoading}
-              style={{ marginLeft: 8 }}
-            >
+              style={{ marginLeft: 8 }} >
               <LinearGradient
                 colors={!inputText.trim() || isLoading ? ['#ccc', '#ccc'] : ['#FF8800', '#F6B800']}
-                style={styles.sendBtn}
-              >
+                style={styles.sendBtn} >
                 {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Icon name="send" size={20} color="#fff" />}
               </LinearGradient>
             </TouchableOpacity>
@@ -376,6 +375,7 @@ const ChatbotScreen = () => {
         allowsInlineMediaPlayback={true}
       />
     </SafeAreaView>
+    
   );
 };
 

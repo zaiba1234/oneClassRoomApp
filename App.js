@@ -427,7 +427,7 @@ const AppContent = ({ alertManagerRef }) => {
         <Stack.Screen name="ContactUs" component={ContactUsScreen} />
         <Stack.Screen name="SubCourse" component={SubCourseScreen} />
         <Stack.Screen name="GlobalNotificationTester" component={GlobalNotificationTester} />
-    
+      
         <Stack.Screen name="CourseCertificate" component={CourseCertificateDownload} />
         <Stack.Screen name="Internship" component={InternshipLetterScreen} />
         <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
