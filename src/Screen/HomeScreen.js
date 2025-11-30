@@ -30,7 +30,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import NotificationBadge from '../Component/NotificationBadge';
 import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
 import { BannerAd, BannerAdSize, TestIds, InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
-import ChatbotModal from '../Component/ChatbotModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -123,8 +122,6 @@ const HomeScreen = () => {
   const [hasPrevPage, setHasPrevPage] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // State for chatbot
-  const [isChatbotVisible, setIsChatbotVisible] = useState(false);
 
   // Ref to track last fetch time to prevent too frequent API calls
   const lastFetchTimeRef = useRef(0);
@@ -2256,7 +2253,7 @@ const HomeScreen = () => {
                             await interstitialAdRef.current.show();
                           } else {
                             console.log('📱 [HomeScreen] Interstitial Ad not loaded yet, navigating directly');
-                            navigation.navigate('ActivityDetail', { activityId: activity.id });
+                        navigation.navigate('ActivityDetail', { activityId: activity.id });
                           }
                         } catch (error) {
                           console.error('❌ [HomeScreen] Error showing Interstitial Ad:', error);
@@ -2458,7 +2455,11 @@ const HomeScreen = () => {
       {/* Chatbot Floating Button */}
       <TouchableOpacity
         style={styles.chatbotButton}
-        onPress={() => setIsChatbotVisible(true)}
+        onPress={() => {
+          console.log('🤖 [HomeScreen] Chatbot button pressed');
+          console.log('🧭 [Navigation] Navigating to Chatbot screen');
+          navigation.navigate('Chatbot');
+        }}
         activeOpacity={0.8}
       >
         <Image 
@@ -2467,12 +2468,6 @@ const HomeScreen = () => {
           resizeMode="contain"
         />
       </TouchableOpacity>
-
-      {/* Chatbot Modal */}
-      <ChatbotModal
-        visible={isChatbotVisible}
-        onClose={() => setIsChatbotVisible(false)}
-      />
     </SafeAreaView>
   );
 };
