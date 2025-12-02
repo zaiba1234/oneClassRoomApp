@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   Dimensions,
   StatusBar,
+  Keyboard,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -66,6 +67,22 @@ const ChatbotScreen = () => {
       if (e.value?.[0]) setInputText(e.value[0]);
     };
     return () => Voice.destroy();
+  }, []);
+
+  // Scroll to bottom when keyboard opens
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setTimeout(() => {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+    };
   }, []);
 
   const sendMessage = async () => {
@@ -272,18 +289,18 @@ const ChatbotScreen = () => {
 
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
-        behavior={Platform.OS === 'android' ? 'height' : 'padding'}
-        keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
-        enabled={true} >
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        enabled={Platform.OS === 'ios'}>
         <View style={{ flex: 1 }}>
           {/* Messages */}
           <ScrollView
             ref={scrollRef}
             style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="none" >
+            keyboardDismissMode="interactive">
             {messages.map(msg => (
               <View key={msg.id} style={[styles.messageRow, msg.isUser ? styles.userRow : styles.botRow]}>
                 {!msg.isUser && (
@@ -330,16 +347,31 @@ const ChatbotScreen = () => {
             {isLoading && <ThinkingDots />}
           </ScrollView>
 
-          {/* Input - Fixed at bottom, moves up with keyboard */}
-          <View style={styles.inputBar}>
+          {/* Input - At bottom, moves up with keyboard (ChatGPT style) */}
+        
+        </View>
+      </KeyboardAvoidingView>
+     
+      
+      {/* Hidden WebView for audio playback */}
+      <WebView
+        ref={audioWebViewRef}
+        source={{ html: audioHtml }}
+        style={{ width: 0, height: 0, position: 'absolute' }}
+        onMessage={handleAudioMessage}
+        javaScriptEnabled={true}
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback={true}
+      />
+       <View style={styles.inputBar}>
             <TouchableOpacity onPress={startVoice} style={[styles.micBtn, isRecording && { backgroundColor: '#FF3B30' }]}>
-              <Icon name={isRecording ? "mic" : "mic-outline"} size={22} color={isRecording ? "#fff" : "#666"} />
+              <Icon name={isRecording ? "mic" : "mic-outline"} size={20} color={isRecording ? "#fff" : "#666"} />
             </TouchableOpacity>
 
             <TextInput
               style={styles.textInput}
               placeholder={isRecording ? "Listening..." : "Type a message..."}
-              placeholderTextColor="#333"
+              placeholderTextColor="#999"
               value={inputText}
               onChangeText={setInputText}
               onSubmitEditing={sendMessage}
@@ -353,29 +385,21 @@ const ChatbotScreen = () => {
             <TouchableOpacity
               onPress={sendMessage}
               disabled={!inputText.trim() || isLoading}
-              style={{ marginLeft: 8 }} >
-              <LinearGradient
-                colors={!inputText.trim() || isLoading ? ['#ccc', '#ccc'] : ['#FF8800', '#F6B800']}
-                style={styles.sendBtn} >
-                {isLoading ? <ActivityIndicator color="#fff" size="small" /> : <Icon name="send" size={20} color="#fff" />}
-              </LinearGradient>
+              style={styles.sendButtonContainer}>
+              {!inputText.trim() || isLoading ? (
+                <View style={[styles.sendBtn, styles.sendBtnDisabled]}>
+                  {isLoading ? <ActivityIndicator color="#999" size="small" /> : <Icon name="send" size={18} color="#999" />}
+                </View>
+              ) : (
+                <LinearGradient
+                  colors={['#FF8800', '#F6B800']}
+                  style={styles.sendBtn}>
+                  <Icon name="send" size={18} color="#fff" />
+                </LinearGradient>
+              )}
             </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-      
-      {/* Hidden WebView for audio playback */}
-      <WebView
-        ref={audioWebViewRef}
-        source={{ html: audioHtml }}
-        style={{ width: 0, height: 0, position: 'absolute' }}
-        onMessage={handleAudioMessage}
-        javaScriptEnabled={true}
-        mediaPlaybackRequiresUserAction={false}
-        allowsInlineMediaPlayback={true}
-      />
     </SafeAreaView>
-    
   );
 };
 
@@ -432,23 +456,52 @@ const styles = StyleSheet.create({
   thinkingText: { color: '#333', fontSize: 15.5 },
 
   inputBar: { 
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row', 
-    padding: 12, 
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 12,
     backgroundColor: '#fff', 
     borderTopWidth: 1, 
-    borderColor: '#eee', 
+    borderColor: '#e5e5e5', 
     alignItems: 'center',
     width: '100%',
-    minHeight: 70,
-    zIndex: 10,
+    flexShrink: 0,
   },
-  micBtn: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  textInput: { flex: 1, backgroundColor: '#f0f0f0', borderRadius: 23, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, maxHeight: 100, color: '#333' },
-  sendBtn: { width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center' },
+  micBtn: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    backgroundColor: 'transparent', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 8 
+  },
+  textInput: { 
+    flex: 1, 
+    backgroundColor: '#f0f0f0', 
+    borderRadius: 22, 
+    paddingHorizontal: 16, 
+    paddingVertical: 10, 
+    fontSize: 16, 
+    maxHeight: 100, 
+    color: '#000',
+    borderWidth: 0,
+    borderColor: 'transparent',
+    minHeight: 44,
+  },
+  sendButtonContainer: {
+    marginLeft: 8,
+  },
+  sendBtn: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 18, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
+  sendBtnDisabled: {
+    backgroundColor: '#e0e0e0',
+  },
   speakerIcon: { 
     marginLeft: 8, 
     padding: 6, 
