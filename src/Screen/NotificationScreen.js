@@ -44,6 +44,8 @@ const NotificationScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [error, setError] = useState(null);
+  // State to track expanded notifications (for Read More feature)
+  const [expandedNotifications, setExpandedNotifications] = useState(new Set());
 
   // Fetch notifications from backend
   const fetchNotifications = async () => {
@@ -206,18 +208,54 @@ const NotificationScreen = ({ navigation }) => {
       console.log('🔔 NotificationScreen: Continue button pressed for notification:', notification);
       
       const { data } = notification;
-      const notificationType = data?.type || notification.type;
+      const notificationType = data?.type || notification.type || '';
+      const typeLower = notificationType.toLowerCase();
+      const titleLower = (notification?.title || '').toLowerCase();
+      const bodyLower = (notification?.body || '').toLowerCase();
       
-      // Check if it's a live lesson notification
-      if (notificationType === 'lesson_live' || notificationType === 'live_lesson') {
-        let lessonId = data?.lessonId;
+      // Check if it's a live lesson notification (check multiple formats - very flexible)
+      const isLiveLesson = 
+        typeLower === 'lesson_live' || 
+        typeLower === 'live_lesson' ||
+        typeLower === 'live lesson' ||
+        typeLower === 'lessonlive' ||
+        typeLower === 'livelesson' ||
+        (notificationType && notificationType.toLowerCase().includes('live') && notificationType.toLowerCase().includes('lesson')) ||
+        titleLower.includes('live') ||
+        bodyLower.includes('live lesson') ||
+        bodyLower.includes('live class') ||
+        (titleLower.includes('live') && (titleLower.includes('lesson') || titleLower.includes('class')));
+      
+      console.log('🔔 NotificationScreen: handleContinueButton - Live lesson check:', {
+        notificationType,
+        typeLower,
+        isLiveLesson,
+        title: notification?.title,
+        body: notification?.body
+      });
+      
+      if (isLiveLesson) {
+        // Try multiple ways to get lessonId
+        let lessonId = data?.lessonId || data?.lesson_id || notification.lessonId || notification.lesson_id;
+        
+        console.log('🔔 NotificationScreen: Live lesson notification - lessonId search:', {
+          dataLessonId: data?.lessonId,
+          dataLesson_id: data?.lesson_id,
+          notificationLessonId: notification.lessonId,
+          notificationLesson_id: notification.lesson_id,
+          foundLessonId: lessonId
+        });
         
         // If lessonId is not in data, try to enrich the notification
         if (!lessonId) {
           console.log('🔔 NotificationScreen: lessonId not found, enriching notification...');
-          const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(notification);
-          const enrichedData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
-          lessonId = enrichedData.lessonId || enrichedNotification.lessonId || data?.lessonId;
+          try {
+            const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(notification);
+            const enrichedData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
+            lessonId = enrichedData.lessonId || enrichedData.lesson_id || enrichedNotification.lessonId || enrichedNotification.lesson_id || data?.lessonId || data?.lesson_id;
+          } catch (enrichError) {
+            console.error('💥 NotificationScreen: Error enriching notification:', enrichError);
+          }
         }
         
         if (lessonId) {
@@ -254,9 +292,37 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   // Check if notification is a live lesson
+  // Check multiple possible notification type formats
   const isLiveLessonNotification = (notification) => {
-    const notificationType = notification?.data?.type || notification?.type;
-    return notificationType === 'lesson_live' || notificationType === 'live_lesson';
+    const notificationType = notification?.data?.type || notification?.type || '';
+    const typeLower = notificationType.toLowerCase();
+    
+    // Check for various live lesson notification type formats
+    // Be very flexible - check type, title, and body for "live" keyword
+    const titleLower = (notification?.title || '').toLowerCase();
+    const bodyLower = (notification?.body || '').toLowerCase();
+    
+    const isLive = 
+      typeLower === 'lesson_live' || 
+      typeLower === 'live_lesson' ||
+      typeLower === 'live lesson' ||
+      typeLower === 'lessonlive' ||
+      typeLower === 'livelesson' ||
+      (notificationType && notificationType.toLowerCase().includes('live') && notificationType.toLowerCase().includes('lesson')) ||
+      titleLower.includes('live') ||
+      bodyLower.includes('live lesson') ||
+      bodyLower.includes('live class') ||
+      (titleLower.includes('live') && (titleLower.includes('lesson') || titleLower.includes('class')));
+    
+    console.log('🔔 NotificationScreen: isLiveLessonNotification check:', {
+      notificationType,
+      typeLower,
+      isLive,
+      title: notification?.title,
+      body: notification?.body
+    });
+    
+    return isLive;
   };
 
   // Check if notification is an internship-related notification
@@ -272,8 +338,52 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   // Check if notification should show Continue button
+  // Shows Continue button for: Live lesson notifications AND Internship notifications
   const shouldShowContinueButton = (notification) => {
-    return isLiveLessonNotification(notification) || isInternshipNotification(notification);
+    const isLive = isLiveLessonNotification(notification);
+    const isInternship = isInternshipNotification(notification);
+    const shouldShow = isLive || isInternship;
+    
+    console.log('🔔 NotificationScreen: shouldShowContinueButton check:', {
+      notificationType: notification?.data?.type || notification?.type,
+      notificationId: notification?._id || notification?.id,
+      isLive,
+      isInternship,
+      shouldShow,
+      fullNotification: JSON.stringify(notification, null, 2)
+    });
+    
+    // Force show Continue button for live lessons if detected
+    if (isLive) {
+      console.log('✅ NotificationScreen: Live lesson detected - Continue button WILL be shown');
+      return true;
+    }
+    
+    return shouldShow;
+  };
+
+  // Toggle expand/collapse for notification text
+  const toggleNotificationExpand = (notificationId) => {
+    setExpandedNotifications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(notificationId)) {
+        newSet.delete(notificationId);
+      } else {
+        newSet.add(notificationId);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if notification text needs "Read More" (if body text is longer than 100 characters)
+  const needsReadMore = (body) => {
+    return body && body.length > 100;
+  };
+
+  // Get truncated text (first 100 characters)
+  const getTruncatedText = (body) => {
+    if (!body) return '';
+    return body.length > 100 ? body.substring(0, 100) + '...' : body;
   };
 
   // Get icon configuration based on notification type
@@ -377,14 +487,28 @@ const NotificationScreen = ({ navigation }) => {
     const isInternship = isInternshipNotification(item);
     const showContinueButton = shouldShowContinueButton(item);
     
-    // Debug logging for internship notifications
-    if (notificationType && notificationType.includes('internship')) {
-      console.log('🔔 NotificationScreen: Internship notification detected:', {
+    // Debug logging for ALL notifications to help debug Continue button issue
+    console.log('🔔 NotificationScreen: Rendering notification:', {
+      id: item._id || item.id,
+      type: notificationType,
+      isLiveLesson: isLiveLesson,
+      isInternship: isInternship,
+      showContinueButton: showContinueButton,
+      hasData: !!item.data,
+      dataType: item.data?.type,
+      lessonId: item.data?.lessonId || item.data?.lesson_id,
+      title: item.title,
+      body: item.body?.substring(0, 50) + '...'
+    });
+    
+    // Special logging for live lesson and internship notifications
+    if (isLiveLesson || isInternship) {
+      console.log('🔔 NotificationScreen: ⭐ SPECIAL NOTIFICATION (Live/Internship):', {
         type: notificationType,
+        isLiveLesson: isLiveLesson,
         isInternship: isInternship,
         showContinueButton: showContinueButton,
-        hasData: !!item.data,
-        dataType: item.data?.type
+        willShowButton: showContinueButton ? 'YES ✅' : 'NO ❌'
       });
     }
     
@@ -421,7 +545,10 @@ const NotificationScreen = ({ navigation }) => {
                 <View style={styles.unreadDot} />
               )}
             </View>
-            <Text style={styles.subtitle} numberOfLines={2}>
+            <Text 
+              style={styles.subtitle} 
+              numberOfLines={expandedNotifications.has(item._id || item.id) ? undefined : 2}
+            >
               {item.body}
             </Text>
             <Text style={styles.timeText}>
@@ -430,12 +557,36 @@ const NotificationScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
         
+        {/* Read More button - outside TouchableOpacity to prevent triggering notification tap */}
+        {needsReadMore(item.body) && (
+          <TouchableOpacity
+            onPress={() => toggleNotificationExpand(item._id || item.id)}
+            style={styles.readMoreButton}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.readMoreText}>
+              {expandedNotifications.has(item._id || item.id) ? 'Read Less' : 'Read More'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        
         {/* Continue button for live lesson and internship notifications */}
-        {showContinueButton && (
+        {/* Live lesson notifications: Navigates to LessonVideoScreen */}
+        {/* Internship notifications: Navigates to Internship screen */}
+        {/* Force show Continue button if it's a live lesson or internship */}
+        {(showContinueButton || isLiveLesson || isInternship) && (
           <View style={styles.continueButtonContainer}>
             <TouchableOpacity
               style={styles.continueButton}
-              onPress={() => handleContinueButton(item)}
+              onPress={() => {
+                console.log('🔔 NotificationScreen: Continue button pressed for:', {
+                  type: notificationType,
+                  isLiveLesson: isLiveLesson,
+                  isInternship: isInternship,
+                  notificationId: item._id || item.id
+                });
+                handleContinueButton(item);
+              }}
               activeOpacity={0.8}
             >
               <Text style={styles.continueButtonText}>Continue</Text>
@@ -767,6 +918,17 @@ const styles = StyleSheet.create({
     fontSize: getFontSize(14),
     color: '#999999',
     textAlign: 'center',
+  },
+  readMoreButton: {
+    marginTop: getVerticalSize(4),
+    marginLeft: getVerticalSize(56), // Align with text content (icon width + margin)
+    paddingVertical: getVerticalSize(4),
+    paddingHorizontal: getVerticalSize(8),
+  },
+  readMoreText: {
+    fontSize: getFontSize(12),
+    color: '#FF6B35',
+    fontWeight: '600',
   },
 });
 

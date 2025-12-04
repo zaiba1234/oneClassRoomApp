@@ -30,6 +30,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import NotificationBadge from '../Component/NotificationBadge';
 import { checkApiResponseForTokenError, handleTokenError } from '../utils/tokenErrorHandler';
 import { BannerAd, BannerAdSize, TestIds, InterstitialAd, AdEventType } from 'react-native-google-mobile-ads';
+import notificationService from '../services/notificationService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -122,6 +123,9 @@ const HomeScreen = () => {
   const [hasPrevPage, setHasPrevPage] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // State for unread notification count
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
 
   // Ref to track last fetch time to prevent too frequent API calls
   const lastFetchTimeRef = useRef(0);
@@ -159,9 +163,20 @@ const HomeScreen = () => {
       hasToken: !!token,
       searchKeyword,
       currentPage,
-      totalPages
+      totalPages,
+      unreadNotificationCount
     });
   }, []);
+
+  // Debug: Log unread notification count changes
+  useEffect(() => {
+    console.log('🔔 [HomeScreen] Unread notification count changed:', {
+      count: unreadNotificationCount,
+      showBadge: unreadNotificationCount > 0,
+      icon: unreadNotificationCount > 0 ? 'Notification1.png' : 'Bell.png',
+      timestamp: new Date().toISOString()
+    });
+  }, [unreadNotificationCount]);
 
   // Load Interstitial Ad on mount (Android only)
   useEffect(() => {
@@ -223,11 +238,16 @@ const HomeScreen = () => {
           console.log('🏠 [HomeScreen] User is logged in, fetching user-specific data');
           // For logged-in users: fetch user-specific data first
           console.log('📡 [API] Calling fetchUserFavoriteCourses...');
-          await fetchUserFavoriteCourses();
           console.log('📡 [API] Calling fetchUserProfile...');
-          await fetchUserProfile();
+          console.log('📡 [API] Calling fetchUnreadNotificationCount...');
+          await Promise.all([
+            fetchUserFavoriteCourses(),
+            fetchUserProfile(),
+            fetchUnreadNotificationCount()
+          ]);
         } else {
           console.log('🏠 [HomeScreen] User is not logged in, skipping user-specific data');
+          setUnreadNotificationCount(0);
         }
 
         // Always fetch course data and banner data (these should work for all users)
@@ -267,6 +287,7 @@ const HomeScreen = () => {
             selectedFilter,
             courseCardsCount: courseCards.length,
             hasToken: !!token,
+            unreadCount: unreadNotificationCount,
             timestamp: new Date().toISOString()
           });
           
@@ -279,13 +300,16 @@ const HomeScreen = () => {
             // For logged-in users: refresh user-specific data first
             console.log('📡 [API] Auto-refresh: Calling fetchUserFavoriteCourses...');
             console.log('📡 [API] Auto-refresh: Calling fetchUserProfile...');
+            console.log('📡 [API] Auto-refresh: Calling fetchUnreadNotificationCount...');
             await Promise.all([
               fetchUserFavoriteCourses(),
-              fetchUserProfile()
+              fetchUserProfile(),
+              fetchUnreadNotificationCount()
             ]);
             console.log('✅ [HomeScreen] User-specific data refreshed');
           } else {
             console.log('🔄 [HomeScreen] User not logged in, skipping user-specific data');
+            setUnreadNotificationCount(0);
           }
 
           // Always refresh course and banner data
@@ -1194,6 +1218,24 @@ const HomeScreen = () => {
     }
   };
 
+  // Function to fetch unread notification count
+  const fetchUnreadNotificationCount = async () => {
+    try {
+      if (!token) {
+        setUnreadNotificationCount(0);
+        return;
+      }
+
+      console.log('🔔 [HomeScreen] fetchUnreadNotificationCount called');
+      const count = await notificationService.getUnreadCount(token);
+      console.log('🔔 [HomeScreen] Unread notification count:', count);
+      setUnreadNotificationCount(count || 0);
+    } catch (error) {
+      console.error('💥 [HomeScreen] Error fetching unread notification count:', error);
+      setUnreadNotificationCount(0); // Default to 0 on error
+    }
+  };
+
   // Function to fetch user's profile data from API
   const fetchUserProfile = async () => {
     try {
@@ -1382,11 +1424,16 @@ const HomeScreen = () => {
         console.log('🔄 [HomeScreen] User logged in, refreshing user-specific data');
         // For logged-in users: refresh user-specific data
         console.log('📡 [API] Refresh: Calling fetchUserFavoriteCourses...');
-        await fetchUserFavoriteCourses();
         console.log('📡 [API] Refresh: Calling fetchUserProfile...');
-        await fetchUserProfile();
+        console.log('📡 [API] Refresh: Calling fetchUnreadNotificationCount...');
+        await Promise.all([
+          fetchUserFavoriteCourses(),
+          fetchUserProfile(),
+          fetchUnreadNotificationCount()
+        ]);
       } else {
         console.log('🔄 [HomeScreen] User not logged in, skipping user-specific data');
+        setUnreadNotificationCount(0);
       }
 
       // Always refresh course and banner data
@@ -1551,11 +1598,111 @@ const HomeScreen = () => {
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
+      // Cleanup carousel intervals
+      if (carouselIntervalRef.current) {
+        clearInterval(carouselIntervalRef.current);
+        carouselIntervalRef.current = null;
+      }
+      if (activitiesIntervalRef.current) {
+        clearInterval(activitiesIntervalRef.current);
+        activitiesIntervalRef.current = null;
+      }
     };
   }, []);
 
+  // Auto-scroll for Banner Carousel
+  useEffect(() => {
+    // Calculate total items for banner carousel
+    let totalItems = 0;
+    if (bannerData.recentSubcourse) totalItems++;
+    if (bannerData.recentPurchasedSubcourse) totalItems++;
+    if (bannerData.promos && bannerData.promos.length > 0) totalItems += bannerData.promos.length;
+    
+    // Fallback to featured courses if no banner data
+    if (totalItems === 0 && featuredCourses.length > 0) {
+      totalItems = featuredCourses.length;
+    }
+    
+    // Final fallback: ensure at least 1 item
+    if (totalItems === 0) {
+      totalItems = 1;
+    }
+
+    // Only auto-scroll if there's more than 1 item
+    if (totalItems <= 1 || isCarouselPausedRef.current) {
+      return;
+    }
+
+    // Clear existing interval
+    if (carouselIntervalRef.current) {
+      clearInterval(carouselIntervalRef.current);
+    }
+
+    // Set up auto-scroll interval (2 seconds - faster)
+    carouselIntervalRef.current = setInterval(() => {
+      if (carouselRef.current && !isCarouselPausedRef.current) {
+        const nextIndex = (currentCarouselIndex + 1) % totalItems;
+        const itemWidth = width - getResponsiveSize(40);
+        carouselRef.current.scrollTo({
+          x: nextIndex * itemWidth,
+          animated: true,
+        });
+        setCurrentCarouselIndex(nextIndex);
+      }
+    }, 2000); // Auto-scroll every 2 seconds (faster)
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (carouselIntervalRef.current) {
+        clearInterval(carouselIntervalRef.current);
+        carouselIntervalRef.current = null;
+      }
+    };
+  }, [currentCarouselIndex, bannerData, featuredCourses, width]);
+
+  // Auto-scroll for Activities Carousel
+  useEffect(() => {
+    // Only auto-scroll if there's more than 1 activity
+    if (activities.length <= 1 || isActivitiesPausedRef.current) {
+      return;
+    }
+
+    // Clear existing interval
+    if (activitiesIntervalRef.current) {
+      clearInterval(activitiesIntervalRef.current);
+    }
+
+    // Set up auto-scroll interval (2 seconds - faster)
+    activitiesIntervalRef.current = setInterval(() => {
+      if (activitiesCarouselRef.current && !isActivitiesPausedRef.current) {
+        const nextIndex = (currentActivityIndex + 1) % activities.length;
+        const itemWidth = width - getResponsiveSize(40);
+        activitiesCarouselRef.current.scrollTo({
+          x: nextIndex * itemWidth,
+          animated: true,
+        });
+        setCurrentActivityIndex(nextIndex);
+      }
+    }, 2000); // Auto-scroll every 2 seconds (faster)
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (activitiesIntervalRef.current) {
+        clearInterval(activitiesIntervalRef.current);
+        activitiesIntervalRef.current = null;
+      }
+    };
+  }, [currentActivityIndex, activities.length, width]);
+
   const scrollX = useRef(new Animated.Value(0)).current;
   const carouselRef = useRef(null);
+  const activitiesCarouselRef = useRef(null);
+
+  // Refs for auto-carousel intervals
+  const carouselIntervalRef = useRef(null);
+  const activitiesIntervalRef = useRef(null);
+  const isCarouselPausedRef = useRef(false);
+  const isActivitiesPausedRef = useRef(false);
 
   const filterOptions = ['All Course', 'Popular', 'Newest'];
 
@@ -1832,15 +1979,16 @@ const HomeScreen = () => {
               <Text style={styles.userName}>{fullName || 'User'}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.notificationButton}       onPress={() => {
-        console.log('🔔 [HomeScreen] Notification button pressed');
-        console.log('🧭 [Navigation] Navigating to Notification screen');
-        navigation.navigate('Notification');
-      }}>
+          <TouchableOpacity style={styles.notificationButton} onPress={() => {
+            console.log('🔔 [HomeScreen] Notification button pressed');
+            console.log('🔔 [HomeScreen] Current unread count:', unreadNotificationCount);
+            console.log('🧭 [Navigation] Navigating to Notification screen');
+            navigation.navigate('Notification');
+          }}>
             <NotificationBadge
               size={24}
               color="#000000"
-              showBadge={true} // true = Notification1.png, false = Bell.png
+              showBadge={unreadNotificationCount > 0} // true = Notification1.png (when count > 0), false = Bell.png (when count = 0)
             />
           </TouchableOpacity>
 
@@ -1988,6 +2136,14 @@ const HomeScreen = () => {
                         [{ nativeEvent: { contentOffset: { x: scrollX } } }],
                         { useNativeDriver: false }
                       )}
+                      onScrollBeginDrag={() => {
+                        isCarouselPausedRef.current = true;
+                      }}
+                      onScrollEndDrag={() => {
+                        setTimeout(() => {
+                          isCarouselPausedRef.current = false;
+                        }, 3000); // Resume after 3 seconds (faster)
+                      }}
                       onMomentumScrollEnd={(event) => {
                         const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
                         setCurrentCarouselIndex(index);
@@ -2030,6 +2186,14 @@ const HomeScreen = () => {
                       [{ nativeEvent: { contentOffset: { x: scrollX } } }],
                       { useNativeDriver: false }
                     )}
+                    onScrollBeginDrag={() => {
+                      isCarouselPausedRef.current = true;
+                    }}
+                    onScrollEndDrag={() => {
+                      setTimeout(() => {
+                        isCarouselPausedRef.current = false;
+                      }, 3000); // Resume after 3 seconds (faster)
+                    }}
                     onMomentumScrollEnd={(event) => {
                       const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
                       setCurrentCarouselIndex(index);
@@ -2070,6 +2234,16 @@ const HomeScreen = () => {
                     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
                     { useNativeDriver: false }
                   )}
+                  onScrollBeginDrag={() => {
+                    // Pause auto-scroll when user starts scrolling
+                    isCarouselPausedRef.current = true;
+                  }}
+                  onScrollEndDrag={() => {
+                    // Resume auto-scroll after 3 seconds of user interaction (faster)
+                    setTimeout(() => {
+                      isCarouselPausedRef.current = false;
+                    }, 3000);
+                  }}
                   onMomentumScrollEnd={(event) => {
                     const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
                     setCurrentCarouselIndex(index);
@@ -2218,9 +2392,20 @@ const HomeScreen = () => {
           ) : activities.length > 0 ? (
             <>
               <ScrollView
+                ref={activitiesCarouselRef}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                onScrollBeginDrag={() => {
+                  // Pause auto-scroll when user starts scrolling
+                  isActivitiesPausedRef.current = true;
+                }}
+                onScrollEndDrag={() => {
+                  // Resume auto-scroll after 3 seconds of user interaction (faster)
+                  setTimeout(() => {
+                    isActivitiesPausedRef.current = false;
+                  }, 3000);
+                }}
                 onMomentumScrollEnd={(event) => {
                   const itemWidth = width - getResponsiveSize(40);
                   const index = Math.round(event.nativeEvent.contentOffset.x / itemWidth);
