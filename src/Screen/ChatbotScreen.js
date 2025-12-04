@@ -51,6 +51,7 @@ const ChatbotScreen = () => {
   const [audioHtml, setAudioHtml] = useState('<html><body></body></html>');
   const [isMuted, setIsMuted] = useState(false);
   const [language, setLanguage] = useState('en'); // 'en' for English, 'hi' for Hindi
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const audioWebViewRef = useRef(null);
 
   // Scroll to bottom when new message
@@ -69,19 +70,29 @@ const ChatbotScreen = () => {
     return () => Voice.destroy();
   }, []);
 
-  // Scroll to bottom when keyboard opens
+  // Handle keyboard show/hide and scroll
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
+      (e) => {
+        const height = e.endCoordinates.height;
+        setKeyboardHeight(height);
         setTimeout(() => {
           scrollRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        }, 300);
+      }
+    );
+
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
       }
     );
 
     return () => {
       keyboardWillShow.remove();
+      keyboardWillHide.remove();
     };
   }, []);
 
@@ -287,20 +298,18 @@ const ChatbotScreen = () => {
         </View>
       </LinearGradient>
 
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-        enabled={Platform.OS === 'ios'}>
-        <View style={{ flex: 1 }}>
-          {/* Messages */}
-          <ScrollView
-            ref={scrollRef}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive">
+      <View style={{ flex: 1, position: 'relative' }}>
+        {/* Messages - Fixed position, doesn't move with keyboard */}
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ 
+            padding: 16, 
+            paddingBottom: 100 
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive">
             {messages.map(msg => (
               <View key={msg.id} style={[styles.messageRow, msg.isUser ? styles.userRow : styles.botRow]}>
                 {!msg.isUser && (
@@ -346,11 +355,7 @@ const ChatbotScreen = () => {
             ))}
             {isLoading && <ThinkingDots />}
           </ScrollView>
-
-          {/* Input - At bottom, moves up with keyboard (ChatGPT style) */}
-        
-        </View>
-      </KeyboardAvoidingView>
+      </View>
      
       
       {/* Hidden WebView for audio playback */}
@@ -363,7 +368,7 @@ const ChatbotScreen = () => {
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
       />
-       <View style={styles.inputBar}>
+       <View style={[styles.inputBar, { bottom: keyboardHeight > 0 ? keyboardHeight : Platform.OS === 'ios' ? 0 : 0 }]}>
             <TouchableOpacity onPress={startVoice} style={[styles.micBtn, isRecording && { backgroundColor: '#FF3B30' }]}>
               <Icon name={isRecording ? "mic" : "mic-outline"} size={20} color={isRecording ? "#fff" : "#666"} />
             </TouchableOpacity>
@@ -380,6 +385,12 @@ const ChatbotScreen = () => {
               multiline={false}
               selectionColor="#FF8800"
               underlineColorAndroid="transparent"
+              onFocus={() => {
+                // Auto scroll when TextInput is focused (ChatGPT style)
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 300);
+              }}
             />
 
             <TouchableOpacity
@@ -407,6 +418,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    position: 'relative',
   },
   header: { 
     flexDirection: 'row', 
@@ -456,16 +468,18 @@ const styles = StyleSheet.create({
   thinkingText: { color: '#333', fontSize: 15.5 },
 
   inputBar: { 
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row', 
     paddingHorizontal: 12,
     paddingVertical: 8,
-    paddingBottom: Platform.OS === 'ios' ? 8 : 12,
+    paddingBottom: Platform.OS === 'ios' ? 2 : 29,
     backgroundColor: '#fff', 
-    borderTopWidth: 1, 
-    borderColor: '#e5e5e5', 
     alignItems: 'center',
     width: '100%',
-    flexShrink: 0,
+    zIndex: 1000,
+    elevation: 10,
   },
   micBtn: { 
     width: 36, 

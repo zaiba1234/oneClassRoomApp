@@ -105,20 +105,23 @@ const ActivityDetailScreen = ({ navigation, route }) => {
 
   // Handle Get Now button press
   const handleGetNow = async () => {
-    if (!activityData?.activityLink) {
-      Alert.alert('Error', 'Activity link is not available');
+    if (!activityData?.activityLink || activityData.activityLink === '#') {
+      Alert.alert(
+        'Coming Soon! 🚀',
+        'We are working on adding the activity link. It will be available soon!',
+        [{ text: 'OK', style: 'default' }]
+      );
       return;
     }
 
     try {
-      const supported = await Linking.canOpenURL(activityData.activityLink);
-      if (supported) {
-        await Linking.openURL(activityData.activityLink);
-      } else {
-        Alert.alert('Error', 'Cannot open the activity link');
-      }
+      await Linking.openURL(activityData.activityLink);
     } catch (error) {
-      Alert.alert('Error', 'Failed to open activity link');
+      Alert.alert(
+        'Oops! 😔',
+        'Unable to open the link at the moment. Please try again later.',
+        [{ text: 'OK', style: 'default' }]
+      );
     }
   };
 
@@ -176,7 +179,7 @@ const ActivityDetailScreen = ({ navigation, route }) => {
 
             {/* Title - Direct on screen */}
             <Text style={styles.mainTitle}>
-              {activityData.activityTitle || 'Activity Title'}
+              {activityData.activityHeading || activityData.activityTitle || 'Activity Title'}
             </Text>
 
             {/* Description - Direct on screen */}
