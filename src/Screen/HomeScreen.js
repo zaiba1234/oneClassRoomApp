@@ -1782,7 +1782,7 @@ const HomeScreen = () => {
       <View key={displayItem.id || index} style={styles.carouselItem}>
         {isPromoItem ? (
           // Third item: Promo image as complete card
-          <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
+          <View style={[styles.carouselCard, styles.carouselCardPromo]}>
             <Image source={displayItem.image} style={styles.carouselBannerImage} resizeMode="cover" />
           </View>
         ) : (
@@ -2154,7 +2154,7 @@ const HomeScreen = () => {
                       contentContainerStyle={styles.carouselContentContainer}
                     >
                       <View style={styles.carouselItem}>
-                        <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
+                        <View style={[styles.carouselCard, styles.carouselCardPromo]}>
                           <Image
                             source={require('../assests/images/HomeImage.png')}
                             style={styles.carouselBannerImage}
@@ -2204,7 +2204,7 @@ const HomeScreen = () => {
                     contentContainerStyle={styles.carouselContentContainer}
                   >
                     <View style={styles.carouselItem}>
-                      <View style={[styles.carouselCard, { padding: 0, overflow: 'hidden' }]}>
+                      <View style={[styles.carouselCard, styles.carouselCardPromo]}>
                         <Image
                           source={require('../assests/images/HomeImage.png')}
                           style={styles.carouselBannerImage}
@@ -2880,15 +2880,22 @@ const styles = StyleSheet.create({
   },
   carouselItem: {
     width: width - getResponsiveSize(40),
+    height: getResponsiveSize(180),
     marginRight: getResponsiveSize(10),
   },
   carouselCard: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
     borderRadius: getResponsiveSize(20),
     padding: getResponsiveSize(20),
     justifyContent: 'space-between',
     borderWidth: 0.5,
     borderColor: '#FF88001A',
+  },
+  carouselCardPromo: {
+    padding: 0,
+    overflow: 'hidden',
+    borderWidth: 0,
   },
   carouselContent: {
     flexDirection: 'row',
@@ -2907,11 +2914,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden', // Ensure shape is complete
   },
   carouselBannerImage: {
-    width: '130%',
-    height: '130%',
-    borderRadius: getResponsiveSize(16),
+    width: '100%',
+    height: '100%',
+    borderRadius: getResponsiveSize(20),
     resizeMode: 'cover',
-    marginLeft: -getResponsiveSize(20),
   },
   carouselRight: {
     flex: 1,
