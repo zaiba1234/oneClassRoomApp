@@ -1,6 +1,6 @@
 // Test script to check backend connection
 const testBackendConnection = async () => {
-  // const baseUrl = 'http://192.168.1.28:3000'; // Local IP (commented out - use production URL)
+  // const baseUrl = 'http://192.168.29.157:3000'; // Local IP (commented out - use production URL)
   const baseUrl = 'https://main.learningsaint.com'; // Production URL
   
   console.log('🧪 Testing backend connection...');

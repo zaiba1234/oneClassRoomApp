@@ -4,7 +4,7 @@ export const ENV_CONFIG = {
   RAZORPAY_KEY_ID: 'rzp_live_ZumwCLoX1AZdm9',
 
   // API Base URL - Local IP
-  API_BASE_URL: 'http://192.168.1.28:3000',
+  API_BASE_URL: 'http://192.168.29.157:3000',
   // Production URL (commented out - use local IP for development)
   // API_BASE_URL: 'https://main.learningsaint.com',
 

@@ -1638,7 +1638,7 @@ const HomeScreen = () => {
       clearInterval(carouselIntervalRef.current);
     }
 
-    // Set up auto-scroll interval (2 seconds - faster)
+    // Set up auto-scroll interval (1 second - very fast)
     carouselIntervalRef.current = setInterval(() => {
       if (carouselRef.current && !isCarouselPausedRef.current) {
         const nextIndex = (currentCarouselIndex + 1) % totalItems;
@@ -1649,7 +1649,7 @@ const HomeScreen = () => {
         });
         setCurrentCarouselIndex(nextIndex);
       }
-    }, 2000); // Auto-scroll every 2 seconds (faster)
+    }, 1000); // Auto-scroll every 1 second (very fast)
 
     // Cleanup on unmount or when dependencies change
     return () => {
@@ -1672,7 +1672,7 @@ const HomeScreen = () => {
       clearInterval(activitiesIntervalRef.current);
     }
 
-    // Set up auto-scroll interval (2 seconds - faster)
+    // Set up auto-scroll interval (1 second - very fast)
     activitiesIntervalRef.current = setInterval(() => {
       if (activitiesCarouselRef.current && !isActivitiesPausedRef.current) {
         const nextIndex = (currentActivityIndex + 1) % activities.length;
@@ -1683,7 +1683,7 @@ const HomeScreen = () => {
         });
         setCurrentActivityIndex(nextIndex);
       }
-    }, 2000); // Auto-scroll every 2 seconds (faster)
+    }, 1000); // Auto-scroll every 1 second (very fast)
 
     // Cleanup on unmount or when dependencies change
     return () => {
@@ -2142,7 +2142,7 @@ const HomeScreen = () => {
                       onScrollEndDrag={() => {
                         setTimeout(() => {
                           isCarouselPausedRef.current = false;
-                        }, 3000); // Resume after 3 seconds (faster)
+                        }, 2000); // Resume after 2 seconds (faster)
                       }}
                       onMomentumScrollEnd={(event) => {
                         const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
@@ -2239,10 +2239,10 @@ const HomeScreen = () => {
                     isCarouselPausedRef.current = true;
                   }}
                   onScrollEndDrag={() => {
-                    // Resume auto-scroll after 3 seconds of user interaction (faster)
+                    // Resume auto-scroll after 2 seconds of user interaction (faster)
                     setTimeout(() => {
                       isCarouselPausedRef.current = false;
-                    }, 3000);
+                    }, 2000);
                   }}
                   onMomentumScrollEnd={(event) => {
                     const index = Math.round(event.nativeEvent.contentOffset.x / (width - getResponsiveSize(40)));
@@ -2401,10 +2401,10 @@ const HomeScreen = () => {
                   isActivitiesPausedRef.current = true;
                 }}
                 onScrollEndDrag={() => {
-                  // Resume auto-scroll after 3 seconds of user interaction (faster)
+                  // Resume auto-scroll after 2 seconds of user interaction (faster)
                   setTimeout(() => {
                     isActivitiesPausedRef.current = false;
-                  }, 3000);
+                  }, 2000);
                 }}
                 onMomentumScrollEnd={(event) => {
                   const itemWidth = width - getResponsiveSize(40);

@@ -250,8 +250,8 @@ const NotificationScreen = ({ navigation }) => {
         if (!lessonId) {
           console.log('🔔 NotificationScreen: lessonId not found, enriching notification...');
           try {
-            const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(notification);
-            const enrichedData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
+          const enrichedNotification = await notificationService.enrichNotificationDataWithLessonId(notification);
+          const enrichedData = enrichedNotification?.data || enrichedNotification?.notification?.data || {};
             lessonId = enrichedData.lessonId || enrichedData.lesson_id || enrichedNotification.lessonId || enrichedNotification.lesson_id || data?.lessonId || data?.lesson_id;
           } catch (enrichError) {
             console.error('💥 NotificationScreen: Error enriching notification:', enrichError);
@@ -490,11 +490,11 @@ const NotificationScreen = ({ navigation }) => {
     // Debug logging for ALL notifications to help debug Continue button issue
     console.log('🔔 NotificationScreen: Rendering notification:', {
       id: item._id || item.id,
-      type: notificationType,
+        type: notificationType,
       isLiveLesson: isLiveLesson,
-      isInternship: isInternship,
-      showContinueButton: showContinueButton,
-      hasData: !!item.data,
+        isInternship: isInternship,
+        showContinueButton: showContinueButton,
+        hasData: !!item.data,
       dataType: item.data?.type,
       lessonId: item.data?.lessonId || item.data?.lesson_id,
       title: item.title,
